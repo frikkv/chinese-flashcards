@@ -1,0 +1,27 @@
+{
+  "projectName": "chinese-flashcards",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "npm",
+  "includeExamples": false,
+  "tailwind": true,
+  "addOnOptions": {
+    "drizzle": {
+      "database": "postgresql"
+    }
+  },
+  "envVarValues": {},
+  "git": true,
+  "routerOnly": false,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": [
+    "eslint",
+    "better-auth",
+    "drizzle",
+    "tRPC",
+    "shadcn",
+    "form",
+    "tanstack-query"
+  ]
+}
