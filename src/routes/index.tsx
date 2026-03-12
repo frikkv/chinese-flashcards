@@ -7,7 +7,7 @@ import type { Word } from '../data/vocabulary'
 export const Route = createFileRoute('/')({ component: FlashcardsApp })
 
 // ── TYPES ────────────────────────────────────────────────────────
-type Page = 'wordset' | 'home' | 'study' | 'results' | 'sound'
+type Page = 'wordset' | 'study' | 'results' | 'sound'
 type AnswerStyle = 'multiple-choice' | 'type'
 
 interface Settings {
@@ -464,17 +464,14 @@ function FlashcardsApp() {
     return (
       <WordSetPage
         lastSession={lastSession}
+        allTimeStats={allTimeStats}
         settings={settings}
-        onContinue={(v, mode, s, session, direct) => {
+        onContinue={(v, mode, s, session) => {
           setVocab(v)
           setSessionMode(mode)
           setSettings(s)
           if (session) setLastSession(session)
-          if (direct) {
-            handleStartStudy(v, mode, s)
-          } else {
-            setPage('home')
-          }
+          handleStartStudy(v, mode, s)
         }}
         onStartSoundOnly={(v, ss, session) => {
           setSoundVocab(v)
@@ -491,18 +488,6 @@ function FlashcardsApp() {
       <SoundOnlyPage
         vocab={soundVocab}
         soundSettings={soundSettings}
-        onBack={() => setPage('wordset')}
-      />
-    )
-  }
-
-  if (page === 'home') {
-    return (
-      <ModePage
-        allTimeStats={allTimeStats}
-        sessionMode={sessionMode}
-        onSelectMode={setSessionMode}
-        onStart={() => handleStartStudy(vocab, sessionMode, settings)}
         onBack={() => setPage('wordset')}
       />
     )
@@ -969,18 +954,19 @@ function SoundOnlyPage({
 // ── WORD SET PAGE ─────────────────────────────────────────────────
 function WordSetPage({
   lastSession,
+  allTimeStats,
   settings: initialSettings,
   onContinue,
   onStartSoundOnly,
 }: {
   lastSession: LastSession | null
+  allTimeStats: AllTimeStats
   settings: Settings
   onContinue: (
     vocab: Word[],
     mode: 1 | 2 | 3,
     settings: Settings,
     session: LastSession | null,
-    direct?: boolean,
   ) => void
   onStartSoundOnly: (
     vocab: Word[],
@@ -993,7 +979,6 @@ function WordSetPage({
   const [selectedHSKLevels, setSelectedHSKLevels] = useState<Set<number>>(
     new Set(),
   )
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [settings, setSettings] = useState<Settings>(initialSettings)
   const [soundOnlyOpen, setSoundOnlyOpen] = useState(false)
   const [soundSettings, setSoundSettings] = useState<SoundSettings>({
@@ -1107,7 +1092,6 @@ function WordSetPage({
         lastSession.settings.defaultMode,
         lastSession.settings,
         null,
-        true,
       )
       return
     }
@@ -1135,6 +1119,23 @@ function WordSetPage({
       <div className="fc-wordset-container">
         <h1 className="fc-hero-title">学中文</h1>
         <p className="fc-hero-sub">Choose a word set to study.</p>
+
+        {allTimeStats.sessions > 0 && (
+          <div className="fc-stats-bar fc-stats-bar--compact">
+            <div className="fc-stat">
+              <div className="fc-stat-num">{allTimeStats.studied}</div>
+              <div className="fc-stat-label">Words Studied</div>
+            </div>
+            <div className="fc-stat">
+              <div className="fc-stat-num">{allTimeStats.correct}</div>
+              <div className="fc-stat-label">Correct</div>
+            </div>
+            <div className="fc-stat">
+              <div className="fc-stat-num">{allTimeStats.sessions}</div>
+              <div className="fc-stat-label">Sessions</div>
+            </div>
+          </div>
+        )}
 
         {/* Word set buttons */}
         <div className="fc-ws-grid">
@@ -1177,218 +1178,204 @@ function WordSetPage({
           )}
         </div>
 
-        {/* HSK level picker */}
-        {selectedWordSet === 'hsk' && (
-          <div className="fc-picker">
-            <p className="fc-picker-label">Select HSK level</p>
-            <div className="fc-picker-grid">
-              {[1, 2].map((level, idx) => (
-                <button
-                  key={level}
-                  className={`fc-unit-btn${selectedHSKLevels.has(level) ? ' selected' : ''}`}
-                  onMouseDown={() => {
-                    mouseIsDownRef.current = true
-                    isDraggingRef.current = false
-                    dragAnchorIdxRef.current = idx
-                    dragTypeRef.current = 'hsk'
-                    dragActionRef.current = selectedHSKLevels.has(level)
-                      ? 'deselect'
-                      : 'select'
-                    preDragHSKRef.current = new Set(selectedHSKLevels)
-                  }}
-                  onMouseEnter={() => {
-                    if (
-                      !mouseIsDownRef.current ||
-                      dragTypeRef.current !== 'hsk' ||
-                      dragAnchorIdxRef.current === null
-                    )
-                      return
-                    isDraggingRef.current = true
-                    const hskLevels = [1, 2]
-                    const [lo, hi] = [
-                      Math.min(dragAnchorIdxRef.current, idx),
-                      Math.max(dragAnchorIdxRef.current, idx),
-                    ]
-                    const next = new Set(preDragHSKRef.current)
-                    hskLevels.slice(lo, hi + 1).forEach((l) => {
-                      if (dragActionRef.current === 'select') next.add(l)
-                      else next.delete(l)
-                    })
-                    setSelectedHSKLevels(next)
-                  }}
-                >
-                  HSK {level}{' '}
-                  <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                    (150)
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* LANG 1511 unit picker */}
-        {selectedWordSet === 'lang1511' && (
-          <div className="fc-picker">
-            <p className="fc-picker-label">Select units to study</p>
-            <div className="fc-picker-grid">
-              {lang1511Units.map((u, idx) => (
-                <button
-                  key={u.unit}
-                  className={`fc-unit-btn${selectedUnits.has(u.unit) ? ' selected' : ''}`}
-                  onMouseDown={() => {
-                    mouseIsDownRef.current = true
-                    isDraggingRef.current = false
-                    dragAnchorIdxRef.current = idx
-                    dragTypeRef.current = 'unit'
-                    dragActionRef.current = selectedUnits.has(u.unit)
-                      ? 'deselect'
-                      : 'select'
-                    preDragUnitsRef.current = new Set(selectedUnits)
-                  }}
-                  onMouseEnter={() => {
-                    if (
-                      !mouseIsDownRef.current ||
-                      dragTypeRef.current !== 'unit' ||
-                      dragAnchorIdxRef.current === null
-                    )
-                      return
-                    isDraggingRef.current = true
-                    const [lo, hi] = [
-                      Math.min(dragAnchorIdxRef.current, idx),
-                      Math.max(dragAnchorIdxRef.current, idx),
-                    ]
-                    const next = new Set(preDragUnitsRef.current)
-                    lang1511Units.slice(lo, hi + 1).forEach((unit) => {
-                      if (dragActionRef.current === 'select')
-                        next.add(unit.unit)
-                      else next.delete(unit.unit)
-                    })
-                    setSelectedUnits(next)
-                  }}
-                >
-                  Unit {u.unit}{' '}
-                  <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                    ({u.words.length})
-                  </span>
-                </button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-              <button
-                className="fc-util-btn"
-                onClick={() =>
-                  setSelectedUnits(new Set(lang1511Units.map((u) => u.unit)))
-                }
-              >
-                Select all
-              </button>
-              <button
-                className="fc-util-btn"
-                onClick={() => setSelectedUnits(new Set())}
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Settings */}
+        {/* Session Settings */}
         {selectedWordSet && selectedWordSet !== 'last' && (
           <div className="fc-settings-wrap">
-            <button
-              className="fc-settings-toggle"
-              onClick={() => setSettingsOpen((o) => !o)}
-            >
-              <span
-                style={{
-                  display: 'inline-block',
-                  transition: 'transform 0.2s',
-                  transform: settingsOpen ? 'rotate(90deg)' : '',
-                }}
-              >
-                ▸
-              </span>{' '}
-              Settings
-            </button>
-            {settingsOpen && (
-              <div className="fc-settings-dropdown">
-                <div className="fc-settings-section">
-                  <div className="fc-settings-label">Answer Style</div>
-                  <div className="fc-settings-options">
-                    {(
-                      [
-                        ['multiple-choice', 'Multiple Choice'],
-                        ['type', 'Type Answer'],
-                      ] as const
-                    ).map(([val, label]) => (
-                      <button
-                        key={val}
-                        className={`fc-setting-opt${settings.answerStyle === val ? ' selected' : ''}`}
-                        onClick={() =>
-                          setSettings((s) => ({ ...s, answerStyle: val }))
-                        }
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="fc-settings-section">
-                  <div className="fc-settings-label">Default Study Mode</div>
-                  <div className="fc-settings-options">
-                    {([1, 2, 3] as const).map((m) => (
-                      <button
-                        key={m}
-                        className={`fc-setting-opt${settings.defaultMode === m ? ' selected' : ''}`}
-                        onClick={() =>
-                          setSettings((s) => ({ ...s, defaultMode: m }))
-                        }
-                      >
-                        {m} Card{m > 1 ? 's' : ''}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="fc-settings-section">
-                  <div className="fc-settings-label">Cards per Session</div>
-                  <div className="fc-settings-options">
-                    {(
-                      [
-                        [10, '10'],
-                        [20, '20'],
-                        [30, 'All'],
-                      ] as const
-                    ).map(([val, label]) => (
-                      <button
-                        key={val}
-                        className={`fc-setting-opt${settings.sessionSize === val ? ' selected' : ''}`}
-                        onClick={() =>
-                          setSettings((s) => ({ ...s, sessionSize: val }))
-                        }
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+            {/* HSK level picker */}
+            {selectedWordSet === 'hsk' && (
+              <div className="fc-settings-section">
+                <div className="fc-settings-label">HSK Level</div>
+                <div className="fc-picker-grid">
+                  {[1, 2].map((level, idx) => (
+                    <button
+                      key={level}
+                      className={`fc-unit-btn${selectedHSKLevels.has(level) ? ' selected' : ''}`}
+                      onMouseDown={() => {
+                        mouseIsDownRef.current = true
+                        isDraggingRef.current = false
+                        dragAnchorIdxRef.current = idx
+                        dragTypeRef.current = 'hsk'
+                        dragActionRef.current = selectedHSKLevels.has(level)
+                          ? 'deselect'
+                          : 'select'
+                        preDragHSKRef.current = new Set(selectedHSKLevels)
+                      }}
+                      onMouseEnter={() => {
+                        if (
+                          !mouseIsDownRef.current ||
+                          dragTypeRef.current !== 'hsk' ||
+                          dragAnchorIdxRef.current === null
+                        )
+                          return
+                        isDraggingRef.current = true
+                        const hskLevels = [1, 2]
+                        const [lo, hi] = [
+                          Math.min(dragAnchorIdxRef.current, idx),
+                          Math.max(dragAnchorIdxRef.current, idx),
+                        ]
+                        const next = new Set(preDragHSKRef.current)
+                        hskLevels.slice(lo, hi + 1).forEach((l) => {
+                          if (dragActionRef.current === 'select') next.add(l)
+                          else next.delete(l)
+                        })
+                        setSelectedHSKLevels(next)
+                      }}
+                    >
+                      HSK {level}{' '}
+                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                        (150)
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
-          </div>
-        )}
 
-        {/* Sound Only toggle */}
-        {selectedWordSet && selectedWordSet !== 'last' && (
-          <div className="fc-sound-row">
-            <button
-              className={`fc-sound-toggle${soundOnlyOpen ? ' active' : ''}`}
-              onClick={() => setSoundOnlyOpen((o) => !o)}
-            >
-              <Volume2 size={13} />
-              Sound Only
-            </button>
-            {soundOnlyOpen && (
+            {/* LANG 1511 unit picker */}
+            {selectedWordSet === 'lang1511' && (
+              <div className="fc-settings-section">
+                <div className="fc-settings-label">Units</div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  <button
+                    className="fc-util-btn"
+                    onClick={() =>
+                      setSelectedUnits(new Set(lang1511Units.map((u) => u.unit)))
+                    }
+                  >
+                    Select all
+                  </button>
+                  <button
+                    className="fc-util-btn"
+                    onClick={() => setSelectedUnits(new Set())}
+                  >
+                    Clear
+                  </button>
+                </div>
+                <div className="fc-picker-grid fc-picker-grid--units">
+                  {lang1511Units.map((u, idx) => (
+                    <button
+                      key={u.unit}
+                      className={`fc-unit-btn${selectedUnits.has(u.unit) ? ' selected' : ''}`}
+                      onMouseDown={() => {
+                        mouseIsDownRef.current = true
+                        isDraggingRef.current = false
+                        dragAnchorIdxRef.current = idx
+                        dragTypeRef.current = 'unit'
+                        dragActionRef.current = selectedUnits.has(u.unit)
+                          ? 'deselect'
+                          : 'select'
+                        preDragUnitsRef.current = new Set(selectedUnits)
+                      }}
+                      onMouseEnter={() => {
+                        if (
+                          !mouseIsDownRef.current ||
+                          dragTypeRef.current !== 'unit' ||
+                          dragAnchorIdxRef.current === null
+                        )
+                          return
+                        isDraggingRef.current = true
+                        const [lo, hi] = [
+                          Math.min(dragAnchorIdxRef.current, idx),
+                          Math.max(dragAnchorIdxRef.current, idx),
+                        ]
+                        const next = new Set(preDragUnitsRef.current)
+                        lang1511Units.slice(lo, hi + 1).forEach((unit) => {
+                          if (dragActionRef.current === 'select')
+                            next.add(unit.unit)
+                          else next.delete(unit.unit)
+                        })
+                        setSelectedUnits(next)
+                      }}
+                    >
+                      Unit {u.unit}{' '}
+                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                        ({u.words.length})
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(selectedWordSet === 'hsk' || selectedWordSet === 'lang1511') && (
+              <div className="fc-settings-divider" />
+            )}
+            <div className="fc-settings-section">
+              <div className="fc-settings-label">Study Mode</div>
               <div className="fc-settings-options">
+                {([1, 2, 3] as const).map((m) => (
+                  <button
+                    key={m}
+                    className={`fc-setting-opt${settings.defaultMode === m ? ' selected' : ''}`}
+                    onClick={() =>
+                      setSettings((s) => ({ ...s, defaultMode: m }))
+                    }
+                  >
+                    {m} Card{m > 1 ? 's' : ''}
+                  </button>
+                ))}
+              </div>
+              <p className="fc-settings-mode-hint">
+                {settings.defaultMode === 1 &&
+                  'See character + pinyin, guess the English meaning.'}
+                {settings.defaultMode === 2 &&
+                  'Guess pinyin from character, then guess English.'}
+                {settings.defaultMode === 3 &&
+                  'Full cycle: character → pinyin → English → recall character.'}
+              </p>
+            </div>
+            <div className="fc-settings-section">
+              <div className="fc-settings-label">Answer Style</div>
+              <div className="fc-settings-options">
+                {(
+                  [
+                    ['multiple-choice', 'Multiple Choice'],
+                    ['type', 'Type Answer'],
+                  ] as const
+                ).map(([val, label]) => (
+                  <button
+                    key={val}
+                    className={`fc-setting-opt${settings.answerStyle === val ? ' selected' : ''}`}
+                    onClick={() =>
+                      setSettings((s) => ({ ...s, answerStyle: val }))
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="fc-settings-section">
+              <div className="fc-settings-label">Cards per Session</div>
+              <div className="fc-settings-options">
+                {(
+                  [
+                    [10, '10'],
+                    [20, '20'],
+                    [30, 'All'],
+                  ] as const
+                ).map(([val, label]) => (
+                  <button
+                    key={val}
+                    className={`fc-setting-opt${settings.sessionSize === val ? ' selected' : ''}`}
+                    onClick={() =>
+                      setSettings((s) => ({ ...s, sessionSize: val }))
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="fc-settings-section">
+              <div className="fc-settings-label">Sound Only Mode</div>
+              <div className="fc-settings-options">
+                <button
+                  className={`fc-setting-opt${!soundOnlyOpen ? ' selected' : ''}`}
+                  onClick={() => setSoundOnlyOpen(false)}
+                >
+                  Off
+                </button>
                 {(
                   [
                     ['char', 'Characters'],
@@ -1398,121 +1385,30 @@ function WordSetPage({
                 ).map(([val, label]) => (
                   <button
                     key={val}
-                    className={`fc-setting-opt${soundSettings.answerFormat === val ? ' selected' : ''}`}
-                    onClick={() =>
+                    className={`fc-setting-opt${soundOnlyOpen && soundSettings.answerFormat === val ? ' selected' : ''}`}
+                    onClick={() => {
+                      setSoundOnlyOpen(true)
                       setSoundSettings((s) => ({ ...s, answerFormat: val }))
-                    }
+                    }}
                   >
                     {label}
                   </button>
                 ))}
               </div>
-            )}
+            </div>
           </div>
         )}
 
         <button
           className="fc-start-btn"
-          style={{ marginTop: 24 }}
           onClick={soundOnlyOpen ? handleStartSoundOnly : handleGoNext}
         >
           {soundOnlyOpen || (selectedWordSet === 'last' && lastSession?.soundSettings)
             ? 'Start Sound Only →'
             : selectedWordSet === 'last'
             ? 'Start →'
-            : 'Next →'}
+            : 'Start Studying →'}
         </button>
-        <div style={{ height: 40 }} />
-      </div>
-    </div>
-  )
-}
-
-// ── MODE PAGE ─────────────────────────────────────────────────────
-function ModePage({
-  allTimeStats,
-  sessionMode,
-  onSelectMode,
-  onStart,
-  onBack,
-}: {
-  allTimeStats: AllTimeStats
-  sessionMode: 1 | 2 | 3
-  onSelectMode: (m: 1 | 2 | 3) => void
-  onStart: () => void
-  onBack: () => void
-}) {
-  const modes: { num: string; title: string; desc: string; val: 1 | 2 | 3 }[] =
-    [
-      {
-        num: '一',
-        title: '1 Card',
-        desc: 'See character + pinyin, guess the English meaning.',
-        val: 1,
-      },
-      {
-        num: '二',
-        title: '2 Cards',
-        desc: 'Character → guess pinyin, then pinyin → guess English.',
-        val: 2,
-      },
-      {
-        num: '三',
-        title: '3 Cards',
-        desc: 'Full system: character → pinyin → English → recall character.',
-        val: 3,
-      },
-    ]
-
-  return (
-    <div className="fc-app">
-      <div className="fc-home-container">
-        <div className="fc-home-hero">
-          <h1 className="fc-hero-title">学中文</h1>
-          <p className="fc-hero-sub">
-            Learn Chinese characters the right way — character first, always.
-          </p>
-        </div>
-
-        <div className="fc-stats-bar">
-          <div className="fc-stat">
-            <div className="fc-stat-num">{allTimeStats.studied}</div>
-            <div className="fc-stat-label">Words Studied</div>
-          </div>
-          <div className="fc-stat">
-            <div className="fc-stat-num">{allTimeStats.correct}</div>
-            <div className="fc-stat-label">Correct</div>
-          </div>
-          <div className="fc-stat">
-            <div className="fc-stat-num">{allTimeStats.sessions}</div>
-            <div className="fc-stat-label">Sessions</div>
-          </div>
-        </div>
-
-        <p className="fc-section-label">Choose a study mode</p>
-
-        <div className="fc-mode-grid">
-          {modes.map((m) => (
-            <div
-              key={m.val}
-              className={`fc-mode-card${sessionMode === m.val ? ' selected' : ''}`}
-              onClick={() => onSelectMode(m.val)}
-            >
-              <div className="fc-mode-num">{m.num}</div>
-              <div className="fc-mode-title">{m.title}</div>
-              <div className="fc-mode-desc">{m.desc}</div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button className="fc-util-btn" onClick={onBack}>
-            ← Back
-          </button>
-          <button className="fc-start-btn" onClick={onStart}>
-            Start Studying →
-          </button>
-        </div>
       </div>
     </div>
   )
