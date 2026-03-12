@@ -602,35 +602,44 @@ function WordSetPage({
   const [settings, setSettings] = useState<Settings>(initialSettings)
 
   // Drag-select state
+  const mouseIsDownRef = useRef(false)
   const isDraggingRef = useRef(false)
+  const dragAnchorIdxRef = useRef<number | null>(null)
   const dragActionRef = useRef<'select' | 'deselect'>('select')
   const dragTypeRef = useRef<'unit' | 'hsk' | null>(null)
+  const preDragUnitsRef = useRef<Set<number>>(new Set())
+  const preDragHSKRef = useRef<Set<number>>(new Set())
 
   useEffect(() => {
-    const handler = () => {
+    const handleMouseUp = () => {
+      if (mouseIsDownRef.current && !isDraggingRef.current) {
+        // Pure click — toggle the single anchor item
+        if (dragTypeRef.current === 'unit' && dragAnchorIdxRef.current !== null) {
+          const anchorUnit = lang1511Units[dragAnchorIdxRef.current].unit
+          setSelectedUnits((prev) => {
+            const next = new Set(prev)
+            if (dragActionRef.current === 'select') next.add(anchorUnit)
+            else next.delete(anchorUnit)
+            return next
+          })
+        } else if (dragTypeRef.current === 'hsk' && dragAnchorIdxRef.current !== null) {
+          const anchorLevel = [1, 2][dragAnchorIdxRef.current]
+          setSelectedHSKLevels((prev) => {
+            const next = new Set(prev)
+            if (dragActionRef.current === 'select') next.add(anchorLevel)
+            else next.delete(anchorLevel)
+            return next
+          })
+        }
+      }
+      mouseIsDownRef.current = false
       isDraggingRef.current = false
+      dragAnchorIdxRef.current = null
+      dragTypeRef.current = null
     }
-    document.addEventListener('mouseup', handler)
-    return () => document.removeEventListener('mouseup', handler)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => document.removeEventListener('mouseup', handleMouseUp)
   }, [])
-
-  function applyUnitAction(unit: number, action: 'select' | 'deselect') {
-    setSelectedUnits((prev) => {
-      const next = new Set(prev)
-      if (action === 'select') next.add(unit)
-      else next.delete(unit)
-      return next
-    })
-  }
-
-  function applyHSKAction(level: number, action: 'select' | 'deselect') {
-    setSelectedHSKLevels((prev) => {
-      const next = new Set(prev)
-      if (action === 'select') next.add(level)
-      else next.delete(level)
-      return next
-    })
-  }
 
   function handleGoNext() {
     let vocab: Word[] = []
@@ -725,20 +734,29 @@ function WordSetPage({
           <div className="fc-picker">
             <p className="fc-picker-label">Select HSK level</p>
             <div className="fc-picker-grid">
-              {[1, 2].map((level) => (
+              {[1, 2].map((level, idx) => (
                 <button
                   key={level}
                   className={`fc-unit-btn${selectedHSKLevels.has(level) ? ' selected' : ''}`}
                   onMouseDown={() => {
-                    isDraggingRef.current = true
-                    dragActionRef.current = selectedHSKLevels.has(level) ? 'deselect' : 'select'
+                    mouseIsDownRef.current = true
+                    isDraggingRef.current = false
+                    dragAnchorIdxRef.current = idx
                     dragTypeRef.current = 'hsk'
-                    applyHSKAction(level, selectedHSKLevels.has(level) ? 'deselect' : 'select')
+                    dragActionRef.current = selectedHSKLevels.has(level) ? 'deselect' : 'select'
+                    preDragHSKRef.current = new Set(selectedHSKLevels)
                   }}
                   onMouseEnter={() => {
-                    if (isDraggingRef.current && dragTypeRef.current === 'hsk') {
-                      applyHSKAction(level, dragActionRef.current)
-                    }
+                    if (!mouseIsDownRef.current || dragTypeRef.current !== 'hsk' || dragAnchorIdxRef.current === null) return
+                    isDraggingRef.current = true
+                    const hskLevels = [1, 2]
+                    const [lo, hi] = [Math.min(dragAnchorIdxRef.current, idx), Math.max(dragAnchorIdxRef.current, idx)]
+                    const next = new Set(preDragHSKRef.current)
+                    hskLevels.slice(lo, hi + 1).forEach((l) => {
+                      if (dragActionRef.current === 'select') next.add(l)
+                      else next.delete(l)
+                    })
+                    setSelectedHSKLevels(next)
                   }}
                 >
                   HSK {level}{' '}
@@ -754,23 +772,28 @@ function WordSetPage({
           <div className="fc-picker">
             <p className="fc-picker-label">Select units to study</p>
             <div className="fc-picker-grid">
-              {lang1511Units.map((u) => (
+              {lang1511Units.map((u, idx) => (
                 <button
                   key={u.unit}
                   className={`fc-unit-btn${selectedUnits.has(u.unit) ? ' selected' : ''}`}
                   onMouseDown={() => {
-                    isDraggingRef.current = true
-                    dragActionRef.current = selectedUnits.has(u.unit) ? 'deselect' : 'select'
+                    mouseIsDownRef.current = true
+                    isDraggingRef.current = false
+                    dragAnchorIdxRef.current = idx
                     dragTypeRef.current = 'unit'
-                    applyUnitAction(
-                      u.unit,
-                      selectedUnits.has(u.unit) ? 'deselect' : 'select',
-                    )
+                    dragActionRef.current = selectedUnits.has(u.unit) ? 'deselect' : 'select'
+                    preDragUnitsRef.current = new Set(selectedUnits)
                   }}
                   onMouseEnter={() => {
-                    if (isDraggingRef.current && dragTypeRef.current === 'unit') {
-                      applyUnitAction(u.unit, dragActionRef.current)
-                    }
+                    if (!mouseIsDownRef.current || dragTypeRef.current !== 'unit' || dragAnchorIdxRef.current === null) return
+                    isDraggingRef.current = true
+                    const [lo, hi] = [Math.min(dragAnchorIdxRef.current, idx), Math.max(dragAnchorIdxRef.current, idx)]
+                    const next = new Set(preDragUnitsRef.current)
+                    lang1511Units.slice(lo, hi + 1).forEach((unit) => {
+                      if (dragActionRef.current === 'select') next.add(unit.unit)
+                      else next.delete(unit.unit)
+                    })
+                    setSelectedUnits(next)
                   }}
                 >
                   Unit {u.unit}{' '}
