@@ -1,12 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
+import { Volume2 } from 'lucide-react'
 import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
 import type { Word } from '../data/vocabulary'
 
 export const Route = createFileRoute('/')({ component: FlashcardsApp })
 
 // ── TYPES ────────────────────────────────────────────────────────
-type Page = 'wordset' | 'home' | 'study' | 'results'
+type Page = 'wordset' | 'home' | 'study' | 'results' | 'sound'
 type AnswerStyle = 'multiple-choice' | 'type'
 
 interface Settings {
@@ -25,6 +26,7 @@ interface LastSession {
   hskLevels: Set<number>
   units: Set<number>
   settings: Settings
+  soundSettings?: SoundSettings
   vocab: Word[]
   desc: string
 }
@@ -33,6 +35,14 @@ interface AllTimeStats {
   studied: number
   correct: number
   sessions: number
+}
+
+type SoundAnswerFormat = 'char' | 'pinyin' | 'both'
+
+interface SoundSettings {
+  answerFormat: SoundAnswerFormat
+  answerStyle: AnswerStyle
+  sessionSize: 10 | 20 | 30
 }
 
 interface CardContent {
@@ -62,7 +72,10 @@ function normalizeAnswer(s: string): string {
 }
 
 function buildQueue(vocab: Word[], mode: 1 | 2 | 3, size: number): QueueItem[] {
-  const count = Math.min(size >= vocab.length ? vocab.length : size, vocab.length)
+  const count = Math.min(
+    size >= vocab.length ? vocab.length : size,
+    vocab.length,
+  )
   const words = shuffle(vocab).slice(0, count)
   const stages: (1 | 2 | 3)[] =
     mode === 1 ? [1] : mode === 2 ? [1, 2] : [1, 2, 3]
@@ -103,16 +116,40 @@ function getAnswerContent(
   return { tag: 'Character', char: word.char, pinyin: word.pinyin }
 }
 
+// ── TTS ──────────────────────────────────────────────────────────
+function speakHanzi(hanzi: string) {
+  if (!('speechSynthesis' in window) || !hanzi) return
+  window.speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(hanzi)
+  utterance.lang = 'zh-CN'
+  utterance.rate = 0.9
+  window.speechSynthesis.speak(utterance)
+}
+
 // ── CARD FACE ────────────────────────────────────────────────────
 function CardFace({
   content,
   isBack,
+  hanzi,
 }: {
   content: CardContent | null
   isBack?: boolean
+  hanzi: string
 }) {
   return (
     <div className={`fc-card-face${isBack ? ' back' : ''}`}>
+      {hanzi && (
+        <button
+          className="fc-speaker-btn"
+          onClick={(e) => {
+            e.stopPropagation()
+            speakHanzi(hanzi)
+          }}
+          aria-label="Play pronunciation"
+        >
+          <Volume2 size={16} />
+        </button>
+      )}
       {content && (
         <>
           <div className="fc-card-tag">{content.tag}</div>
@@ -128,7 +165,11 @@ function CardFace({
           {content.english && (
             <div
               className="fc-card-english"
-              style={content.englishLarge ? { fontSize: '2rem', margin: '12px 0' } : undefined}
+              style={
+                content.englishLarge
+                  ? { fontSize: '2rem', margin: '12px 0' }
+                  : undefined
+              }
             >
               {content.english}
             </div>
@@ -157,6 +198,12 @@ function FlashcardsApp() {
   })
   const [sessionMode, setSessionMode] = useState<1 | 2 | 3>(2)
   const [vocab, setVocab] = useState<Word[]>([])
+  const [soundVocab, setSoundVocab] = useState<Word[]>([])
+  const [soundSettings, setSoundSettings] = useState<SoundSettings>({
+    answerFormat: 'char',
+    answerStyle: 'multiple-choice',
+    sessionSize: 10,
+  })
 
   // All-time stats
   const [allTimeStats, setAllTimeStats] = useState<AllTimeStats>({
@@ -181,10 +228,14 @@ function FlashcardsApp() {
   const [answered, setAnswered] = useState(false)
   const [nextBtnVisible, setNextBtnVisible] = useState(false)
   const [cardMode, setCardMode] = useState<'mc' | 'type' | 'selfrate'>('mc')
-  const [answerTarget, setAnswerTarget] = useState<'english' | 'pinyin'>('english')
+  const [answerTarget, setAnswerTarget] = useState<'english' | 'pinyin'>(
+    'english',
+  )
   const [answerCorrect, setAnswerCorrect] = useState('')
   const [answerChoices, setAnswerChoices] = useState<string[]>([])
-  const [choiceStates, setChoiceStates] = useState<Record<string, 'correct' | 'wrong'>>({})
+  const [choiceStates, setChoiceStates] = useState<
+    Record<string, 'correct' | 'wrong'>
+  >({})
   const [typeValue, setTypeValue] = useState('')
   const [typeResult, setTypeResult] = useState<'correct' | 'wrong' | null>(null)
   const [showSelfRate, setShowSelfRate] = useState(false)
@@ -198,12 +249,24 @@ function FlashcardsApp() {
   const nextBtnVisibleRef = useRef(false)
   const handleNextRef = useRef<() => void>(() => {})
 
-  useEffect(() => { queueRef.current = queue }, [queue])
-  useEffect(() => { vocabRef.current = vocab }, [vocab])
-  useEffect(() => { settingsRef.current = settings }, [settings])
-  useEffect(() => { sessionModeRef.current = sessionMode }, [sessionMode])
-  useEffect(() => { isFlippedRef.current = isFlipped }, [isFlipped])
-  useEffect(() => { nextBtnVisibleRef.current = nextBtnVisible }, [nextBtnVisible])
+  useEffect(() => {
+    queueRef.current = queue
+  }, [queue])
+  useEffect(() => {
+    vocabRef.current = vocab
+  }, [vocab])
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
+  useEffect(() => {
+    sessionModeRef.current = sessionMode
+  }, [sessionMode])
+  useEffect(() => {
+    isFlippedRef.current = isFlipped
+  }, [isFlipped])
+  useEffect(() => {
+    nextBtnVisibleRef.current = nextBtnVisible
+  }, [nextBtnVisible])
 
   function doRenderCard(idx: number, currentFlipped: boolean, q: QueueItem[]) {
     const item = q[idx]
@@ -246,7 +309,9 @@ function FlashcardsApp() {
         setCardMode('mc')
         const distractors = shuffle(v.filter((w) => w !== word)).slice(0, 3)
         const options = shuffle([word, ...distractors])
-        setAnswerChoices(options.map((o) => (target === 'english' ? o.english : o.pinyin)))
+        setAnswerChoices(
+          options.map((o) => (target === 'english' ? o.english : o.pinyin)),
+        )
       } else {
         setCardMode('type')
         setAnswerChoices([])
@@ -255,7 +320,11 @@ function FlashcardsApp() {
   }
 
   function handleStartStudy(v: Word[], mode: 1 | 2 | 3, s: Settings) {
-    const q = buildQueue(v, mode, s.sessionSize === 30 ? v.length : s.sessionSize)
+    const q = buildQueue(
+      v,
+      mode,
+      s.sessionSize === 30 ? v.length : s.sessionSize,
+    )
     setQueue(q)
     queueRef.current = q
     vocabRef.current = v
@@ -396,13 +465,33 @@ function FlashcardsApp() {
       <WordSetPage
         lastSession={lastSession}
         settings={settings}
-        onContinue={(v, mode, s, session) => {
+        onContinue={(v, mode, s, session, direct) => {
           setVocab(v)
           setSessionMode(mode)
           setSettings(s)
           if (session) setLastSession(session)
-          setPage('home')
+          if (direct) {
+            handleStartStudy(v, mode, s)
+          } else {
+            setPage('home')
+          }
         }}
+        onStartSoundOnly={(v, ss, session) => {
+          setSoundVocab(v)
+          setSoundSettings(ss)
+          if (session) setLastSession(session)
+          setPage('sound')
+        }}
+      />
+    )
+  }
+
+  if (page === 'sound') {
+    return (
+      <SoundOnlyPage
+        vocab={soundVocab}
+        soundSettings={soundSettings}
+        onBack={() => setPage('wordset')}
       />
     )
   }
@@ -442,10 +531,7 @@ function FlashcardsApp() {
   return (
     <div className="fc-app">
       {/* Back button */}
-      <button
-        onClick={() => setPage('wordset')}
-        className="fc-back-btn"
-      >
+      <button onClick={() => setPage('wordset')} className="fc-back-btn">
         ← Home
       </button>
 
@@ -456,10 +542,7 @@ function FlashcardsApp() {
             Card {qIdx + 1} of {queue.length}
           </div>
           <div className="fc-progress-bar">
-            <div
-              className="fc-progress-fill"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
           </div>
         </div>
         <div className="fc-score-badge">
@@ -482,8 +565,12 @@ function FlashcardsApp() {
       {/* Card */}
       <div className="fc-card-scene">
         <div className={`fc-card-inner${isFlipped ? ' flipped' : ''}`}>
-          <CardFace content={faceA} />
-          <CardFace content={faceB} isBack />
+          <CardFace content={faceA} hanzi={currentItem?.word.char ?? ''} />
+          <CardFace
+            content={faceB}
+            isBack
+            hanzi={currentItem?.word.char ?? ''}
+          />
         </div>
       </div>
 
@@ -498,7 +585,10 @@ function FlashcardsApp() {
             ) : (
               <div>
                 <p className="fc-self-rate-label">Did you remember it?</p>
-                <div className="fc-choices" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div
+                  className="fc-choices"
+                  style={{ gridTemplateColumns: '1fr 1fr' }}
+                >
                   <button
                     className={`fc-choice-btn${answered ? ' correct' : ''}`}
                     disabled={answered}
@@ -565,16 +655,312 @@ function FlashcardsApp() {
       </div>
 
       {/* Next button */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
         <button
           className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
           onClick={handleNext}
         >
           Next →
         </button>
-        {nextBtnVisible && (
-          <div className="fc-enter-hint">press Enter ↵</div>
+        {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
+      </div>
+    </div>
+  )
+}
+
+// ── SOUND ONLY PAGE ───────────────────────────────────────────────
+function SoundOnlyPage({
+  vocab,
+  soundSettings,
+  onBack,
+}: {
+  vocab: Word[]
+  soundSettings: SoundSettings
+  onBack: () => void
+}) {
+  const { answerFormat, answerStyle, sessionSize } = soundSettings
+
+  function buildQueue(): Word[] {
+    const count =
+      sessionSize === 30 ? vocab.length : Math.min(sessionSize, vocab.length)
+    return shuffle(vocab).slice(0, count)
+  }
+
+  const [queue, setQueue] = useState<Word[]>(() => buildQueue())
+  const [idx, setIdx] = useState(0)
+  const [score, setScore] = useState(0)
+  const [totalAttempts, setTotalAttempts] = useState(0)
+  const [answered, setAnswered] = useState(false)
+  const [nextBtnVisible, setNextBtnVisible] = useState(false)
+  const [done, setDone] = useState(false)
+  const [choiceWords, setChoiceWords] = useState<Word[]>([])
+  const [choiceStates, setChoiceStates] = useState<
+    Record<string, 'correct' | 'wrong'>
+  >({})
+  const [typeValue, setTypeValue] = useState('')
+  const [typeResult, setTypeResult] = useState<'correct' | 'wrong' | null>(null)
+
+  const nextBtnVisibleRef = useRef(false)
+  const handleNextRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    nextBtnVisibleRef.current = nextBtnVisible
+  }, [nextBtnVisible])
+
+  // Set up question and auto-play when the word changes
+  useEffect(() => {
+    const word = queue[idx]
+    if (!word) return
+    setAnswered(false)
+    setNextBtnVisible(false)
+    setChoiceStates({})
+    setTypeValue('')
+    setTypeResult(null)
+    if (answerStyle === 'multiple-choice') {
+      const distractors = shuffle(
+        vocab.filter((w) => w.char !== word.char),
+      ).slice(0, 3)
+      setChoiceWords(shuffle([word, ...distractors]))
+    }
+    const t = setTimeout(() => speakHanzi(word.char), 150)
+    return () => clearTimeout(t)
+  }, [idx, queue]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keyboard: Enter → Next, Space → Replay
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (document.activeElement as HTMLElement)?.tagName
+      if (tag === 'INPUT') return
+      if (e.code === 'Space') {
+        e.preventDefault()
+        const word = queue[idx]
+        if (word && !done) speakHanzi(word.char)
+        return
+      }
+      if (e.key !== 'Enter') return
+      if (nextBtnVisibleRef.current) handleNextRef.current()
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [queue, idx, done]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleChoice(word: Word) {
+    if (answered) return
+    const currentWord = queue[idx]
+    setAnswered(true)
+    setTotalAttempts((p) => p + 1)
+    const isCorrect = word.char === currentWord.char
+    const states: Record<string, 'correct' | 'wrong'> = {
+      [currentWord.char]: 'correct',
+    }
+    if (!isCorrect) states[word.char] = 'wrong'
+    setChoiceStates(states)
+    if (isCorrect) setScore((p) => p + 1)
+    setNextBtnVisible(true)
+  }
+
+  function handleTypeSubmit() {
+    const currentWord = queue[idx]
+    if (answered || !typeValue.trim() || !currentWord) return
+    setAnswered(true)
+    setTotalAttempts((p) => p + 1)
+    const isCorrect =
+      normalizeAnswer(typeValue) === normalizeAnswer(currentWord.pinyin)
+    setTypeResult(isCorrect ? 'correct' : 'wrong')
+    if (isCorrect) setScore((p) => p + 1)
+    setNextBtnVisible(true)
+  }
+
+  function handleNext() {
+    if (idx + 1 >= queue.length) {
+      setDone(true)
+      return
+    }
+    setIdx((p) => p + 1)
+  }
+  handleNextRef.current = handleNext
+
+  function startSession() {
+    const newQ = buildQueue()
+    setQueue(newQ)
+    setIdx(0)
+    setScore(0)
+    setTotalAttempts(0)
+    setDone(false)
+  }
+
+  const currentWord = queue[idx] ?? null
+  const pct = queue.length > 0 ? Math.round((idx / queue.length) * 100) : 0
+
+  if (done) {
+    const finalPct =
+      totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0
+    return (
+      <div className="fc-app">
+        <div className="fc-results-container">
+          <div className="fc-results-char">好！</div>
+          <div>
+            <div className="fc-results-title">Session Complete</div>
+            <div className="fc-results-sub">
+              You practiced {queue.length} word{queue.length !== 1 ? 's' : ''} ·{' '}
+              {finalPct}% accuracy
+            </div>
+          </div>
+          <div className="fc-results-grid">
+            <div className="fc-result-stat">
+              <div className="fc-result-num" style={{ color: '#27ae60' }}>
+                {score}
+              </div>
+              <div className="fc-result-label">Correct</div>
+            </div>
+            <div className="fc-result-stat">
+              <div className="fc-result-num" style={{ color: '#e74c3c' }}>
+                {totalAttempts - score}
+              </div>
+              <div className="fc-result-label">Incorrect</div>
+            </div>
+            <div className="fc-result-stat">
+              <div className="fc-result-num">{finalPct}%</div>
+              <div className="fc-result-label">Accuracy</div>
+            </div>
+          </div>
+          <div className="fc-results-actions">
+            <button className="fc-start-btn" onClick={startSession}>
+              Study Again
+            </button>
+            <button className="fc-results-btn" onClick={onBack}>
+              Home
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fc-app">
+      <button onClick={onBack} className="fc-back-btn">
+        ← Home
+      </button>
+
+      <div className="fc-study-header">
+        <div style={{ flex: 1 }}>
+          <div className="fc-progress-label">
+            Card {idx + 1} of {queue.length}
+          </div>
+          <div className="fc-progress-bar">
+            <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+        <div className="fc-score-badge">
+          Score: <b style={{ color: '#27ae60' }}>{score}</b>
+        </div>
+      </div>
+
+      {/* Audio card */}
+      <div className="fc-card-scene">
+        <div className="fc-card-inner">
+          <div className="fc-card-face">
+            <div className="fc-card-tag">What word do you hear?</div>
+            <button
+              className="fc-sound-play-btn"
+              onClick={(e) => {
+                e.currentTarget.blur()
+                currentWord && speakHanzi(currentWord.char)
+              }}
+              aria-label="Replay pronunciation"
+            >
+              <Volume2 size={36} />
+            </button>
+            <div className="fc-sound-hint">Tap or press Space to replay</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Answers */}
+      <div className="fc-answer-area">
+        {answerStyle === 'multiple-choice' && choiceWords.length > 0 && (
+          <div
+            className={`fc-choices${answerFormat === 'both' || (answerFormat === 'char' && answered) ? ' fc-choices--tall' : ''}`}
+          >
+            {choiceWords.map((w) => (
+              <button
+                key={w.char}
+                className={`fc-choice-btn${choiceStates[w.char] ? ` ${choiceStates[w.char]}` : ''}`}
+                disabled={answered}
+                onClick={() => handleChoice(w)}
+              >
+                {answerFormat === 'char' &&
+                  (answered ? (
+                    <span className="fc-sound-choice-both">
+                      <span className="fc-sound-choice-char">{w.char}</span>
+                      <span className="fc-sound-choice-pinyin">{w.pinyin}</span>
+                    </span>
+                  ) : (
+                    <span className="fc-sound-choice-char">{w.char}</span>
+                  ))}
+                {answerFormat === 'pinyin' && w.pinyin}
+                {answerFormat === 'both' && (
+                  <span className="fc-sound-choice-both">
+                    <span className="fc-sound-choice-char">{w.char}</span>
+                    <span className="fc-sound-choice-pinyin">{w.pinyin}</span>
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         )}
+
+        {answerStyle === 'type' && (
+          <div className="fc-type-area">
+            <input
+              className={`fc-type-input${typeResult ? ` ${typeResult}` : ''}`}
+              placeholder="Type pinyin (e.g. nǐ hǎo)..."
+              value={typeValue}
+              disabled={answered}
+              onChange={(e) => setTypeValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleTypeSubmit()
+              }}
+              autoFocus
+            />
+            {answered && typeResult === 'wrong' && currentWord && (
+              <div className="fc-type-correct">
+                Correct: {currentWord.pinyin} ({currentWord.char})
+              </div>
+            )}
+            <button
+              className="fc-submit-btn"
+              disabled={answered}
+              onClick={handleTypeSubmit}
+            >
+              Check
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
+        <button
+          className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
+          onClick={handleNext}
+        >
+          Next →
+        </button>
+        {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
       </div>
     </div>
   )
@@ -585,6 +971,7 @@ function WordSetPage({
   lastSession,
   settings: initialSettings,
   onContinue,
+  onStartSoundOnly,
 }: {
   lastSession: LastSession | null
   settings: Settings
@@ -593,13 +980,27 @@ function WordSetPage({
     mode: 1 | 2 | 3,
     settings: Settings,
     session: LastSession | null,
+    direct?: boolean,
+  ) => void
+  onStartSoundOnly: (
+    vocab: Word[],
+    soundSettings: SoundSettings,
+    session?: LastSession,
   ) => void
 }) {
   const [selectedWordSet, setSelectedWordSet] = useState<string | null>(null)
   const [selectedUnits, setSelectedUnits] = useState<Set<number>>(new Set())
-  const [selectedHSKLevels, setSelectedHSKLevels] = useState<Set<number>>(new Set())
+  const [selectedHSKLevels, setSelectedHSKLevels] = useState<Set<number>>(
+    new Set(),
+  )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settings, setSettings] = useState<Settings>(initialSettings)
+  const [soundOnlyOpen, setSoundOnlyOpen] = useState(false)
+  const [soundSettings, setSoundSettings] = useState<SoundSettings>({
+    answerFormat: 'char',
+    answerStyle: 'multiple-choice',
+    sessionSize: 10,
+  })
 
   // Drag-select state
   const mouseIsDownRef = useRef(false)
@@ -614,7 +1015,10 @@ function WordSetPage({
     const handleMouseUp = () => {
       if (mouseIsDownRef.current && !isDraggingRef.current) {
         // Pure click — toggle the single anchor item
-        if (dragTypeRef.current === 'unit' && dragAnchorIdxRef.current !== null) {
+        if (
+          dragTypeRef.current === 'unit' &&
+          dragAnchorIdxRef.current !== null
+        ) {
           const anchorUnit = lang1511Units[dragAnchorIdxRef.current].unit
           setSelectedUnits((prev) => {
             const next = new Set(prev)
@@ -622,7 +1026,10 @@ function WordSetPage({
             else next.delete(anchorUnit)
             return next
           })
-        } else if (dragTypeRef.current === 'hsk' && dragAnchorIdxRef.current !== null) {
+        } else if (
+          dragTypeRef.current === 'hsk' &&
+          dragAnchorIdxRef.current !== null
+        ) {
           const anchorLevel = [1, 2][dragAnchorIdxRef.current]
           setSelectedHSKLevels((prev) => {
             const next = new Set(prev)
@@ -641,39 +1048,72 @@ function WordSetPage({
     return () => document.removeEventListener('mouseup', handleMouseUp)
   }, [])
 
-  function handleGoNext() {
-    let vocab: Word[] = []
+  function buildSelectedVocab(): Word[] | null {
+    if (selectedWordSet === 'hsk') {
+      if (selectedHSKLevels.size === 0) {
+        alert('Please select at least one HSK level.')
+        return null
+      }
+      let v: Word[] = []
+      if (selectedHSKLevels.has(1)) v = v.concat(hsk1Words)
+      if (selectedHSKLevels.has(2)) v = v.concat(hsk2Words)
+      return v
+    }
+    if (selectedWordSet === 'lang1511') {
+      if (selectedUnits.size === 0) {
+        alert('Please select at least one unit.')
+        return null
+      }
+      return lang1511Units
+        .filter((u) => selectedUnits.has(u.unit))
+        .flatMap((u) => u.words)
+    }
+    alert('Please select a word set.')
+    return null
+  }
 
+  function handleStartSoundOnly() {
+    const v = buildSelectedVocab()
+    if (!v) return
+    const ss: SoundSettings = {
+      answerFormat: soundSettings.answerFormat,
+      answerStyle: settings.answerStyle,
+      sessionSize: settings.sessionSize,
+    }
+    const session: LastSession = {
+      wordSetKey: selectedWordSet ?? '',
+      hskLevels: new Set(selectedHSKLevels),
+      units: new Set(selectedUnits),
+      settings: { ...settings },
+      soundSettings: ss,
+      vocab: v,
+      desc:
+        selectedWordSet === 'hsk'
+          ? `HSK ${[...selectedHSKLevels].sort().join(' + ')} · ${v.length} words`
+          : `LANG 1511 · Units ${[...selectedUnits].sort((a, b) => a - b).join(', ')}`,
+    }
+    onStartSoundOnly(v, ss, session)
+  }
+
+  function handleGoNext() {
     if (selectedWordSet === 'last') {
       if (!lastSession) return
+      if (lastSession.soundSettings) {
+        onStartSoundOnly(lastSession.vocab, lastSession.soundSettings)
+        return
+      }
       onContinue(
         lastSession.vocab,
         lastSession.settings.defaultMode,
         lastSession.settings,
         null,
+        true,
       )
       return
     }
 
-    if (selectedWordSet === 'hsk') {
-      if (selectedHSKLevels.size === 0) {
-        alert('Please select at least one HSK level.')
-        return
-      }
-      if (selectedHSKLevels.has(1)) vocab = vocab.concat(hsk1Words)
-      if (selectedHSKLevels.has(2)) vocab = vocab.concat(hsk2Words)
-    } else if (selectedWordSet === 'lang1511') {
-      if (selectedUnits.size === 0) {
-        alert('Please select at least one unit.')
-        return
-      }
-      vocab = lang1511Units
-        .filter((u) => selectedUnits.has(u.unit))
-        .flatMap((u) => u.words)
-    } else {
-      alert('Please select a word set.')
-      return
-    }
+    const vocab = buildSelectedVocab()
+    if (!vocab) return
 
     const session: LastSession = {
       wordSetKey: selectedWordSet ?? '',
@@ -700,7 +1140,9 @@ function WordSetPage({
         <div className="fc-ws-grid">
           <button
             className={`fc-ws-btn${selectedWordSet === 'hsk' ? ' selected' : ''}`}
-            onClick={() => setSelectedWordSet(selectedWordSet === 'hsk' ? null : 'hsk')}
+            onClick={() =>
+              setSelectedWordSet(selectedWordSet === 'hsk' ? null : 'hsk')
+            }
           >
             <span className="fc-ws-char">汉语</span>
             <span className="fc-ws-label">HSK</span>
@@ -709,7 +1151,11 @@ function WordSetPage({
           </button>
           <button
             className={`fc-ws-btn${selectedWordSet === 'lang1511' ? ' selected' : ''}`}
-            onClick={() => setSelectedWordSet(selectedWordSet === 'lang1511' ? null : 'lang1511')}
+            onClick={() =>
+              setSelectedWordSet(
+                selectedWordSet === 'lang1511' ? null : 'lang1511',
+              )
+            }
           >
             <span className="fc-ws-char">课程</span>
             <span className="fc-ws-label">LANG 1511</span>
@@ -719,7 +1165,9 @@ function WordSetPage({
           {lastSession && (
             <button
               className={`fc-ws-btn${selectedWordSet === 'last' ? ' selected' : ''}`}
-              onClick={() => setSelectedWordSet(selectedWordSet === 'last' ? null : 'last')}
+              onClick={() =>
+                setSelectedWordSet(selectedWordSet === 'last' ? null : 'last')
+              }
             >
               <span className="fc-ws-char">上次</span>
               <span className="fc-ws-label">Last Session</span>
@@ -743,14 +1191,24 @@ function WordSetPage({
                     isDraggingRef.current = false
                     dragAnchorIdxRef.current = idx
                     dragTypeRef.current = 'hsk'
-                    dragActionRef.current = selectedHSKLevels.has(level) ? 'deselect' : 'select'
+                    dragActionRef.current = selectedHSKLevels.has(level)
+                      ? 'deselect'
+                      : 'select'
                     preDragHSKRef.current = new Set(selectedHSKLevels)
                   }}
                   onMouseEnter={() => {
-                    if (!mouseIsDownRef.current || dragTypeRef.current !== 'hsk' || dragAnchorIdxRef.current === null) return
+                    if (
+                      !mouseIsDownRef.current ||
+                      dragTypeRef.current !== 'hsk' ||
+                      dragAnchorIdxRef.current === null
+                    )
+                      return
                     isDraggingRef.current = true
                     const hskLevels = [1, 2]
-                    const [lo, hi] = [Math.min(dragAnchorIdxRef.current, idx), Math.max(dragAnchorIdxRef.current, idx)]
+                    const [lo, hi] = [
+                      Math.min(dragAnchorIdxRef.current, idx),
+                      Math.max(dragAnchorIdxRef.current, idx),
+                    ]
                     const next = new Set(preDragHSKRef.current)
                     hskLevels.slice(lo, hi + 1).forEach((l) => {
                       if (dragActionRef.current === 'select') next.add(l)
@@ -760,7 +1218,9 @@ function WordSetPage({
                   }}
                 >
                   HSK {level}{' '}
-                  <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>(150)</span>
+                  <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                    (150)
+                  </span>
                 </button>
               ))}
             </div>
@@ -781,16 +1241,27 @@ function WordSetPage({
                     isDraggingRef.current = false
                     dragAnchorIdxRef.current = idx
                     dragTypeRef.current = 'unit'
-                    dragActionRef.current = selectedUnits.has(u.unit) ? 'deselect' : 'select'
+                    dragActionRef.current = selectedUnits.has(u.unit)
+                      ? 'deselect'
+                      : 'select'
                     preDragUnitsRef.current = new Set(selectedUnits)
                   }}
                   onMouseEnter={() => {
-                    if (!mouseIsDownRef.current || dragTypeRef.current !== 'unit' || dragAnchorIdxRef.current === null) return
+                    if (
+                      !mouseIsDownRef.current ||
+                      dragTypeRef.current !== 'unit' ||
+                      dragAnchorIdxRef.current === null
+                    )
+                      return
                     isDraggingRef.current = true
-                    const [lo, hi] = [Math.min(dragAnchorIdxRef.current, idx), Math.max(dragAnchorIdxRef.current, idx)]
+                    const [lo, hi] = [
+                      Math.min(dragAnchorIdxRef.current, idx),
+                      Math.max(dragAnchorIdxRef.current, idx),
+                    ]
                     const next = new Set(preDragUnitsRef.current)
                     lang1511Units.slice(lo, hi + 1).forEach((unit) => {
-                      if (dragActionRef.current === 'select') next.add(unit.unit)
+                      if (dragActionRef.current === 'select')
+                        next.add(unit.unit)
                       else next.delete(unit.unit)
                     })
                     setSelectedUnits(next)
@@ -906,12 +1377,49 @@ function WordSetPage({
           </div>
         )}
 
+        {/* Sound Only toggle */}
+        {selectedWordSet && selectedWordSet !== 'last' && (
+          <div className="fc-sound-row">
+            <button
+              className={`fc-sound-toggle${soundOnlyOpen ? ' active' : ''}`}
+              onClick={() => setSoundOnlyOpen((o) => !o)}
+            >
+              <Volume2 size={13} />
+              Sound Only
+            </button>
+            {soundOnlyOpen && (
+              <div className="fc-settings-options">
+                {(
+                  [
+                    ['char', 'Characters'],
+                    ['pinyin', 'Pinyin'],
+                    ['both', 'Char + Pinyin'],
+                  ] as const
+                ).map(([val, label]) => (
+                  <button
+                    key={val}
+                    className={`fc-setting-opt${soundSettings.answerFormat === val ? ' selected' : ''}`}
+                    onClick={() =>
+                      setSoundSettings((s) => ({ ...s, answerFormat: val }))
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <button
           className="fc-start-btn"
           style={{ marginTop: 24 }}
-          onClick={handleGoNext}
+          onClick={soundOnlyOpen ? handleStartSoundOnly : handleGoNext}
         >
-          Next →
+          {soundOnlyOpen ||
+          (selectedWordSet === 'last' && lastSession?.soundSettings)
+            ? 'Start Sound Only →'
+            : 'Next →'}
         </button>
         <div style={{ height: 40 }} />
       </div>
@@ -933,26 +1441,27 @@ function ModePage({
   onStart: () => void
   onBack: () => void
 }) {
-  const modes: { num: string; title: string; desc: string; val: 1 | 2 | 3 }[] = [
-    {
-      num: '一',
-      title: '1 Card',
-      desc: 'See character + pinyin, guess the English meaning.',
-      val: 1,
-    },
-    {
-      num: '二',
-      title: '2 Cards',
-      desc: 'Character → guess pinyin, then pinyin → guess English.',
-      val: 2,
-    },
-    {
-      num: '三',
-      title: '3 Cards',
-      desc: 'Full system: character → pinyin → English → recall character.',
-      val: 3,
-    },
-  ]
+  const modes: { num: string; title: string; desc: string; val: 1 | 2 | 3 }[] =
+    [
+      {
+        num: '一',
+        title: '1 Card',
+        desc: 'See character + pinyin, guess the English meaning.',
+        val: 1,
+      },
+      {
+        num: '二',
+        title: '2 Cards',
+        desc: 'Character → guess pinyin, then pinyin → guess English.',
+        val: 2,
+      },
+      {
+        num: '三',
+        title: '3 Cards',
+        desc: 'Full system: character → pinyin → English → recall character.',
+        val: 3,
+      },
+    ]
 
   return (
     <div className="fc-app">
@@ -1031,8 +1540,7 @@ function ResultsPage({
         <div>
           <div className="fc-results-title">Session Complete</div>
           <div className="fc-results-sub">
-            You practiced {words} word{words !== 1 ? 's' : ''} · {pct}%
-            accuracy
+            You practiced {words} word{words !== 1 ? 's' : ''} · {pct}% accuracy
           </div>
         </div>
         <div className="fc-results-grid">

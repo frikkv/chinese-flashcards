@@ -19,6 +19,7 @@ pnpm db:studio    # Open Drizzle Studio
 ```
 
 To add shadcn components:
+
 ```bash
 pnpm dlx shadcn@latest add <component>
 ```
@@ -45,6 +46,7 @@ Client → tRPC hooks → `/api/trpc` route → tRPC procedures → Drizzle → 
 ### Flashcard app state machine
 
 The main app (`src/routes/index.tsx`) has four page states: wordset selection → mode selection → study → results. Three study modes exist:
+
 - Mode 1: Character + Pinyin → English
 - Mode 2: Two-step (Character → Pinyin, then Pinyin → English)
 - Mode 3: Full recall system

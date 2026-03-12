@@ -1,1412 +1,2501 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>汉字 · Hànzì — Chinese Flashcards</title>
-<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>汉字 · Hànzì — Chinese Flashcards</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+SC:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-  :root {
-    --bg: #f9f7f4;
-    --surface: #ffffff;
-    --surface2: #f2f0ec;
-    --border: #e4e0d8;
-    --text: #1a1814;
-    --text-muted: #8c8880;
-    --text-light: #b8b4ac;
-    --accent: #c0392b;
-    --accent-light: #fdf0ee;
-    --accent2: #2c5f8a;
-    --success: #27ae60;
-    --success-light: #edfbf3;
-    --wrong: #e74c3c;
-    --wrong-light: #fef0ef;
-    --shadow: 0 2px 16px rgba(0,0,0,0.07);
-    --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
-    --radius: 16px;
-    --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
-  }
+      :root {
+        --bg: #f9f7f4;
+        --surface: #ffffff;
+        --surface2: #f2f0ec;
+        --border: #e4e0d8;
+        --text: #1a1814;
+        --text-muted: #8c8880;
+        --text-light: #b8b4ac;
+        --accent: #c0392b;
+        --accent-light: #fdf0ee;
+        --accent2: #2c5f8a;
+        --success: #27ae60;
+        --success-light: #edfbf3;
+        --wrong: #e74c3c;
+        --wrong-light: #fef0ef;
+        --shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+        --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+        --radius: 16px;
+        --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      }
 
-  body {
-    font-family: 'Lora', Georgia, serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+      body {
+        font-family: 'Lora', Georgia, serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
 
+      /* ── PAGES ── */
+      .page {
+        display: none;
+        flex: 1;
+      }
+      .page.active {
+        display: flex;
+        flex-direction: column;
+      }
 
+      /* ── HOME ── */
+      #home {
+        align-items: center;
+        justify-content: center;
+        padding: 60px 24px;
+        text-align: center;
+        gap: 40px;
+      }
+      .home-hero h1 {
+        font-family: 'Noto Serif SC', serif;
+        font-size: clamp(3rem, 10vw, 6rem);
+        color: var(--accent);
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+      .home-hero p {
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        font-style: italic;
+        margin-bottom: 32px;
+      }
+      .mode-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        max-width: 760px;
+        width: 100%;
+      }
+      .mode-card {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 28px 24px;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: left;
+      }
+      .mode-card:hover {
+        border-color: var(--accent);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+      }
+      .mode-card.selected {
+        border-color: var(--accent);
+        background: var(--accent-light);
+      }
+      .mode-num {
+        font-size: 2rem;
+        font-family: 'Noto Serif SC', serif;
+        color: var(--accent);
+        font-weight: 700;
+        margin-bottom: 10px;
+        pointer-events: none;
+      }
+      .mode-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+        pointer-events: none;
+      }
+      .mode-desc {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+        pointer-events: none;
+      }
+      .start-btn {
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 16px 48px;
+        font-family: 'Lora', serif;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        letter-spacing: 0.03em;
+      }
+      .start-btn:hover {
+        background: #a93226;
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-1px);
+      }
+      .stats-bar {
+        display: flex;
+        gap: 32px;
+        padding: 20px 32px;
+        background: var(--surface);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+      }
+      .stat {
+        text-align: center;
+      }
+      .stat-num {
+        font-size: 1.5rem;
+        font-weight: 600;
+        font-family: 'Noto Serif SC', serif;
+        color: var(--accent);
+      }
+      .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 2px;
+      }
 
-  /* ── PAGES ── */
-  .page { display: none; flex: 1; }
-  .page.active { display: flex; flex-direction: column; }
+      /* ── STUDY ── */
+      #study {
+        align-items: center;
+        padding: 40px 24px;
+        gap: 28px;
+      }
+      .study-header {
+        width: 100%;
+        max-width: 580px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .progress-wrap {
+        flex: 1;
+      }
+      .progress-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      .progress-bar {
+        height: 4px;
+        background: var(--border);
+        border-radius: 99px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 99px;
+        transition: width 0.4s ease;
+      }
+      .score-badge {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 99px;
+        padding: 6px 16px;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        margin-left: 20px;
+        white-space: nowrap;
+      }
+      .score-badge b {
+        color: var(--success);
+      }
 
-  /* ── HOME ── */
-  #home {
-    align-items: center; justify-content: center;
-    padding: 60px 24px; text-align: center; gap: 40px;
-  }
-  .home-hero h1 {
-    font-family: 'Noto Serif SC', serif;
-    font-size: clamp(3rem, 10vw, 6rem);
-    color: var(--accent);
-    line-height: 1;
-    margin-bottom: 8px;
-  }
-  .home-hero p {
-    font-size: 1.1rem; color: var(--text-muted); font-style: italic;
-    margin-bottom: 32px;
-  }
-  .mode-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px; max-width: 760px; width: 100%;
-  }
-  .mode-card {
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: var(--radius); padding: 28px 24px;
-    cursor: pointer; transition: var(--transition); text-align: left;
-  }
-  .mode-card:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); transform: translateY(-2px); }
-  .mode-card.selected { border-color: var(--accent); background: var(--accent-light); }
-  .mode-num {
-    font-size: 2rem; font-family: 'Noto Serif SC', serif;
-    color: var(--accent); font-weight: 700; margin-bottom: 10px;
-    pointer-events: none;
-  }
-  .mode-title { font-size: 0.95rem; font-weight: 600; margin-bottom: 6px; pointer-events: none; }
-  .mode-desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; pointer-events: none; }
-  .start-btn {
-    background: var(--accent); color: white; border: none;
-    border-radius: 12px; padding: 16px 48px;
-    font-family: 'Lora', serif; font-size: 1rem; font-weight: 600;
-    cursor: pointer; transition: var(--transition); letter-spacing: 0.03em;
-  }
-  .start-btn:hover { background: #a93226; box-shadow: var(--shadow-lg); transform: translateY(-1px); }
-  .stats-bar {
-    display: flex; gap: 32px; padding: 20px 32px;
-    background: var(--surface); border-radius: var(--radius);
-    border: 1px solid var(--border);
-  }
-  .stat { text-align: center; }
-  .stat-num { font-size: 1.5rem; font-weight: 600; font-family: 'Noto Serif SC', serif; color: var(--accent); }
-  .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+      /* card stage indicator */
+      .stage-dots {
+        display: flex;
+        gap: 8px;
+      }
+      .stage-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--border);
+        transition: var(--transition);
+      }
+      .stage-dot.active {
+        background: var(--accent);
+        transform: scale(1.3);
+      }
+      .stage-dot.done {
+        background: var(--success);
+      }
 
-  /* ── STUDY ── */
-  #study {
-    align-items: center; padding: 40px 24px; gap: 28px;
-  }
-  .study-header {
-    width: 100%; max-width: 580px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .progress-wrap { flex: 1; }
-  .progress-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; }
-  .progress-bar { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
-  .progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.4s ease; }
-  .score-badge {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 99px; padding: 6px 16px;
-    font-size: 0.82rem; color: var(--text-muted); margin-left: 20px;
-    white-space: nowrap;
-  }
-  .score-badge b { color: var(--success); }
+      /* ── FLASHCARD ── */
+      .card-scene {
+        width: 100%;
+        max-width: 480px;
+        perspective: 1000px;
+      }
+      .card-inner {
+        position: relative;
+        width: 100%;
+        transform-style: preserve-3d;
+        transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .card-inner.flipped {
+        transform: rotateY(180deg);
+      }
+      .card-face {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: 24px;
+        padding: 48px 40px;
+        box-shadow: var(--shadow-lg);
+        min-height: 260px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 12px;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      }
+      .card-face.back {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        transform: rotateY(180deg);
+      }
+      .card-tag {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-light);
+        margin-bottom: 4px;
+      }
+      .card-char {
+        font-family: 'Noto Serif SC', serif;
+        font-size: clamp(4rem, 15vw, 7rem);
+        line-height: 1;
+        color: var(--text);
+        transition: var(--transition);
+      }
+      .card-pinyin {
+        font-size: 1.4rem;
+        color: var(--accent2);
+        letter-spacing: 0.05em;
+        font-style: italic;
+      }
+      .card-english {
+        font-size: 1.6rem;
+        font-weight: 500;
+        color: var(--text);
+      }
+      .card-hint {
+        font-size: 0.82rem;
+        color: var(--text-light);
+        font-style: italic;
+        margin-top: 8px;
+      }
+      .flip-hint {
+        font-size: 0.78rem;
+        color: var(--text-light);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+      }
 
-  /* card stage indicator */
-  .stage-dots { display: flex; gap: 8px; }
-  .stage-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--border); transition: var(--transition);
-  }
-  .stage-dot.active { background: var(--accent); transform: scale(1.3); }
-  .stage-dot.done { background: var(--success); }
+      /* answer area */
+      .answer-area {
+        width: 100%;
+        max-width: 480px;
+      }
 
-  /* ── FLASHCARD ── */
-  .card-scene {
-    width: 100%; max-width: 480px;
-    perspective: 1000px;
-  }
-  .card-inner {
-    position: relative; width: 100%;
-    transform-style: preserve-3d;
-    transition: transform 0.55s cubic-bezier(0.4,0,0.2,1);
-  }
-  .card-inner.flipped { transform: rotateY(180deg); }
-  .card-face {
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: 24px;
-    padding: 48px 40px;
-    box-shadow: var(--shadow-lg);
-    min-height: 260px;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    text-align: center; gap: 12px;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-  }
-  .card-face.back {
-    position: absolute; top: 0; left: 0; width: 100%;
-    transform: rotateY(180deg);
-  }
-  .card-tag {
-    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--text-light); margin-bottom: 4px;
-  }
-  .card-char {
-    font-family: 'Noto Serif SC', serif;
-    font-size: clamp(4rem, 15vw, 7rem);
-    line-height: 1; color: var(--text);
-    transition: var(--transition);
-  }
-  .card-pinyin {
-    font-size: 1.4rem; color: var(--accent2); letter-spacing: 0.05em;
-    font-style: italic;
-  }
-  .card-english {
-    font-size: 1.6rem; font-weight: 500; color: var(--text);
-  }
-  .card-hint {
-    font-size: 0.82rem; color: var(--text-light); font-style: italic;
-    margin-top: 8px;
-  }
-  .flip-hint {
-    font-size: 0.78rem; color: var(--text-light);
-    display: flex; align-items: center; gap: 6px; margin-top: 4px;
-  }
+      /* multiple choice */
+      .choices {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .choice-btn {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        font-family: 'Lora', serif;
+        font-size: 0.95rem;
+        color: var(--text);
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: left;
+        line-height: 1.4;
+      }
+      .choice-btn:hover:not(:disabled) {
+        border-color: var(--accent2);
+        background: #f0f5fa;
+      }
+      .choice-btn.correct {
+        border-color: var(--success);
+        background: var(--success-light);
+        color: var(--success);
+      }
+      .choice-btn.wrong {
+        border-color: var(--wrong);
+        background: var(--wrong-light);
+        color: var(--wrong);
+      }
+      .choice-btn:disabled {
+        cursor: default;
+      }
 
-  /* answer area */
-  .answer-area { width: 100%; max-width: 480px; }
+      /* type answer */
+      .type-area {
+        display: flex;
+        gap: 10px;
+      }
+      .type-input {
+        flex: 1;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 18px;
+        font-family: 'Lora', serif;
+        font-size: 1rem;
+        background: var(--surface);
+        color: var(--text);
+        outline: none;
+        transition: var(--transition);
+      }
+      .type-input:focus {
+        border-color: var(--accent2);
+      }
+      .type-input.correct {
+        border-color: var(--success);
+        background: var(--success-light);
+      }
+      .type-input.wrong {
+        border-color: var(--wrong);
+        background: var(--wrong-light);
+      }
+      .submit-btn {
+        background: var(--accent2);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 14px 24px;
+        font-family: 'Lora', serif;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      .submit-btn:hover {
+        background: #1e4a6e;
+      }
 
-  /* multiple choice */
-  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .choice-btn {
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: 12px; padding: 14px 16px;
-    font-family: 'Lora', serif; font-size: 0.95rem; color: var(--text);
-    cursor: pointer; transition: var(--transition); text-align: left;
-    line-height: 1.4;
-  }
-  .choice-btn:hover:not(:disabled) { border-color: var(--accent2); background: #f0f5fa; }
-  .choice-btn.correct { border-color: var(--success); background: var(--success-light); color: var(--success); }
-  .choice-btn.wrong { border-color: var(--wrong); background: var(--wrong-light); color: var(--wrong); }
-  .choice-btn:disabled { cursor: default; }
+      /* feedback */
+      .feedback {
+        font-size: 0.88rem;
+        margin-top: 10px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        display: none;
+      }
+      .feedback.correct {
+        background: var(--success-light);
+        color: var(--success);
+        display: block;
+      }
+      .feedback.wrong {
+        background: var(--wrong-light);
+        color: var(--wrong);
+        display: block;
+      }
 
-  /* type answer */
-  .type-area { display: flex; gap: 10px; }
-  .type-input {
-    flex: 1; border: 1.5px solid var(--border); border-radius: 12px;
-    padding: 14px 18px; font-family: 'Lora', serif; font-size: 1rem;
-    background: var(--surface); color: var(--text); outline: none;
-    transition: var(--transition);
-  }
-  .type-input:focus { border-color: var(--accent2); }
-  .type-input.correct { border-color: var(--success); background: var(--success-light); }
-  .type-input.wrong { border-color: var(--wrong); background: var(--wrong-light); }
-  .submit-btn {
-    background: var(--accent2); color: white; border: none;
-    border-radius: 12px; padding: 14px 24px;
-    font-family: 'Lora', serif; font-size: 0.9rem; font-weight: 600;
-    cursor: pointer; transition: var(--transition);
-  }
-  .submit-btn:hover { background: #1e4a6e; }
+      /* flip-reveal card (card 3 in mode C) */
+      .flip-btn {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 32px;
+        font-family: 'Lora', serif;
+        font-size: 0.95rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: var(--transition);
+        margin: 0 auto;
+        display: block;
+      }
+      .flip-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
 
-  /* feedback */
-  .feedback {
-    font-size: 0.88rem; margin-top: 10px; padding: 10px 16px;
-    border-radius: 10px; display: none;
-  }
-  .feedback.correct { background: var(--success-light); color: var(--success); display: block; }
-  .feedback.wrong { background: var(--wrong-light); color: var(--wrong); display: block; }
+      .next-btn {
+        background: var(--text);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 14px 40px;
+        font-family: 'Lora', serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        display: none;
+        margin: 0 auto;
+      }
+      .next-btn:hover {
+        background: #333;
+      }
+      .next-btn.visible {
+        display: block;
+      }
 
-  /* flip-reveal card (card 3 in mode C) */
-  .flip-btn {
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: 12px; padding: 14px 32px;
-    font-family: 'Lora', serif; font-size: 0.95rem; color: var(--text-muted);
-    cursor: pointer; transition: var(--transition); margin: 0 auto; display: block;
-  }
-  .flip-btn:hover { border-color: var(--accent); color: var(--accent); }
+      /* ── RESULTS ── */
+      #results {
+        align-items: center;
+        justify-content: center;
+        padding: 60px 24px;
+        text-align: center;
+        gap: 28px;
+      }
+      .results-char {
+        font-family: 'Noto Serif SC', serif;
+        font-size: 5rem;
+        color: var(--accent);
+        line-height: 1;
+      }
+      .results-title {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      .results-sub {
+        font-size: 1rem;
+        color: var(--text-muted);
+        font-style: italic;
+      }
+      .results-grid {
+        display: flex;
+        gap: 32px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .result-stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px 32px;
+        min-width: 120px;
+      }
+      .result-stat-num {
+        font-size: 2.5rem;
+        font-family: 'Noto Serif SC', serif;
+        font-weight: 700;
+      }
+      .result-stat-num.green {
+        color: var(--success);
+      }
+      .result-stat-num.red {
+        color: var(--wrong);
+      }
+      .result-stat-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+      }
+      .results-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .results-btn {
+        border-radius: 12px;
+        padding: 14px 32px;
+        font-family: 'Lora', serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+      }
+      .results-btn:hover {
+        border-color: var(--text);
+      }
+      .results-btn.primary {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+      }
+      .results-btn.primary:hover {
+        background: #a93226;
+      }
 
-  .next-btn {
-    background: var(--text); color: white; border: none;
-    border-radius: 12px; padding: 14px 40px;
-    font-family: 'Lora', serif; font-size: 0.95rem; font-weight: 600;
-    cursor: pointer; transition: var(--transition); display: none;
-    margin: 0 auto;
-  }
-  .next-btn:hover { background: #333; }
-  .next-btn.visible { display: block; }
+      /* ── SETTINGS ── */
+      #settings-page {
+        align-items: center;
+        padding: 48px 24px;
+        gap: 0;
+      }
+      .settings-wrap {
+        width: 100%;
+        max-width: 520px;
+      }
+      .settings-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .settings-sub {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        font-style: italic;
+        margin-bottom: 36px;
+      }
+      .settings-section {
+        margin-bottom: 32px;
+      }
+      .settings-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-light);
+        margin-bottom: 12px;
+      }
+      .settings-options {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .setting-opt {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-family: 'Lora', serif;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: var(--transition);
+      }
+      .setting-opt:hover {
+        border-color: var(--text-muted);
+        color: var(--text);
+      }
+      .setting-opt.selected {
+        border-color: var(--accent);
+        background: var(--accent-light);
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .save-settings-btn {
+        width: 100%;
+        background: var(--text);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 16px;
+        font-family: 'Lora', serif;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        margin-top: 8px;
+      }
+      .save-settings-btn:hover {
+        background: #333;
+      }
 
-  /* ── RESULTS ── */
-  #results {
-    align-items: center; justify-content: center;
-    padding: 60px 24px; text-align: center; gap: 28px;
-  }
-  .results-char {
-    font-family: 'Noto Serif SC', serif;
-    font-size: 5rem; color: var(--accent); line-height: 1;
-  }
-  .results-title { font-size: 1.8rem; font-weight: 600; margin-bottom: 4px; }
-  .results-sub { font-size: 1rem; color: var(--text-muted); font-style: italic; }
-  .results-grid {
-    display: flex; gap: 32px; flex-wrap: wrap; justify-content: center;
-  }
-  .result-stat {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 24px 32px; min-width: 120px;
-  }
-  .result-stat-num { font-size: 2.5rem; font-family: 'Noto Serif SC', serif; font-weight: 700; }
-  .result-stat-num.green { color: var(--success); }
-  .result-stat-num.red { color: var(--wrong); }
-  .result-stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
-  .results-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-  .results-btn {
-    border-radius: 12px; padding: 14px 32px;
-    font-family: 'Lora', serif; font-size: 0.95rem; font-weight: 600;
-    cursor: pointer; transition: var(--transition); border: 1.5px solid var(--border);
-    background: var(--surface); color: var(--text);
-  }
-  .results-btn:hover { border-color: var(--text); }
-  .results-btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
-  .results-btn.primary:hover { background: #a93226; }
+      /* ── WORD SET PAGE ── */
+      #wordset {
+        align-items: center;
+        justify-content: center;
+        padding: 60px 24px;
+        text-align: center;
+        gap: 40px;
+      }
+      .wordset-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        max-width: 600px;
+        width: 100%;
+      }
+      .wordset-card {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 36px 28px;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+      }
+      .wordset-card:hover {
+        border-color: var(--accent);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+      }
+      .wordset-card.selected {
+        border-color: var(--accent);
+        background: var(--accent-light);
+      }
+      .wordset-char {
+        font-family: 'Noto Serif SC', serif;
+        font-size: 3rem;
+        color: var(--accent);
+        font-weight: 700;
+        margin-bottom: 12px;
+        line-height: 1;
+        pointer-events: none;
+      }
+      .wordset-label {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+        pointer-events: none;
+      }
+      .wordset-count {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+        pointer-events: none;
+      }
+      .wordset-desc {
+        font-size: 0.82rem;
+        color: var(--text-light);
+        line-height: 1.5;
+        font-style: italic;
+        pointer-events: none;
+      }
 
-  /* ── SETTINGS ── */
-  #settings-page {
-    align-items: center; padding: 48px 24px; gap: 0;
-  }
-  .settings-wrap { width: 100%; max-width: 520px; }
-  .settings-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 6px; }
-  .settings-sub { font-size: 0.9rem; color: var(--text-muted); font-style: italic; margin-bottom: 36px; }
-  .settings-section { margin-bottom: 32px; }
-  .settings-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-light); margin-bottom: 12px; }
-  .settings-options { display: flex; gap: 10px; flex-wrap: wrap; }
-  .setting-opt {
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: 10px; padding: 10px 20px;
-    font-family: 'Lora', serif; font-size: 0.9rem; color: var(--text-muted);
-    cursor: pointer; transition: var(--transition);
-  }
-  .setting-opt:hover { border-color: var(--text-muted); color: var(--text); }
-  .setting-opt.selected { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
-  .save-settings-btn {
-    width: 100%; background: var(--text); color: white; border: none;
-    border-radius: 12px; padding: 16px;
-    font-family: 'Lora', serif; font-size: 1rem; font-weight: 600;
-    cursor: pointer; transition: var(--transition); margin-top: 8px;
-  }
-  .save-settings-btn:hover { background: #333; }
+      /* ── WS BUTTONS ── */
+      .ws-btn {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius);
+        padding: 28px 20px;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: left;
+        font-family: 'Lora', serif;
+        color: var(--text);
+      }
+      .ws-btn:hover {
+        border-color: var(--accent);
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+      }
+      .ws-selected {
+        border-color: var(--accent) !important;
+        background: var(--accent-light) !important;
+      }
 
-  /* ── WORD SET PAGE ── */
-  #wordset {
-    align-items: center; justify-content: center;
-    padding: 60px 24px; text-align: center; gap: 40px;
-  }
-  .wordset-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 20px; max-width: 600px; width: 100%;
-  }
-  .wordset-card {
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: var(--radius); padding: 36px 28px;
-    cursor: pointer; transition: var(--transition); text-align: left;
-    position: relative; overflow: hidden;
-  }
-  .wordset-card:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); transform: translateY(-2px); }
-  .wordset-card.selected { border-color: var(--accent); background: var(--accent-light); }
-  .wordset-char {
-    font-family: 'Noto Serif SC', serif; font-size: 3rem;
-    color: var(--accent); font-weight: 700; margin-bottom: 12px; line-height: 1;
-    pointer-events: none;
-  }
-  .wordset-label { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; pointer-events: none; }
-  .wordset-count { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 8px; pointer-events: none; }
-  .wordset-desc { font-size: 0.82rem; color: var(--text-light); line-height: 1.5; font-style: italic; pointer-events: none; }
+      /* ── UNIT PICKER ── */
+      .unit-btn {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 18px;
+        font-family: 'Lora', serif;
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: var(--transition);
+        white-space: nowrap;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .unit-btn:hover {
+        border-color: var(--accent);
+        color: var(--text);
+      }
+      .unit-btn.selected {
+        border-color: var(--accent);
+        background: var(--accent-light);
+        color: var(--accent);
+        font-weight: 600;
+      }
 
-  /* ── WS BUTTONS ── */
-  .ws-btn {
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: var(--radius); padding: 28px 20px;
-    cursor: pointer; transition: var(--transition); text-align: left;
-    font-family: 'Lora', serif; color: var(--text);
-  }
-  .ws-btn:hover { border-color: var(--accent); box-shadow: var(--shadow-lg); transform: translateY(-2px); }
-  .ws-selected { border-color: var(--accent) !important; background: var(--accent-light) !important; }
+      /* ── RESPONSIVE ── */
+      @media (max-width: 480px) {
+        nav {
+          padding: 16px 20px;
+        }
+        .choices {
+          grid-template-columns: 1fr;
+        }
+        .stats-bar {
+          gap: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- WORD SET SELECTION -->
+    <div id="wordset" class="page active">
+      <div
+        style="
+          width: 100%;
+          max-width: 760px;
+          padding: 60px 24px 0;
+          margin: 0 auto;
+          text-align: center;
+        "
+      >
+        <h1
+          style="
+            font-family: 'Noto Serif SC', serif;
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            color: var(--accent);
+            line-height: 1;
+            margin-bottom: 8px;
+          "
+        >
+          学中文
+        </h1>
+        <p
+          style="
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            font-style: italic;
+            margin-bottom: 40px;
+          "
+        >
+          Choose a word set to study.
+        </p>
 
-  /* ── UNIT PICKER ── */
-  .unit-btn {
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: 10px; padding: 10px 18px;
-    font-family: 'Lora', serif; font-size: 0.88rem; color: var(--text-muted);
-    cursor: pointer; transition: var(--transition); white-space: nowrap;
-    user-select: none; -webkit-user-select: none;
-  }
-  .unit-btn:hover { border-color: var(--accent); color: var(--text); }
-  .unit-btn.selected { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
+        <div
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+          "
+          id="wordset-grid"
+        >
+          <button id="ws-hsk" data-key="hsk" class="ws-btn">
+            <span
+              style="
+                font-family: 'Noto Serif SC', serif;
+                font-size: 2.5rem;
+                color: var(--accent);
+                display: block;
+                margin-bottom: 8px;
+              "
+              >汉语</span
+            >
+            <span
+              style="
+                font-size: 1rem;
+                font-weight: 600;
+                display: block;
+                margin-bottom: 4px;
+              "
+              >HSK</span
+            >
+            <span
+              style="
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                display: block;
+                margin-bottom: 6px;
+              "
+              >2 levels · 300 words</span
+            >
+            <span
+              style="
+                font-size: 0.8rem;
+                color: var(--text-light);
+                font-style: italic;
+                display: block;
+                line-height: 1.4;
+              "
+              >Official HSK vocabulary</span
+            >
+          </button>
+          <button id="ws-lang1511" data-key="lang1511" class="ws-btn">
+            <span
+              style="
+                font-family: 'Noto Serif SC', serif;
+                font-size: 2.5rem;
+                color: var(--accent);
+                display: block;
+                margin-bottom: 8px;
+              "
+              >课程</span
+            >
+            <span
+              style="
+                font-size: 1rem;
+                font-weight: 600;
+                display: block;
+                margin-bottom: 4px;
+              "
+              >LANG 1511</span
+            >
+            <span
+              style="
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                display: block;
+                margin-bottom: 6px;
+              "
+              >10 units · 123 words</span
+            >
+            <span
+              style="
+                font-size: 0.8rem;
+                color: var(--text-light);
+                font-style: italic;
+                display: block;
+                line-height: 1.4;
+              "
+              >University course vocabulary</span
+            >
+          </button>
+          <button
+            id="ws-last"
+            data-key="last"
+            class="ws-btn"
+            style="display: none; opacity: 0.5"
+          >
+            <span
+              style="
+                font-family: 'Noto Serif SC', serif;
+                font-size: 2.5rem;
+                color: var(--accent);
+                display: block;
+                margin-bottom: 8px;
+              "
+              >上次</span
+            >
+            <span
+              style="
+                font-size: 1rem;
+                font-weight: 600;
+                display: block;
+                margin-bottom: 4px;
+              "
+              >Last Session</span
+            >
+            <span
+              style="
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                display: block;
+                margin-bottom: 6px;
+              "
+              id="last-session-desc"
+              >No session yet</span
+            >
+            <span
+              style="
+                font-size: 0.8rem;
+                color: var(--text-light);
+                font-style: italic;
+                display: block;
+                line-height: 1.4;
+              "
+              >Continue where you left off</span
+            >
+          </button>
+        </div>
 
-  /* ── RESPONSIVE ── */
-  @media (max-width: 480px) {
-    nav { padding: 16px 20px; }
-    .choices { grid-template-columns: 1fr; }
-    .stats-bar { gap: 20px; }
-  }
-</style>
-</head>
-<body>
+        <div
+          id="hsk-picker"
+          style="display: none; margin-bottom: 24px; text-align: left"
+        >
+          <p
+            style="
+              font-size: 0.72rem;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              color: var(--text-light);
+              margin-bottom: 12px;
+            "
+          >
+            Select HSK level
+          </p>
+          <div
+            style="display: flex; flex-wrap: wrap; gap: 10px; user-select: none"
+            id="hsk-picker-grid"
+          >
+            <button class="unit-btn" id="hsk-btn-1" data-hsk="1">
+              HSK 1 <span style="font-size: 0.75rem; opacity: 0.6">(150)</span>
+            </button>
+            <button class="unit-btn" id="hsk-btn-2" data-hsk="2">
+              HSK 2 <span style="font-size: 0.75rem; opacity: 0.6">(150)</span>
+            </button>
+          </div>
+        </div>
+        <div
+          id="unit-picker"
+          style="display: none; margin-bottom: 24px; text-align: left"
+        >
+          <p
+            style="
+              font-size: 0.72rem;
+              text-transform: uppercase;
+              letter-spacing: 0.1em;
+              color: var(--text-light);
+              margin-bottom: 12px;
+            "
+          >
+            Select units to study
+          </p>
+          <div
+            id="unit-picker-grid"
+            style="
+              display: flex;
+              flex-wrap: wrap;
+              gap: 10px;
+              margin-bottom: 12px;
+            "
+          ></div>
+          <div style="display: flex; gap: 10px">
+            <button
+              onclick="selectAllUnits()"
+              style="
+                background: none;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 6px 14px;
+                font-family: 'Lora', serif;
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                cursor: pointer;
+              "
+            >
+              Select all
+            </button>
+            <button
+              onclick="clearAllUnits()"
+              style="
+                background: none;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 6px 14px;
+                font-family: 'Lora', serif;
+                font-size: 0.8rem;
+                color: var(--text-muted);
+                cursor: pointer;
+              "
+            >
+              Clear
+            </button>
+          </div>
+        </div>
 
+        <!-- Settings dropdown -->
+        <div
+          style="
+            margin-top: 24px;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+          "
+        >
+          <button
+            onclick="toggleSettings()"
+            id="settings-toggle"
+            style="
+              display: none;
+              background: none;
+              border: none;
+              font-family: 'Lora', serif;
+              font-size: 0.82rem;
+              color: var(--text-light);
+              cursor: pointer;
+              align-items: center;
+              gap: 6px;
+              margin: 0 auto;
+            "
+          >
+            <span
+              id="settings-arrow"
+              style="transition: transform 0.2s; display: inline-block"
+              >▸</span
+            >
+            Settings
+          </button>
+          <div
+            id="settings-dropdown"
+            style="
+              display: none;
+              margin-top: 16px;
+              padding: 24px 28px;
+              text-align: center;
+            "
+          >
+            <div style="margin-bottom: 24px">
+              <div
+                style="
+                  font-size: 0.72rem;
+                  text-transform: uppercase;
+                  letter-spacing: 0.1em;
+                  color: var(--text-light);
+                  margin-bottom: 12px;
+                "
+              >
+                Answer Style
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 10px;
+                  flex-wrap: wrap;
+                  justify-content: center;
+                "
+              >
+                <button
+                  class="setting-opt selected"
+                  id="sopt-mc"
+                  onclick="
+                    selectSetting('answerStyle', 'multiple-choice', this)
+                  "
+                >
+                  Multiple Choice
+                </button>
+                <button
+                  class="setting-opt"
+                  id="sopt-type"
+                  onclick="selectSetting('answerStyle', 'type', this)"
+                >
+                  Type Answer
+                </button>
+              </div>
+            </div>
 
+            <div style="margin-bottom: 24px">
+              <div
+                style="
+                  font-size: 0.72rem;
+                  text-transform: uppercase;
+                  letter-spacing: 0.1em;
+                  color: var(--text-light);
+                  margin-bottom: 12px;
+                "
+              >
+                Default Study Mode
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 10px;
+                  flex-wrap: wrap;
+                  justify-content: center;
+                "
+              >
+                <button
+                  class="setting-opt"
+                  id="sopt-m1"
+                  onclick="selectSetting('defaultMode', 1, this)"
+                >
+                  1 Card
+                </button>
+                <button
+                  class="setting-opt selected"
+                  id="sopt-m2"
+                  onclick="selectSetting('defaultMode', 2, this)"
+                >
+                  2 Cards
+                </button>
+                <button
+                  class="setting-opt"
+                  id="sopt-m3"
+                  onclick="selectSetting('defaultMode', 3, this)"
+                >
+                  3 Cards
+                </button>
+              </div>
+            </div>
 
-<!-- WORD SET SELECTION -->
-<div id="wordset" class="page active">
-  <div style="width:100%;max-width:760px;padding:60px 24px 0;margin:0 auto;text-align:center;">
-    <h1 style="font-family:'Noto Serif SC',serif;font-size:clamp(2.5rem,8vw,5rem);color:var(--accent);line-height:1;margin-bottom:8px;">学中文</h1>
-    <p style="font-size:1.1rem;color:var(--text-muted);font-style:italic;margin-bottom:40px;">Choose a word set to study.</p>
+            <div>
+              <div
+                style="
+                  font-size: 0.72rem;
+                  text-transform: uppercase;
+                  letter-spacing: 0.1em;
+                  color: var(--text-light);
+                  margin-bottom: 12px;
+                "
+              >
+                Cards per Session
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 10px;
+                  flex-wrap: wrap;
+                  justify-content: center;
+                "
+              >
+                <button
+                  class="setting-opt"
+                  id="sopt-c10"
+                  onclick="selectSetting('sessionSize', 10, this)"
+                >
+                  10
+                </button>
+                <button
+                  class="setting-opt selected"
+                  id="sopt-c20"
+                  onclick="selectSetting('sessionSize', 20, this)"
+                >
+                  20
+                </button>
+                <button
+                  class="setting-opt"
+                  id="sopt-c30"
+                  onclick="selectSetting('sessionSize', 30, this)"
+                >
+                  All
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px;" id="wordset-grid">
-      <button id="ws-hsk" data-key="hsk" class="ws-btn">
-        <span style="font-family:'Noto Serif SC',serif;font-size:2.5rem;color:var(--accent);display:block;margin-bottom:8px;">汉语</span>
-        <span style="font-size:1rem;font-weight:600;display:block;margin-bottom:4px;">HSK</span>
-        <span style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:6px;">2 levels · 300 words</span>
-        <span style="font-size:0.8rem;color:var(--text-light);font-style:italic;display:block;line-height:1.4;">Official HSK vocabulary</span>
-      </button>
-      <button id="ws-lang1511" data-key="lang1511" class="ws-btn">
-        <span style="font-family:'Noto Serif SC',serif;font-size:2.5rem;color:var(--accent);display:block;margin-bottom:8px;">课程</span>
-        <span style="font-size:1rem;font-weight:600;display:block;margin-bottom:4px;">LANG 1511</span>
-        <span style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:6px;">10 units · 123 words</span>
-        <span style="font-size:0.8rem;color:var(--text-light);font-style:italic;display:block;line-height:1.4;">University course vocabulary</span>
-      </button>
-      <button id="ws-last" data-key="last" class="ws-btn" style="display:none;opacity:0.5;">
-        <span style="font-family:'Noto Serif SC',serif;font-size:2.5rem;color:var(--accent);display:block;margin-bottom:8px;">上次</span>
-        <span style="font-size:1rem;font-weight:600;display:block;margin-bottom:4px;">Last Session</span>
-        <span style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:6px;" id="last-session-desc">No session yet</span>
-        <span style="font-size:0.8rem;color:var(--text-light);font-style:italic;display:block;line-height:1.4;">Continue where you left off</span>
-      </button>
-    </div>
-
-    <div id="hsk-picker" style="display:none;margin-bottom:24px;text-align:left;">
-    <p style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:12px;">Select HSK level</p>
-    <div style="display:flex;flex-wrap:wrap;gap:10px;user-select:none;" id="hsk-picker-grid">
-      <button class="unit-btn" id="hsk-btn-1" data-hsk="1">HSK 1 <span style="font-size:0.75rem;opacity:0.6">(150)</span></button>
-      <button class="unit-btn" id="hsk-btn-2" data-hsk="2">HSK 2 <span style="font-size:0.75rem;opacity:0.6">(150)</span></button>
-    </div>
-  </div>
-  <div id="unit-picker" style="display:none;margin-bottom:24px;text-align:left;">
-      <p style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:12px;">Select units to study</p>
-      <div id="unit-picker-grid" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;"></div>
-      <div style="display:flex;gap:10px;">
-        <button onclick="selectAllUnits()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-family:'Lora',serif;font-size:0.8rem;color:var(--text-muted);cursor:pointer;">Select all</button>
-        <button onclick="clearAllUnits()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-family:'Lora',serif;font-size:0.8rem;color:var(--text-muted);cursor:pointer;">Clear</button>
+        <button
+          class="start-btn"
+          style="margin-top: 24px"
+          onclick="goToModeSelect()"
+        >
+          Next →
+        </button>
+        <div style="height: 40px"></div>
       </div>
     </div>
 
-    <!-- Settings dropdown -->
-    <div style="margin-top:24px;width:100%;max-width:600px;margin-left:auto;margin-right:auto;">
-      <button onclick="toggleSettings()" id="settings-toggle" style="display:none;background:none;border:none;font-family:'Lora',serif;font-size:0.82rem;color:var(--text-light);cursor:pointer;align-items:center;gap:6px;margin:0 auto;">
-        <span id="settings-arrow" style="transition:transform 0.2s;display:inline-block;">▸</span> Settings
-      </button>
-      <div id="settings-dropdown" style="display:none;margin-top:16px;padding:24px 28px;text-align:center;">
-
-        <div style="margin-bottom:24px;">
-          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:12px;">Answer Style</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-            <button class="setting-opt selected" id="sopt-mc" onclick="selectSetting('answerStyle','multiple-choice',this)">Multiple Choice</button>
-            <button class="setting-opt" id="sopt-type" onclick="selectSetting('answerStyle','type',this)">Type Answer</button>
-          </div>
-        </div>
-
-        <div style="margin-bottom:24px;">
-          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:12px;">Default Study Mode</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-            <button class="setting-opt" id="sopt-m1" onclick="selectSetting('defaultMode',1,this)">1 Card</button>
-            <button class="setting-opt selected" id="sopt-m2" onclick="selectSetting('defaultMode',2,this)">2 Cards</button>
-            <button class="setting-opt" id="sopt-m3" onclick="selectSetting('defaultMode',3,this)">3 Cards</button>
-          </div>
-        </div>
-
-        <div>
-          <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:12px;">Cards per Session</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
-            <button class="setting-opt" id="sopt-c10" onclick="selectSetting('sessionSize',10,this)">10</button>
-            <button class="setting-opt selected" id="sopt-c20" onclick="selectSetting('sessionSize',20,this)">20</button>
-            <button class="setting-opt" id="sopt-c30" onclick="selectSetting('sessionSize',30,this)">All</button>
-          </div>
-        </div>
-
+    <!-- HOME -->
+    <div id="home" class="page">
+      <div class="home-hero">
+        <h1>学中文</h1>
+        <p>Learn Chinese characters the right way — character first, always.</p>
       </div>
+
+      <div class="stats-bar" id="statsBar">
+        <div class="stat">
+          <div class="stat-num" id="statTotal">0</div>
+          <div class="stat-label">Words Studied</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="statCorrect">0</div>
+          <div class="stat-label">Correct</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="statSessions">0</div>
+          <div class="stat-label">Sessions</div>
+        </div>
+      </div>
+
+      <div style="text-align: left; width: 100%; max-width: 760px">
+        <p
+          style="
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-light);
+            margin-bottom: 12px;
+          "
+        >
+          Choose a study mode
+        </p>
+      </div>
+      <div class="mode-grid">
+        <div class="mode-card selected" data-mode="1">
+          <div class="mode-num">一</div>
+          <div class="mode-title">1 Card</div>
+          <div class="mode-desc">
+            See character + pinyin, guess the English meaning.
+          </div>
+        </div>
+        <div class="mode-card" data-mode="2">
+          <div class="mode-num">二</div>
+          <div class="mode-title">2 Cards</div>
+          <div class="mode-desc">
+            Character → guess pinyin, then pinyin → guess English.
+          </div>
+        </div>
+        <div class="mode-card" data-mode="3">
+          <div class="mode-num">三</div>
+          <div class="mode-title">3 Cards</div>
+          <div class="mode-desc">
+            Full system: character → pinyin → English → recall character.
+          </div>
+        </div>
+      </div>
+      <button class="start-btn" onclick="startStudy()">Start Studying →</button>
     </div>
 
-    <button class="start-btn" style="margin-top:24px;" onclick="goToModeSelect()">Next →</button>
-    <div style="height:40px;"></div>
-  </div>
-</div>
+    <!-- STUDY -->
+    <div id="study" class="page">
+      <button
+        onclick="showPage('wordset')"
+        style="
+          position: fixed;
+          bottom: 28px;
+          left: 28px;
+          background: none;
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          padding: 8px 16px;
+          font-family: 'Lora', serif;
+          font-size: 0.82rem;
+          color: var(--text-muted);
+          cursor: pointer;
+          transition: var(--transition);
+          z-index: 50;
+          background: var(--surface);
+        "
+        onmouseover="
+          this.style.borderColor = 'var(--text-muted)'
+          this.style.color = 'var(--text)'
+        "
+        onmouseout="
+          this.style.borderColor = 'var(--border)'
+          this.style.color = 'var(--text-muted)'
+        "
+      >
+        ← Home
+      </button>
+      <div class="study-header">
+        <div class="progress-wrap">
+          <div class="progress-label" id="progressLabel">Word 1 of 30</div>
+          <div class="progress-bar">
+            <div
+              class="progress-fill"
+              id="progressFill"
+              style="width: 0%"
+            ></div>
+          </div>
+        </div>
+        <div class="score-badge">Score: <b id="scoreDisplay">0</b></div>
+      </div>
 
-<!-- HOME -->
-<div id="home" class="page">
-  <div class="home-hero">
-    <h1>学中文</h1>
-    <p>Learn Chinese characters the right way — character first, always.</p>
-  </div>
+      <div class="stage-dots" id="stageDots"></div>
 
-  <div class="stats-bar" id="statsBar">
-    <div class="stat"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Words Studied</div></div>
-    <div class="stat"><div class="stat-num" id="statCorrect">0</div><div class="stat-label">Correct</div></div>
-    <div class="stat"><div class="stat-num" id="statSessions">0</div><div class="stat-label">Sessions</div></div>
-  </div>
+      <div class="card-scene">
+        <div class="card-inner" id="cardInner">
+          <div class="card-face front" id="cardFront">
+            <!-- filled by JS -->
+          </div>
+          <div class="card-face back" id="cardBack">
+            <!-- filled by JS -->
+          </div>
+        </div>
+      </div>
 
-  <div style="text-align:left; width:100%; max-width:760px;">
-    <p style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:12px;">Choose a study mode</p>
-  </div>
-  <div class="mode-grid">
-    <div class="mode-card selected" data-mode="1">
-      <div class="mode-num">一</div>
-      <div class="mode-title">1 Card</div>
-      <div class="mode-desc">See character + pinyin, guess the English meaning.</div>
-    </div>
-    <div class="mode-card" data-mode="2">
-      <div class="mode-num">二</div>
-      <div class="mode-title">2 Cards</div>
-      <div class="mode-desc">Character → guess pinyin, then pinyin → guess English.</div>
-    </div>
-    <div class="mode-card" data-mode="3">
-      <div class="mode-num">三</div>
-      <div class="mode-title">3 Cards</div>
-      <div class="mode-desc">Full system: character → pinyin → English → recall character.</div>
-    </div>
-  </div>
-  <button class="start-btn" onclick="startStudy()">Start Studying →</button>
-</div>
-
-<!-- STUDY -->
-<div id="study" class="page">
-  <button onclick="showPage('wordset')" style="position:fixed;bottom:28px;left:28px;background:none;border:1px solid var(--border);border-radius:10px;padding:8px 16px;font-family:'Lora',serif;font-size:0.82rem;color:var(--text-muted);cursor:pointer;transition:var(--transition);z-index:50;background:var(--surface);" onmouseover="this.style.borderColor='var(--text-muted)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">← Home</button>
-  <div class="study-header">
-    <div class="progress-wrap">
-      <div class="progress-label" id="progressLabel">Word 1 of 30</div>
-      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
-    </div>
-    <div class="score-badge">Score: <b id="scoreDisplay">0</b></div>
-  </div>
-
-  <div class="stage-dots" id="stageDots"></div>
-
-  <div class="card-scene">
-    <div class="card-inner" id="cardInner">
-      <div class="card-face front" id="cardFront">
+      <div class="answer-area" id="answerArea">
         <!-- filled by JS -->
       </div>
-      <div class="card-face back" id="cardBack">
-        <!-- filled by JS -->
+
+      <div class="feedback" id="feedback"></div>
+      <div
+        style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+        "
+      >
+        <button class="next-btn" id="nextBtn" onclick="nextStep()">
+          Next →
+        </button>
+        <div
+          id="enterHint"
+          style="
+            font-size: 0.72rem;
+            color: var(--text-light);
+            font-style: italic;
+            display: none;
+          "
+        >
+          press Enter ↵
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="answer-area" id="answerArea">
-    <!-- filled by JS -->
-  </div>
-
-  <div class="feedback" id="feedback"></div>
-  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-    <button class="next-btn" id="nextBtn" onclick="nextStep()">Next →</button>
-    <div id="enterHint" style="font-size:0.72rem;color:var(--text-light);font-style:italic;display:none;">press Enter ↵</div>
-  </div>
-</div>
-
-<!-- RESULTS -->
-<div id="results" class="page">
-  <div class="results-char">好！</div>
-  <div>
-    <div class="results-title">Session Complete</div>
-    <div class="results-sub" id="resultsSubtitle">You studied 10 words today.</div>
-  </div>
-  <div class="results-grid">
-    <div class="result-stat">
-      <div class="result-stat-num green" id="resCorrect">0</div>
-      <div class="result-stat-label">Correct</div>
+    <!-- RESULTS -->
+    <div id="results" class="page">
+      <div class="results-char">好！</div>
+      <div>
+        <div class="results-title">Session Complete</div>
+        <div class="results-sub" id="resultsSubtitle">
+          You studied 10 words today.
+        </div>
+      </div>
+      <div class="results-grid">
+        <div class="result-stat">
+          <div class="result-stat-num green" id="resCorrect">0</div>
+          <div class="result-stat-label">Correct</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-num red" id="resWrong">0</div>
+          <div class="result-stat-label">Incorrect</div>
+        </div>
+        <div class="result-stat">
+          <div class="result-stat-num" id="resPercent">0%</div>
+          <div class="result-stat-label">Accuracy</div>
+        </div>
+      </div>
+      <div class="results-actions">
+        <button class="results-btn primary" onclick="startStudy()">
+          Study Again
+        </button>
+        <button class="results-btn" onclick="showPage('wordset')">Home</button>
+      </div>
     </div>
-    <div class="result-stat">
-      <div class="result-stat-num red" id="resWrong">0</div>
-      <div class="result-stat-label">Incorrect</div>
-    </div>
-    <div class="result-stat">
-      <div class="result-stat-num" id="resPercent">0%</div>
-      <div class="result-stat-label">Accuracy</div>
-    </div>
-  </div>
-  <div class="results-actions">
-    <button class="results-btn primary" onclick="startStudy()">Study Again</button>
-    <button class="results-btn" onclick="showPage('wordset')">Home</button>
-  </div>
-</div>
 
-
-<script>
-// ── VOCABULARY ──────────────────────────────────────────────────
-const wordSets = {
-  hsk1: {
-    label: 'HSK 1',
-    chinese: '一级',
-    desc: '150 essential beginner words',
-    words: [
-      { char:'爱', pinyin:'ài', english:'Love' },
-      { char:'八', pinyin:'bā', english:'Eight' },
-      { char:'爸爸', pinyin:'bà ba', english:'Father' },
-      { char:'杯子', pinyin:'bēi zi', english:'Cup / Glass' },
-      { char:'北京', pinyin:'běi jīng', english:'Beijing' },
-      { char:'本', pinyin:'běn', english:'(measure word for books)' },
-      { char:'不', pinyin:'bù', english:'No / Not' },
-      { char:'不客气', pinyin:'bù kè qi', english:"You're welcome" },
-      { char:'菜', pinyin:'cài', english:'Dish / Vegetable' },
-      { char:'茶', pinyin:'chá', english:'Tea' },
-      { char:'吃', pinyin:'chī', english:'Eat' },
-      { char:'出租车', pinyin:'chū zū chē', english:'Taxi' },
-      { char:'打电话', pinyin:'dǎ diàn huà', english:'Make a phone call' },
-      { char:'大', pinyin:'dà', english:'Big / Large' },
-      { char:'的', pinyin:'de', english:'(possessive particle)' },
-      { char:'点', pinyin:'diǎn', english:"O'clock / Point" },
-      { char:'电脑', pinyin:'diàn nǎo', english:'Computer' },
-      { char:'电视', pinyin:'diàn shì', english:'Television' },
-      { char:'电影', pinyin:'diàn yǐng', english:'Movie' },
-      { char:'东西', pinyin:'dōng xi', english:'Thing / Stuff' },
-      { char:'都', pinyin:'dōu', english:'All / Both' },
-      { char:'读', pinyin:'dú', english:'Read' },
-      { char:'对不起', pinyin:'duì bu qǐ', english:'Sorry' },
-      { char:'多', pinyin:'duō', english:'Many / Much' },
-      { char:'多少', pinyin:'duō shǎo', english:'How many / How much' },
-      { char:'儿子', pinyin:'ér zi', english:'Son' },
-      { char:'二', pinyin:'èr', english:'Two' },
-      { char:'饭店', pinyin:'fàn diàn', english:'Restaurant / Hotel' },
-      { char:'飞机', pinyin:'fēi jī', english:'Airplane' },
-      { char:'分钟', pinyin:'fēn zhōng', english:'Minute' },
-      { char:'高兴', pinyin:'gāo xìng', english:'Happy / Glad' },
-      { char:'个', pinyin:'gè', english:'(general measure word)' },
-      { char:'工作', pinyin:'gōng zuò', english:'Work / Job' },
-      { char:'狗', pinyin:'gǒu', english:'Dog' },
-      { char:'汉语', pinyin:'hàn yǔ', english:'Chinese language' },
-      { char:'好', pinyin:'hǎo', english:'Good / Well' },
-      { char:'号', pinyin:'hào', english:'Number / Date' },
-      { char:'喝', pinyin:'hē', english:'Drink' },
-      { char:'和', pinyin:'hé', english:'And / With' },
-      { char:'很', pinyin:'hěn', english:'Very' },
-      { char:'后面', pinyin:'hòu miàn', english:'Behind / Back' },
-      { char:'回', pinyin:'huí', english:'Return / Go back' },
-      { char:'会', pinyin:'huì', english:'Can / Will' },
-      { char:'几', pinyin:'jǐ', english:'How many / Several' },
-      { char:'家', pinyin:'jiā', english:'Home / Family' },
-      { char:'叫', pinyin:'jiào', english:'Be called / Call' },
-      { char:'今天', pinyin:'jīn tiān', english:'Today' },
-      { char:'九', pinyin:'jiǔ', english:'Nine' },
-      { char:'开', pinyin:'kāi', english:'Open / Drive' },
-      { char:'看', pinyin:'kàn', english:'Look / Watch / Read' },
-      { char:'看见', pinyin:'kàn jiàn', english:'See / Catch sight of' },
-      { char:'块', pinyin:'kuài', english:'Yuan (money) / Piece' },
-      { char:'来', pinyin:'lái', english:'Come' },
-      { char:'老师', pinyin:'lǎo shī', english:'Teacher' },
-      { char:'了', pinyin:'le', english:'(completed action particle)' },
-      { char:'冷', pinyin:'lěng', english:'Cold' },
-      { char:'里', pinyin:'lǐ', english:'Inside' },
-      { char:'六', pinyin:'liù', english:'Six' },
-      { char:'妈妈', pinyin:'mā ma', english:'Mother' },
-      { char:'吗', pinyin:'ma', english:'(question particle)' },
-      { char:'买', pinyin:'mǎi', english:'Buy' },
-      { char:'猫', pinyin:'māo', english:'Cat' },
-      { char:'没关系', pinyin:'méi guān xi', english:"It's OK / Never mind" },
-      { char:'没有', pinyin:'méi yǒu', english:'Not have / There is no' },
-      { char:'米饭', pinyin:'mǐ fàn', english:'Cooked rice' },
-      { char:'明天', pinyin:'míng tiān', english:'Tomorrow' },
-      { char:'名字', pinyin:'míng zi', english:'Name' },
-      { char:'哪', pinyin:'nǎ', english:'Which' },
-      { char:'哪儿', pinyin:'nǎr', english:'Where' },
-      { char:'那', pinyin:'nà', english:'That' },
-      { char:'呢', pinyin:'ne', english:'(question particle)' },
-      { char:'能', pinyin:'néng', english:'Can / Be able to' },
-      { char:'你', pinyin:'nǐ', english:'You' },
-      { char:'你好', pinyin:'nǐ hǎo', english:'Hello' },
-      { char:'年', pinyin:'nián', english:'Year' },
-      { char:'女儿', pinyin:'nǚ ér', english:'Daughter' },
-      { char:'朋友', pinyin:'péng you', english:'Friend' },
-      { char:'漂亮', pinyin:'piào liang', english:'Pretty / Beautiful' },
-      { char:'苹果', pinyin:'píng guǒ', english:'Apple' },
-      { char:'七', pinyin:'qī', english:'Seven' },
-      { char:'钱', pinyin:'qián', english:'Money' },
-      { char:'前面', pinyin:'qián miàn', english:'In front / Ahead' },
-      { char:'请', pinyin:'qǐng', english:'Please / Invite' },
-      { char:'去', pinyin:'qù', english:'Go' },
-      { char:'热', pinyin:'rè', english:'Hot' },
-      { char:'人', pinyin:'rén', english:'Person / People' },
-      { char:'认识', pinyin:'rèn shi', english:'Know (a person)' },
-      { char:'三', pinyin:'sān', english:'Three' },
-      { char:'商店', pinyin:'shāng diàn', english:'Shop / Store' },
-      { char:'上', pinyin:'shàng', english:'Above / On / Up' },
-      { char:'上午', pinyin:'shàng wǔ', english:'Morning / A.M.' },
-      { char:'少', pinyin:'shǎo', english:'Few / Little' },
-      { char:'谁', pinyin:'shéi', english:'Who' },
-      { char:'什么', pinyin:'shén me', english:'What' },
-      { char:'十', pinyin:'shí', english:'Ten' },
-      { char:'时候', pinyin:'shí hou', english:'Time / Moment' },
-      { char:'是', pinyin:'shì', english:'Be / Is / Yes' },
-      { char:'书', pinyin:'shū', english:'Book' },
-      { char:'水', pinyin:'shuǐ', english:'Water' },
-      { char:'水果', pinyin:'shuǐ guǒ', english:'Fruit' },
-      { char:'睡觉', pinyin:'shuì jiào', english:'Sleep' },
-      { char:'说', pinyin:'shuō', english:'Say / Speak' },
-      { char:'四', pinyin:'sì', english:'Four' },
-      { char:'岁', pinyin:'suì', english:'Year (of age)' },
-      { char:'他', pinyin:'tā', english:'He / Him' },
-      { char:'她', pinyin:'tā', english:'She / Her' },
-      { char:'太', pinyin:'tài', english:'Too / Extremely' },
-      { char:'天气', pinyin:'tiān qì', english:'Weather' },
-      { char:'听', pinyin:'tīng', english:'Listen / Hear' },
-      { char:'同学', pinyin:'tóng xué', english:'Classmate' },
-      { char:'喂', pinyin:'wèi', english:'Hello (on phone)' },
-      { char:'我', pinyin:'wǒ', english:'I / Me' },
-      { char:'我们', pinyin:'wǒ men', english:'We / Us' },
-      { char:'五', pinyin:'wǔ', english:'Five' },
-      { char:'下', pinyin:'xià', english:'Below / Under / Down' },
-      { char:'下午', pinyin:'xià wǔ', english:'Afternoon / P.M.' },
-      { char:'下雨', pinyin:'xià yǔ', english:'Rain' },
-      { char:'先生', pinyin:'xiān sheng', english:'Mr. / Sir / Husband' },
-      { char:'现在', pinyin:'xiàn zài', english:'Now' },
-      { char:'想', pinyin:'xiǎng', english:'Want / Think / Miss' },
-      { char:'小', pinyin:'xiǎo', english:'Small / Little' },
-      { char:'小姐', pinyin:'xiǎo jiě', english:'Miss / Young lady' },
-      { char:'些', pinyin:'xiē', english:'Some / A few' },
-      { char:'写', pinyin:'xiě', english:'Write' },
-      { char:'谢谢', pinyin:'xiè xie', english:'Thank you' },
-      { char:'星期', pinyin:'xīng qī', english:'Week' },
-      { char:'学生', pinyin:'xué shēng', english:'Student' },
-      { char:'学习', pinyin:'xué xí', english:'Study / Learn' },
-      { char:'学校', pinyin:'xué xiào', english:'School' },
-      { char:'一', pinyin:'yī', english:'One' },
-      { char:'衣服', pinyin:'yī fu', english:'Clothes' },
-      { char:'医生', pinyin:'yī shēng', english:'Doctor' },
-      { char:'医院', pinyin:'yī yuàn', english:'Hospital' },
-      { char:'椅子', pinyin:'yǐ zi', english:'Chair' },
-      { char:'有', pinyin:'yǒu', english:'Have / There is' },
-      { char:'语言', pinyin:'yǔ yán', english:'Language' },
-      { char:'再见', pinyin:'zài jiàn', english:'Goodbye' },
-      { char:'在', pinyin:'zài', english:'At / In / Be at' },
-      { char:'怎么', pinyin:'zěn me', english:'How / Why' },
-      { char:'怎么样', pinyin:'zěn me yàng', english:'How is it? / What about?' },
-      { char:'这', pinyin:'zhè', english:'This' },
-      { char:'中国', pinyin:'zhōng guó', english:'China' },
-      { char:'中午', pinyin:'zhōng wǔ', english:'Noon / Midday' },
-      { char:'住', pinyin:'zhù', english:'Live / Stay' },
-      { char:'桌子', pinyin:'zhuō zi', english:'Table / Desk' },
-      { char:'字', pinyin:'zì', english:'Character / Word' },
-      { char:'昨天', pinyin:'zuó tiān', english:'Yesterday' },
-      { char:'坐', pinyin:'zuò', english:'Sit / Travel by' },
-      { char:'做', pinyin:'zuò', english:'Do / Make' },
-    ]
-  },
-  hsk2: {
-    label: 'HSK 2',
-    chinese: '二级',
-    desc: '150 elementary words (builds on HSK 1)',
-    words: [
-      { char:'吧', pinyin:'ba', english:'(suggestion particle)' },
-      { char:'白', pinyin:'bái', english:'White' },
-      { char:'百', pinyin:'bǎi', english:'Hundred' },
-      { char:'帮助', pinyin:'bāng zhù', english:'Help / Assist' },
-      { char:'报纸', pinyin:'bào zhǐ', english:'Newspaper' },
-      { char:'比', pinyin:'bǐ', english:'Compare / Than' },
-      { char:'别', pinyin:'bié', english:"Don't" },
-      { char:'宾馆', pinyin:'bīn guǎn', english:'Hotel' },
-      { char:'长', pinyin:'cháng', english:'Long' },
-      { char:'唱歌', pinyin:'chàng gē', english:'Sing (a song)' },
-      { char:'出', pinyin:'chū', english:'Go out / Come out' },
-      { char:'穿', pinyin:'chuān', english:'Wear / Put on' },
-      { char:'次', pinyin:'cì', english:'Time / Occurrence' },
-      { char:'从', pinyin:'cóng', english:'From' },
-      { char:'错', pinyin:'cuò', english:'Wrong / Mistake' },
-      { char:'打篮球', pinyin:'dǎ lán qiú', english:'Play basketball' },
-      { char:'大家', pinyin:'dà jiā', english:'Everyone / Everybody' },
-      { char:'但是', pinyin:'dàn shì', english:'But / However' },
-      { char:'到', pinyin:'dào', english:'Arrive / Reach / To' },
-      { char:'地方', pinyin:'dì fang', english:'Place / Area' },
-      { char:'弟弟', pinyin:'dì di', english:'Younger brother' },
-      { char:'第一', pinyin:'dì yī', english:'First / Number one' },
-      { char:'懂', pinyin:'dǒng', english:'Understand' },
-      { char:'对', pinyin:'duì', english:'Correct / Right / To' },
-      { char:'房间', pinyin:'fáng jiān', english:'Room' },
-      { char:'非常', pinyin:'fēi cháng', english:'Very / Extremely' },
-      { char:'服务员', pinyin:'fú wù yuán', english:'Waiter / Attendant' },
-      { char:'告诉', pinyin:'gào su', english:'Tell / Inform' },
-      { char:'哥哥', pinyin:'gē ge', english:'Older brother' },
-      { char:'给', pinyin:'gěi', english:'Give / For' },
-      { char:'公共汽车', pinyin:'gōng gòng qì chē', english:'Bus' },
-      { char:'公司', pinyin:'gōng sī', english:'Company / Firm' },
-      { char:'贵', pinyin:'guì', english:'Expensive / Precious' },
-      { char:'过', pinyin:'guò', english:'Pass / Spend (time)' },
-      { char:'还', pinyin:'hái', english:'Still / Also / Yet' },
-      { char:'孩子', pinyin:'hái zi', english:'Child' },
-      { char:'好吃', pinyin:'hǎo chī', english:'Delicious' },
-      { char:'黑', pinyin:'hēi', english:'Black / Dark' },
-      { char:'红', pinyin:'hóng', english:'Red' },
-      { char:'火车站', pinyin:'huǒ chē zhàn', english:'Train station' },
-      { char:'机场', pinyin:'jī chǎng', english:'Airport' },
-      { char:'鸡蛋', pinyin:'jī dàn', english:'Egg' },
-      { char:'件', pinyin:'jiàn', english:'(measure word for clothes/matters)' },
-      { char:'教室', pinyin:'jiào shì', english:'Classroom' },
-      { char:'姐姐', pinyin:'jiě jie', english:'Older sister' },
-      { char:'介绍', pinyin:'jiè shào', english:'Introduce' },
-      { char:'进', pinyin:'jìn', english:'Enter / Come in' },
-      { char:'近', pinyin:'jìn', english:'Near / Close' },
-      { char:'就', pinyin:'jiù', english:'Just / Then / Right away' },
-      { char:'觉得', pinyin:'jué de', english:'Feel / Think' },
-      { char:'咖啡', pinyin:'kā fēi', english:'Coffee' },
-      { char:'开始', pinyin:'kāi shǐ', english:'Start / Begin' },
-      { char:'考试', pinyin:'kǎo shì', english:'Exam / Test' },
-      { char:'可能', pinyin:'kě néng', english:'Maybe / Possible' },
-      { char:'可以', pinyin:'kě yǐ', english:'Can / May' },
-      { char:'课', pinyin:'kè', english:'Class / Lesson / Course' },
-      { char:'快', pinyin:'kuài', english:'Fast / Quick' },
-      { char:'快乐', pinyin:'kuài lè', english:'Happy / Joyful' },
-      { char:'累', pinyin:'lèi', english:'Tired' },
-      { char:'离', pinyin:'lí', english:'Away from / From' },
-      { char:'两', pinyin:'liǎng', english:'Two (of a kind)' },
-      { char:'路', pinyin:'lù', english:'Road / Path' },
-      { char:'旅游', pinyin:'lǚ yóu', english:'Travel / Tourism' },
-      { char:'卖', pinyin:'mài', english:'Sell' },
-      { char:'慢', pinyin:'màn', english:'Slow' },
-      { char:'忙', pinyin:'máng', english:'Busy' },
-      { char:'每', pinyin:'měi', english:'Every / Each' },
-      { char:'妹妹', pinyin:'mèi mei', english:'Younger sister' },
-      { char:'门', pinyin:'mén', english:'Door / Gate' },
-      { char:'面条', pinyin:'miàn tiáo', english:'Noodles' },
-      { char:'男', pinyin:'nán', english:'Male / Man' },
-      { char:'您', pinyin:'nín', english:'You (respectful)' },
-      { char:'牛奶', pinyin:'niú nǎi', english:'Milk' },
-      { char:'女', pinyin:'nǚ', english:'Female / Woman' },
-      { char:'旁边', pinyin:'páng biān', english:'Beside / Next to' },
-      { char:'跑步', pinyin:'pǎo bù', english:'Run / Jog' },
-      { char:'便宜', pinyin:'pián yi', english:'Cheap / Inexpensive' },
-      { char:'票', pinyin:'piào', english:'Ticket' },
-      { char:'妻子', pinyin:'qī zi', english:'Wife' },
-      { char:'起床', pinyin:'qǐ chuáng', english:'Get up / Get out of bed' },
-      { char:'千', pinyin:'qiān', english:'Thousand' },
-      { char:'晴', pinyin:'qíng', english:'Sunny / Clear' },
-      { char:'去年', pinyin:'qù nián', english:'Last year' },
-      { char:'让', pinyin:'ràng', english:'Let / Allow / Make' },
-      { char:'日', pinyin:'rì', english:'Sun / Day / Date' },
-      { char:'如果', pinyin:'rú guǒ', english:'If / In case' },
-      { char:'上班', pinyin:'shàng bān', english:'Go to work' },
-      { char:'身体', pinyin:'shēn tǐ', english:'Body / Health' },
-      { char:'生病', pinyin:'shēng bìng', english:'Get sick / Fall ill' },
-      { char:'生日', pinyin:'shēng rì', english:'Birthday' },
-      { char:'时间', pinyin:'shí jiān', english:'Time' },
-      { char:'事情', pinyin:'shì qing', english:'Matter / Thing / Affair' },
-      { char:'手表', pinyin:'shǒu biǎo', english:'Watch (wristwatch)' },
-      { char:'手机', pinyin:'shǒu jī', english:'Mobile phone' },
-      { char:'送', pinyin:'sòng', english:'Give (as gift) / Send / See off' },
-      { char:'虽然', pinyin:'suī rán', english:'Although / Even though' },
-      { char:'它', pinyin:'tā', english:'It' },
-      { char:'踢足球', pinyin:'tī zú qiú', english:'Play football / Soccer' },
-      { char:'题', pinyin:'tí', english:'Question / Problem / Topic' },
-      { char:'跳舞', pinyin:'tiào wǔ', english:'Dance' },
-      { char:'外', pinyin:'wài', english:'Outside / Foreign' },
-      { char:'完', pinyin:'wán', english:'Finish / Complete' },
-      { char:'玩', pinyin:'wán', english:'Play / Have fun' },
-      { char:'晚上', pinyin:'wǎn shang', english:'Evening / Night' },
-      { char:'往', pinyin:'wǎng', english:'Towards / To' },
-      { char:'为什么', pinyin:'wèi shén me', english:'Why' },
-      { char:'问', pinyin:'wèn', english:'Ask' },
-      { char:'问题', pinyin:'wèn tí', english:'Question / Problem' },
-      { char:'西瓜', pinyin:'xī guā', english:'Watermelon' },
-      { char:'希望', pinyin:'xī wàng', english:'Hope / Wish' },
-      { char:'洗', pinyin:'xǐ', english:'Wash' },
-      { char:'小时', pinyin:'xiǎo shí', english:'Hour' },
-      { char:'笑', pinyin:'xiào', english:'Laugh / Smile' },
-      { char:'新', pinyin:'xīn', english:'New' },
-      { char:'新闻', pinyin:'xīn wén', english:'News' },
-      { char:'姓', pinyin:'xìng', english:'Surname / Family name' },
-      { char:'休息', pinyin:'xiū xi', english:'Rest / Relax' },
-      { char:'雪', pinyin:'xuě', english:'Snow' },
-      { char:'颜色', pinyin:'yán sè', english:'Color' },
-      { char:'眼睛', pinyin:'yǎn jing', english:'Eye' },
-      { char:'羊肉', pinyin:'yáng ròu', english:'Mutton / Lamb' },
-      { char:'药', pinyin:'yào', english:'Medicine / Drug' },
-      { char:'要', pinyin:'yào', english:'Want / Need / Will' },
-      { char:'也', pinyin:'yě', english:'Also / Too' },
-      { char:'一起', pinyin:'yī qǐ', english:'Together' },
-      { char:'已经', pinyin:'yǐ jīng', english:'Already' },
-      { char:'一下', pinyin:'yī xià', english:'Once / A bit' },
-      { char:'意思', pinyin:'yì si', english:'Meaning' },
-      { char:'因为', pinyin:'yīn wèi', english:'Because' },
-      { char:'用', pinyin:'yòng', english:'Use' },
-      { char:'游泳', pinyin:'yóu yǒng', english:'Swim' },
-      { char:'右边', pinyin:'yòu biān', english:'Right side' },
-      { char:'鱼', pinyin:'yú', english:'Fish' },
-      { char:'元', pinyin:'yuán', english:'Yuan (currency)' },
-      { char:'远', pinyin:'yuǎn', english:'Far / Distant' },
-      { char:'运动', pinyin:'yùn dòng', english:'Sport / Exercise' },
-      { char:'再', pinyin:'zài', english:'Again / Once more' },
-      { char:'早上', pinyin:'zǎo shang', english:'Morning' },
-      { char:'丈夫', pinyin:'zhàng fu', english:'Husband' },
-      { char:'找', pinyin:'zhǎo', english:'Look for / Find' },
-      { char:'着', pinyin:'zhe', english:'(ongoing action particle)' },
-      { char:'真', pinyin:'zhēn', english:'Real / True / Really' },
-      { char:'正在', pinyin:'zhèng zài', english:'In the process of / Currently' },
-      { char:'知道', pinyin:'zhī dào', english:'Know' },
-      { char:'准备', pinyin:'zhǔn bèi', english:'Prepare / Get ready' },
-      { char:'走', pinyin:'zǒu', english:'Walk / Go / Leave' },
-      { char:'最', pinyin:'zuì', english:'Most / -est' },
-      { char:'左边', pinyin:'zuǒ biān', english:'Left side' },
-    ]
-  },
-  lang1511: {
-    label: 'LANG 1511',
-    chinese: '课程',
-    desc: 'University course words by unit',
-    units: [
-      { unit: 1, words: [
-        { char:'你好', pinyin:'nǐ hǎo', english:'Hello' },
-        { char:'请问', pinyin:'qǐng wèn', english:'Excuse me' },
-        { char:'贵姓', pinyin:'guì xìng', english:'Your honorable surname' },
-        { char:'姓', pinyin:'xìng', english:'Surname' },
-        { char:'叫', pinyin:'jiào', english:'To be called' },
-        { char:'名字', pinyin:'míng zi', english:'Name' },
-        { char:'老师', pinyin:'lǎo shī', english:'Teacher' },
-        { char:'学生', pinyin:'xué shēng', english:'Student' },
-      ]},
-      { unit: 2, words: [
-        { char:'照片', pinyin:'zhào piàn', english:'Photo' },
-        { char:'爸爸', pinyin:'bà ba', english:'Dad' },
-        { char:'妈妈', pinyin:'mā ma', english:'Mom' },
-        { char:'女孩子', pinyin:'nǚ hái zi', english:'Girl' },
-        { char:'姐姐', pinyin:'jiě jie', english:'Older sister' },
-        { char:'男孩子', pinyin:'nán hái zi', english:'Boy' },
-        { char:'弟弟', pinyin:'dì di', english:'Younger brother' },
-        { char:'大哥', pinyin:'dà gē', english:'Eldest brother' },
-        { char:'儿子', pinyin:'ér zi', english:'Son' },
-        { char:'女儿', pinyin:'nǚ ér', english:'Daughter' },
-        { char:'家', pinyin:'jiā', english:'Family / Home' },
-        { char:'哥哥', pinyin:'gē ge', english:'Older brother' },
-        { char:'妹妹', pinyin:'mèi mei', english:'Younger sister' },
-      ]},
-      { unit: 3, words: [
-        { char:'星期', pinyin:'xīng qī', english:'Week' },
-        { char:'生日', pinyin:'shēng rì', english:'Birthday' },
-        { char:'今年', pinyin:'jīn nián', english:'This year' },
-        { char:'多大', pinyin:'duō dà', english:'How old' },
-        { char:'岁', pinyin:'suì', english:'Years old' },
-        { char:'吃饭', pinyin:'chī fàn', english:'To eat' },
-        { char:'喜欢', pinyin:'xǐ huan', english:'To like' },
-        { char:'中国菜', pinyin:'zhōng guó cài', english:'Chinese food' },
-        { char:'美国菜', pinyin:'měi guó cài', english:'American food' },
-        { char:'点', pinyin:'diǎn', english:"O'clock" },
-      ]},
-      { unit: 4, words: [
-        { char:'周末', pinyin:'zhōu mò', english:'Weekend' },
-        { char:'打球', pinyin:'dǎ qiú', english:'Play ball' },
-        { char:'看电视', pinyin:'kàn diàn shì', english:'Watch TV' },
-        { char:'唱歌', pinyin:'chàng gē', english:'Sing' },
-        { char:'跳舞', pinyin:'tiào wǔ', english:'Dance' },
-        { char:'听音乐', pinyin:'tīng yīn yuè', english:'Listen to music' },
-        { char:'看书', pinyin:'kàn shū', english:'Read books' },
-        { char:'看电影', pinyin:'kàn diàn yǐng', english:'Watch movies' },
-        { char:'请客', pinyin:'qǐng kè', english:'To treat' },
-        { char:'觉得', pinyin:'jué de', english:'To feel / think' },
-      ]},
-      { unit: 5, words: [
-        { char:'进来', pinyin:'jìn lái', english:'Come in' },
-        { char:'介绍', pinyin:'jiè shào', english:'Introduce' },
-        { char:'认识', pinyin:'rèn shi', english:'To know' },
-        { char:'高兴', pinyin:'gāo xìng', english:'Happy' },
-        { char:'漂亮', pinyin:'piào liang', english:'Beautiful' },
-        { char:'工作', pinyin:'gōng zuò', english:'Work' },
-        { char:'喝', pinyin:'hē', english:'Drink' },
-        { char:'茶', pinyin:'chá', english:'Tea' },
-        { char:'咖啡', pinyin:'kā fēi', english:'Coffee' },
-        { char:'可乐', pinyin:'kě lè', english:'Cola' },
-        { char:'水', pinyin:'shuǐ', english:'Water' },
-      ]},
-      { unit: 6, words: [
-        { char:'问题', pinyin:'wèn tí', english:'Question' },
-        { char:'下午', pinyin:'xià wǔ', english:'Afternoon' },
-        { char:'开会', pinyin:'kāi huì', english:'Have a meeting' },
-        { char:'上午', pinyin:'shàng wǔ', english:'Morning' },
-        { char:'课', pinyin:'kè', english:'Class' },
-        { char:'考试', pinyin:'kǎo shì', english:'Exam' },
-        { char:'时候', pinyin:'shí hou', english:'Time / When' },
-        { char:'有空儿', pinyin:'yǒu kòngr', english:'Be free' },
-        { char:'方便', pinyin:'fāng biàn', english:'Convenient' },
-        { char:'办公室', pinyin:'bàn gōng shì', english:'Office' },
-      ]},
-      { unit: 7, words: [
-        { char:'帮', pinyin:'bāng', english:'To help' },
-        { char:'复习', pinyin:'fù xí', english:'Review' },
-        { char:'中国字', pinyin:'zhōng guó zì', english:'Chinese characters' },
-        { char:'写字', pinyin:'xiě zì', english:'Write characters' },
-        { char:'练习', pinyin:'liàn xí', english:'Practice' },
-        { char:'一起', pinyin:'yì qǐ', english:'Together' },
-        { char:'笔', pinyin:'bǐ', english:'Pen' },
-        { char:'纸', pinyin:'zhǐ', english:'Paper' },
-        { char:'懂', pinyin:'dǒng', english:'Understand' },
-        { char:'语法', pinyin:'yǔ fǎ', english:'Grammar' },
-        { char:'容易', pinyin:'róng yì', english:'Easy' },
-        { char:'生词', pinyin:'shēng cí', english:'New words' },
-        { char:'汉字', pinyin:'hàn zì', english:'Chinese characters' },
-        { char:'难', pinyin:'nán', english:'Difficult' },
-      ]},
-      { unit: 8, words: [
-        { char:'日记', pinyin:'rì jì', english:'Diary' },
-        { char:'起床', pinyin:'qǐ chuáng', english:'Get up' },
-        { char:'洗澡', pinyin:'xǐ zǎo', english:'Take a bath' },
-        { char:'早饭', pinyin:'zǎo fàn', english:'Breakfast' },
-        { char:'听录音', pinyin:'tīng lù yīn', english:'Listen to recordings' },
-        { char:'教室', pinyin:'jiào shì', english:'Classroom' },
-        { char:'上课', pinyin:'shàng kè', english:'Attend class' },
-        { char:'发音', pinyin:'fā yīn', english:'Pronunciation' },
-        { char:'课文', pinyin:'kè wén', english:'Text' },
-        { char:'餐厅', pinyin:'cān tīng', english:'Cafeteria' },
-        { char:'午饭', pinyin:'wǔ fàn', english:'Lunch' },
-        { char:'图书馆', pinyin:'tú shū guǎn', english:'Library' },
-        { char:'上网', pinyin:'shàng wǎng', english:'Go online' },
-        { char:'晚饭', pinyin:'wǎn fàn', english:'Dinner' },
-        { char:'宿舍', pinyin:'sù shè', english:'Dorm' },
-        { char:'聊天儿', pinyin:'liáo tiānr', english:'Chat' },
-        { char:'做功课', pinyin:'zuò gōng kè', english:'Do homework' },
-        { char:'回家', pinyin:'huí jiā', english:'Go home' },
-        { char:'睡觉', pinyin:'shuì jiào', english:'Sleep' },
-        { char:'打电话', pinyin:'dǎ diàn huà', english:'Make a phone call' },
-      ]},
-      { unit: 9, words: [
-        { char:'衣服', pinyin:'yī fu', english:'Clothes' },
-        { char:'衬衫', pinyin:'chèn shān', english:'Shirt' },
-        { char:'颜色', pinyin:'yán sè', english:'Color' },
-        { char:'裤子', pinyin:'kù zi', english:'Pants' },
-        { char:'大号', pinyin:'dà hào', english:'Large size' },
-        { char:'中号', pinyin:'zhōng hào', english:'Medium size' },
-        { char:'小号', pinyin:'xiǎo hào', english:'Small size' },
-        { char:'贵', pinyin:'guì', english:'Expensive' },
-        { char:'便宜', pinyin:'pián yi', english:'Cheap' },
-        { char:'长短', pinyin:'cháng duǎn', english:'Length' },
-        { char:'合适', pinyin:'hé shì', english:'Suitable' },
-        { char:'钱', pinyin:'qián', english:'Money' },
-      ]},
-      { unit: 10, words: [
-        { char:'寒假', pinyin:'hán jià', english:'Winter break' },
-        { char:'回家', pinyin:'huí jiā', english:'Go home' },
-        { char:'飞机票', pinyin:'fēi jī piào', english:'Plane ticket' },
-        { char:'飞机', pinyin:'fēi jī', english:'Airplane' },
-        { char:'机场', pinyin:'jī chǎng', english:'Airport' },
-        { char:'公共汽车', pinyin:'gōng gòng qì chē', english:'Bus' },
-        { char:'地铁', pinyin:'dì tiě', english:'Subway' },
-        { char:'汽车', pinyin:'qì chē', english:'Car' },
-        { char:'站', pinyin:'zhàn', english:'Station / Stop' },
-        { char:'下车', pinyin:'xià chē', english:'Get off' },
-        { char:'换', pinyin:'huàn', english:'Change / Transfer' },
-        { char:'麻烦', pinyin:'má fan', english:'Troublesome' },
-        { char:'打车', pinyin:'dǎ chē', english:'Take a taxi' },
-        { char:'出租汽车', pinyin:'chū zū qì chē', english:'Taxi' },
-        { char:'开车', pinyin:'kāi chē', english:'Drive' },
-      ]},
-    ]
-  },
-};
-
-let vocab = wordSets.hsk1.words; // active word set
-
-// ── STATE ────────────────────────────────────────────────────────
-let settings = { answerStyle: 'multiple-choice', defaultMode: 2, sessionSize: 20 };
-let sessionMode = 2;
-let queue = [];       // [{word, stage}]  stage: 1|2|3
-let qIdx = 0;
-let score = 0;
-let wrongCount = 0;
-let totalAttempts = 0;
-let allTimeStats = { studied: 0, correct: 0, sessions: 0 };
-let answered = false;
-
-function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
-
-// ── PAGES ────────────────────────────────────────────────────────
-function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  if (id === 'wordset') {
-    // Clear all selections
-    document.querySelectorAll('.ws-btn').forEach(c => c.classList.remove('ws-selected'));
-    selectedWordSet = null;
-    document.getElementById('unit-picker').style.display = 'none';
-    document.getElementById('hsk-picker').style.display = 'none';
-    document.getElementById('settings-toggle').style.display = 'none';
-    document.getElementById('settings-dropdown').style.display = 'none';
-    document.getElementById('settings-arrow').style.transform = '';
-  }
-  updateStatsBar();
-}
-
-function updateStatsBar() {
-  document.getElementById('statTotal').textContent = allTimeStats.studied;
-  document.getElementById('statCorrect').textContent = allTimeStats.correct;
-  document.getElementById('statSessions').textContent = allTimeStats.sessions;
-}
-
-// ── WORD SET SELECT ─────────────────────────────────────────────
-let selectedWordSet = 'hsk1';
-let lastSession = null; // { wordSetKey, units, settings, vocab }
-let selectedUnits = new Set();
-let selectedHSKLevels = new Set();
-
-function selectWordSet(key, el) {
-  selectedWordSet = key;
-  document.querySelectorAll('.ws-btn').forEach(c => c.classList.remove('ws-selected'));
-  el.classList.add('ws-selected');
-  const picker = document.getElementById('unit-picker');
-  const hskPicker = document.getElementById('hsk-picker');
-  if (key === 'lang1511') {
-    picker.style.display = 'block';
-    hskPicker.style.display = 'none';
-    renderUnitPicker();
-  } else if (key === 'hsk') {
-    hskPicker.style.display = 'block';
-    picker.style.display = 'none';
-  } else {
-    picker.style.display = 'none';
-    hskPicker.style.display = 'none';
-  }
-  // For last session, restore settings visually
-  if (key === 'last' && lastSession) {
-    settings = { ...lastSession.settings };
-    syncSettingsUI();
-  }
-  // Show and open settings
-  const toggle = document.getElementById('settings-toggle');
-  const dropdown = document.getElementById('settings-dropdown');
-  const arrow = document.getElementById('settings-arrow');
-  toggle.style.display = 'flex'; toggle.style.alignItems = 'center';
-  dropdown.style.display = 'block';
-  arrow.style.transform = 'rotate(90deg)';
-  // Scroll to show settings toggle area
-  setTimeout(() => {
-    toggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 100);
-}
-
-function renderUnitPicker() {
-  const grid = document.getElementById('unit-picker-grid');
-  const units = wordSets.lang1511.units;
-  grid.innerHTML = units.map(u => {
-    const sel = selectedUnits.has(u.unit) ? ' selected' : '';
-    return `<button class="unit-btn${sel}" data-unit="${u.unit}">Unit ${u.unit} <span style="font-size:0.75rem;opacity:0.6">(${u.words.length})</span></button>`;
-  }).join('');
-}
-
-// ── DRAG SELECT ─────────────────────────────────────────────────
-let isDragging = false;
-let hasDragged = false;
-let dragAction = null;
-let dragType = null;
-let dragStartIndex = null;
-let dragContainer = null;
-
-function getBtns(containerEl) {
-  return Array.from(containerEl.querySelectorAll('.unit-btn'));
-}
-
-function initDragSelect(containerEl, type) {
-  containerEl.addEventListener('mousedown', e => {
-    const btn = e.target.closest('.unit-btn');
-    if (!btn) return;
-    isDragging = true;
-    hasDragged = false;
-    dragType = type;
-    dragContainer = containerEl;
-    const btns = getBtns(containerEl);
-    dragStartIndex = btns.indexOf(btn);
-    const id = type === 'unit' ? parseInt(btn.dataset.unit) : parseInt(btn.dataset.hsk);
-    const set = type === 'unit' ? selectedUnits : selectedHSKLevels;
-    dragAction = set.has(id) ? 'deselect' : 'select';
-  });
-
-  containerEl.addEventListener('mousemove', e => {
-    if (!isDragging || dragType !== type) return;
-    const btn = e.target.closest('.unit-btn');
-    if (!btn) return;
-    const btns = getBtns(containerEl);
-    const currentIndex = btns.indexOf(btn);
-    if (currentIndex === dragStartIndex) return; // must move to a different button
-    hasDragged = true;
-    // Apply to all buttons between start and current index (range)
-    const lo = Math.min(dragStartIndex, currentIndex);
-    const hi = Math.max(dragStartIndex, currentIndex);
-    btns.forEach((b, i) => {
-      if (i >= lo && i <= hi) {
-        const id = type === 'unit' ? parseInt(b.dataset.unit) : parseInt(b.dataset.hsk);
-        const set = type === 'unit' ? selectedUnits : selectedHSKLevels;
-        if (dragAction === 'select') { set.add(id); b.classList.add('selected'); }
-        else { set.delete(id); b.classList.remove('selected'); }
+    <script>
+      // ── VOCABULARY ──────────────────────────────────────────────────
+      const wordSets = {
+        hsk1: {
+          label: 'HSK 1',
+          chinese: '一级',
+          desc: '150 essential beginner words',
+          words: [
+            { char: '爱', pinyin: 'ài', english: 'Love' },
+            { char: '八', pinyin: 'bā', english: 'Eight' },
+            { char: '爸爸', pinyin: 'bà ba', english: 'Father' },
+            { char: '杯子', pinyin: 'bēi zi', english: 'Cup / Glass' },
+            { char: '北京', pinyin: 'běi jīng', english: 'Beijing' },
+            { char: '本', pinyin: 'běn', english: '(measure word for books)' },
+            { char: '不', pinyin: 'bù', english: 'No / Not' },
+            { char: '不客气', pinyin: 'bù kè qi', english: "You're welcome" },
+            { char: '菜', pinyin: 'cài', english: 'Dish / Vegetable' },
+            { char: '茶', pinyin: 'chá', english: 'Tea' },
+            { char: '吃', pinyin: 'chī', english: 'Eat' },
+            { char: '出租车', pinyin: 'chū zū chē', english: 'Taxi' },
+            {
+              char: '打电话',
+              pinyin: 'dǎ diàn huà',
+              english: 'Make a phone call',
+            },
+            { char: '大', pinyin: 'dà', english: 'Big / Large' },
+            { char: '的', pinyin: 'de', english: '(possessive particle)' },
+            { char: '点', pinyin: 'diǎn', english: "O'clock / Point" },
+            { char: '电脑', pinyin: 'diàn nǎo', english: 'Computer' },
+            { char: '电视', pinyin: 'diàn shì', english: 'Television' },
+            { char: '电影', pinyin: 'diàn yǐng', english: 'Movie' },
+            { char: '东西', pinyin: 'dōng xi', english: 'Thing / Stuff' },
+            { char: '都', pinyin: 'dōu', english: 'All / Both' },
+            { char: '读', pinyin: 'dú', english: 'Read' },
+            { char: '对不起', pinyin: 'duì bu qǐ', english: 'Sorry' },
+            { char: '多', pinyin: 'duō', english: 'Many / Much' },
+            {
+              char: '多少',
+              pinyin: 'duō shǎo',
+              english: 'How many / How much',
+            },
+            { char: '儿子', pinyin: 'ér zi', english: 'Son' },
+            { char: '二', pinyin: 'èr', english: 'Two' },
+            { char: '饭店', pinyin: 'fàn diàn', english: 'Restaurant / Hotel' },
+            { char: '飞机', pinyin: 'fēi jī', english: 'Airplane' },
+            { char: '分钟', pinyin: 'fēn zhōng', english: 'Minute' },
+            { char: '高兴', pinyin: 'gāo xìng', english: 'Happy / Glad' },
+            { char: '个', pinyin: 'gè', english: '(general measure word)' },
+            { char: '工作', pinyin: 'gōng zuò', english: 'Work / Job' },
+            { char: '狗', pinyin: 'gǒu', english: 'Dog' },
+            { char: '汉语', pinyin: 'hàn yǔ', english: 'Chinese language' },
+            { char: '好', pinyin: 'hǎo', english: 'Good / Well' },
+            { char: '号', pinyin: 'hào', english: 'Number / Date' },
+            { char: '喝', pinyin: 'hē', english: 'Drink' },
+            { char: '和', pinyin: 'hé', english: 'And / With' },
+            { char: '很', pinyin: 'hěn', english: 'Very' },
+            { char: '后面', pinyin: 'hòu miàn', english: 'Behind / Back' },
+            { char: '回', pinyin: 'huí', english: 'Return / Go back' },
+            { char: '会', pinyin: 'huì', english: 'Can / Will' },
+            { char: '几', pinyin: 'jǐ', english: 'How many / Several' },
+            { char: '家', pinyin: 'jiā', english: 'Home / Family' },
+            { char: '叫', pinyin: 'jiào', english: 'Be called / Call' },
+            { char: '今天', pinyin: 'jīn tiān', english: 'Today' },
+            { char: '九', pinyin: 'jiǔ', english: 'Nine' },
+            { char: '开', pinyin: 'kāi', english: 'Open / Drive' },
+            { char: '看', pinyin: 'kàn', english: 'Look / Watch / Read' },
+            {
+              char: '看见',
+              pinyin: 'kàn jiàn',
+              english: 'See / Catch sight of',
+            },
+            { char: '块', pinyin: 'kuài', english: 'Yuan (money) / Piece' },
+            { char: '来', pinyin: 'lái', english: 'Come' },
+            { char: '老师', pinyin: 'lǎo shī', english: 'Teacher' },
+            {
+              char: '了',
+              pinyin: 'le',
+              english: '(completed action particle)',
+            },
+            { char: '冷', pinyin: 'lěng', english: 'Cold' },
+            { char: '里', pinyin: 'lǐ', english: 'Inside' },
+            { char: '六', pinyin: 'liù', english: 'Six' },
+            { char: '妈妈', pinyin: 'mā ma', english: 'Mother' },
+            { char: '吗', pinyin: 'ma', english: '(question particle)' },
+            { char: '买', pinyin: 'mǎi', english: 'Buy' },
+            { char: '猫', pinyin: 'māo', english: 'Cat' },
+            {
+              char: '没关系',
+              pinyin: 'méi guān xi',
+              english: "It's OK / Never mind",
+            },
+            {
+              char: '没有',
+              pinyin: 'méi yǒu',
+              english: 'Not have / There is no',
+            },
+            { char: '米饭', pinyin: 'mǐ fàn', english: 'Cooked rice' },
+            { char: '明天', pinyin: 'míng tiān', english: 'Tomorrow' },
+            { char: '名字', pinyin: 'míng zi', english: 'Name' },
+            { char: '哪', pinyin: 'nǎ', english: 'Which' },
+            { char: '哪儿', pinyin: 'nǎr', english: 'Where' },
+            { char: '那', pinyin: 'nà', english: 'That' },
+            { char: '呢', pinyin: 'ne', english: '(question particle)' },
+            { char: '能', pinyin: 'néng', english: 'Can / Be able to' },
+            { char: '你', pinyin: 'nǐ', english: 'You' },
+            { char: '你好', pinyin: 'nǐ hǎo', english: 'Hello' },
+            { char: '年', pinyin: 'nián', english: 'Year' },
+            { char: '女儿', pinyin: 'nǚ ér', english: 'Daughter' },
+            { char: '朋友', pinyin: 'péng you', english: 'Friend' },
+            {
+              char: '漂亮',
+              pinyin: 'piào liang',
+              english: 'Pretty / Beautiful',
+            },
+            { char: '苹果', pinyin: 'píng guǒ', english: 'Apple' },
+            { char: '七', pinyin: 'qī', english: 'Seven' },
+            { char: '钱', pinyin: 'qián', english: 'Money' },
+            { char: '前面', pinyin: 'qián miàn', english: 'In front / Ahead' },
+            { char: '请', pinyin: 'qǐng', english: 'Please / Invite' },
+            { char: '去', pinyin: 'qù', english: 'Go' },
+            { char: '热', pinyin: 'rè', english: 'Hot' },
+            { char: '人', pinyin: 'rén', english: 'Person / People' },
+            { char: '认识', pinyin: 'rèn shi', english: 'Know (a person)' },
+            { char: '三', pinyin: 'sān', english: 'Three' },
+            { char: '商店', pinyin: 'shāng diàn', english: 'Shop / Store' },
+            { char: '上', pinyin: 'shàng', english: 'Above / On / Up' },
+            { char: '上午', pinyin: 'shàng wǔ', english: 'Morning / A.M.' },
+            { char: '少', pinyin: 'shǎo', english: 'Few / Little' },
+            { char: '谁', pinyin: 'shéi', english: 'Who' },
+            { char: '什么', pinyin: 'shén me', english: 'What' },
+            { char: '十', pinyin: 'shí', english: 'Ten' },
+            { char: '时候', pinyin: 'shí hou', english: 'Time / Moment' },
+            { char: '是', pinyin: 'shì', english: 'Be / Is / Yes' },
+            { char: '书', pinyin: 'shū', english: 'Book' },
+            { char: '水', pinyin: 'shuǐ', english: 'Water' },
+            { char: '水果', pinyin: 'shuǐ guǒ', english: 'Fruit' },
+            { char: '睡觉', pinyin: 'shuì jiào', english: 'Sleep' },
+            { char: '说', pinyin: 'shuō', english: 'Say / Speak' },
+            { char: '四', pinyin: 'sì', english: 'Four' },
+            { char: '岁', pinyin: 'suì', english: 'Year (of age)' },
+            { char: '他', pinyin: 'tā', english: 'He / Him' },
+            { char: '她', pinyin: 'tā', english: 'She / Her' },
+            { char: '太', pinyin: 'tài', english: 'Too / Extremely' },
+            { char: '天气', pinyin: 'tiān qì', english: 'Weather' },
+            { char: '听', pinyin: 'tīng', english: 'Listen / Hear' },
+            { char: '同学', pinyin: 'tóng xué', english: 'Classmate' },
+            { char: '喂', pinyin: 'wèi', english: 'Hello (on phone)' },
+            { char: '我', pinyin: 'wǒ', english: 'I / Me' },
+            { char: '我们', pinyin: 'wǒ men', english: 'We / Us' },
+            { char: '五', pinyin: 'wǔ', english: 'Five' },
+            { char: '下', pinyin: 'xià', english: 'Below / Under / Down' },
+            { char: '下午', pinyin: 'xià wǔ', english: 'Afternoon / P.M.' },
+            { char: '下雨', pinyin: 'xià yǔ', english: 'Rain' },
+            {
+              char: '先生',
+              pinyin: 'xiān sheng',
+              english: 'Mr. / Sir / Husband',
+            },
+            { char: '现在', pinyin: 'xiàn zài', english: 'Now' },
+            { char: '想', pinyin: 'xiǎng', english: 'Want / Think / Miss' },
+            { char: '小', pinyin: 'xiǎo', english: 'Small / Little' },
+            { char: '小姐', pinyin: 'xiǎo jiě', english: 'Miss / Young lady' },
+            { char: '些', pinyin: 'xiē', english: 'Some / A few' },
+            { char: '写', pinyin: 'xiě', english: 'Write' },
+            { char: '谢谢', pinyin: 'xiè xie', english: 'Thank you' },
+            { char: '星期', pinyin: 'xīng qī', english: 'Week' },
+            { char: '学生', pinyin: 'xué shēng', english: 'Student' },
+            { char: '学习', pinyin: 'xué xí', english: 'Study / Learn' },
+            { char: '学校', pinyin: 'xué xiào', english: 'School' },
+            { char: '一', pinyin: 'yī', english: 'One' },
+            { char: '衣服', pinyin: 'yī fu', english: 'Clothes' },
+            { char: '医生', pinyin: 'yī shēng', english: 'Doctor' },
+            { char: '医院', pinyin: 'yī yuàn', english: 'Hospital' },
+            { char: '椅子', pinyin: 'yǐ zi', english: 'Chair' },
+            { char: '有', pinyin: 'yǒu', english: 'Have / There is' },
+            { char: '语言', pinyin: 'yǔ yán', english: 'Language' },
+            { char: '再见', pinyin: 'zài jiàn', english: 'Goodbye' },
+            { char: '在', pinyin: 'zài', english: 'At / In / Be at' },
+            { char: '怎么', pinyin: 'zěn me', english: 'How / Why' },
+            {
+              char: '怎么样',
+              pinyin: 'zěn me yàng',
+              english: 'How is it? / What about?',
+            },
+            { char: '这', pinyin: 'zhè', english: 'This' },
+            { char: '中国', pinyin: 'zhōng guó', english: 'China' },
+            { char: '中午', pinyin: 'zhōng wǔ', english: 'Noon / Midday' },
+            { char: '住', pinyin: 'zhù', english: 'Live / Stay' },
+            { char: '桌子', pinyin: 'zhuō zi', english: 'Table / Desk' },
+            { char: '字', pinyin: 'zì', english: 'Character / Word' },
+            { char: '昨天', pinyin: 'zuó tiān', english: 'Yesterday' },
+            { char: '坐', pinyin: 'zuò', english: 'Sit / Travel by' },
+            { char: '做', pinyin: 'zuò', english: 'Do / Make' },
+          ],
+        },
+        hsk2: {
+          label: 'HSK 2',
+          chinese: '二级',
+          desc: '150 elementary words (builds on HSK 1)',
+          words: [
+            { char: '吧', pinyin: 'ba', english: '(suggestion particle)' },
+            { char: '白', pinyin: 'bái', english: 'White' },
+            { char: '百', pinyin: 'bǎi', english: 'Hundred' },
+            { char: '帮助', pinyin: 'bāng zhù', english: 'Help / Assist' },
+            { char: '报纸', pinyin: 'bào zhǐ', english: 'Newspaper' },
+            { char: '比', pinyin: 'bǐ', english: 'Compare / Than' },
+            { char: '别', pinyin: 'bié', english: "Don't" },
+            { char: '宾馆', pinyin: 'bīn guǎn', english: 'Hotel' },
+            { char: '长', pinyin: 'cháng', english: 'Long' },
+            { char: '唱歌', pinyin: 'chàng gē', english: 'Sing (a song)' },
+            { char: '出', pinyin: 'chū', english: 'Go out / Come out' },
+            { char: '穿', pinyin: 'chuān', english: 'Wear / Put on' },
+            { char: '次', pinyin: 'cì', english: 'Time / Occurrence' },
+            { char: '从', pinyin: 'cóng', english: 'From' },
+            { char: '错', pinyin: 'cuò', english: 'Wrong / Mistake' },
+            {
+              char: '打篮球',
+              pinyin: 'dǎ lán qiú',
+              english: 'Play basketball',
+            },
+            { char: '大家', pinyin: 'dà jiā', english: 'Everyone / Everybody' },
+            { char: '但是', pinyin: 'dàn shì', english: 'But / However' },
+            { char: '到', pinyin: 'dào', english: 'Arrive / Reach / To' },
+            { char: '地方', pinyin: 'dì fang', english: 'Place / Area' },
+            { char: '弟弟', pinyin: 'dì di', english: 'Younger brother' },
+            { char: '第一', pinyin: 'dì yī', english: 'First / Number one' },
+            { char: '懂', pinyin: 'dǒng', english: 'Understand' },
+            { char: '对', pinyin: 'duì', english: 'Correct / Right / To' },
+            { char: '房间', pinyin: 'fáng jiān', english: 'Room' },
+            { char: '非常', pinyin: 'fēi cháng', english: 'Very / Extremely' },
+            {
+              char: '服务员',
+              pinyin: 'fú wù yuán',
+              english: 'Waiter / Attendant',
+            },
+            { char: '告诉', pinyin: 'gào su', english: 'Tell / Inform' },
+            { char: '哥哥', pinyin: 'gē ge', english: 'Older brother' },
+            { char: '给', pinyin: 'gěi', english: 'Give / For' },
+            { char: '公共汽车', pinyin: 'gōng gòng qì chē', english: 'Bus' },
+            { char: '公司', pinyin: 'gōng sī', english: 'Company / Firm' },
+            { char: '贵', pinyin: 'guì', english: 'Expensive / Precious' },
+            { char: '过', pinyin: 'guò', english: 'Pass / Spend (time)' },
+            { char: '还', pinyin: 'hái', english: 'Still / Also / Yet' },
+            { char: '孩子', pinyin: 'hái zi', english: 'Child' },
+            { char: '好吃', pinyin: 'hǎo chī', english: 'Delicious' },
+            { char: '黑', pinyin: 'hēi', english: 'Black / Dark' },
+            { char: '红', pinyin: 'hóng', english: 'Red' },
+            {
+              char: '火车站',
+              pinyin: 'huǒ chē zhàn',
+              english: 'Train station',
+            },
+            { char: '机场', pinyin: 'jī chǎng', english: 'Airport' },
+            { char: '鸡蛋', pinyin: 'jī dàn', english: 'Egg' },
+            {
+              char: '件',
+              pinyin: 'jiàn',
+              english: '(measure word for clothes/matters)',
+            },
+            { char: '教室', pinyin: 'jiào shì', english: 'Classroom' },
+            { char: '姐姐', pinyin: 'jiě jie', english: 'Older sister' },
+            { char: '介绍', pinyin: 'jiè shào', english: 'Introduce' },
+            { char: '进', pinyin: 'jìn', english: 'Enter / Come in' },
+            { char: '近', pinyin: 'jìn', english: 'Near / Close' },
+            { char: '就', pinyin: 'jiù', english: 'Just / Then / Right away' },
+            { char: '觉得', pinyin: 'jué de', english: 'Feel / Think' },
+            { char: '咖啡', pinyin: 'kā fēi', english: 'Coffee' },
+            { char: '开始', pinyin: 'kāi shǐ', english: 'Start / Begin' },
+            { char: '考试', pinyin: 'kǎo shì', english: 'Exam / Test' },
+            { char: '可能', pinyin: 'kě néng', english: 'Maybe / Possible' },
+            { char: '可以', pinyin: 'kě yǐ', english: 'Can / May' },
+            { char: '课', pinyin: 'kè', english: 'Class / Lesson / Course' },
+            { char: '快', pinyin: 'kuài', english: 'Fast / Quick' },
+            { char: '快乐', pinyin: 'kuài lè', english: 'Happy / Joyful' },
+            { char: '累', pinyin: 'lèi', english: 'Tired' },
+            { char: '离', pinyin: 'lí', english: 'Away from / From' },
+            { char: '两', pinyin: 'liǎng', english: 'Two (of a kind)' },
+            { char: '路', pinyin: 'lù', english: 'Road / Path' },
+            { char: '旅游', pinyin: 'lǚ yóu', english: 'Travel / Tourism' },
+            { char: '卖', pinyin: 'mài', english: 'Sell' },
+            { char: '慢', pinyin: 'màn', english: 'Slow' },
+            { char: '忙', pinyin: 'máng', english: 'Busy' },
+            { char: '每', pinyin: 'měi', english: 'Every / Each' },
+            { char: '妹妹', pinyin: 'mèi mei', english: 'Younger sister' },
+            { char: '门', pinyin: 'mén', english: 'Door / Gate' },
+            { char: '面条', pinyin: 'miàn tiáo', english: 'Noodles' },
+            { char: '男', pinyin: 'nán', english: 'Male / Man' },
+            { char: '您', pinyin: 'nín', english: 'You (respectful)' },
+            { char: '牛奶', pinyin: 'niú nǎi', english: 'Milk' },
+            { char: '女', pinyin: 'nǚ', english: 'Female / Woman' },
+            { char: '旁边', pinyin: 'páng biān', english: 'Beside / Next to' },
+            { char: '跑步', pinyin: 'pǎo bù', english: 'Run / Jog' },
+            { char: '便宜', pinyin: 'pián yi', english: 'Cheap / Inexpensive' },
+            { char: '票', pinyin: 'piào', english: 'Ticket' },
+            { char: '妻子', pinyin: 'qī zi', english: 'Wife' },
+            {
+              char: '起床',
+              pinyin: 'qǐ chuáng',
+              english: 'Get up / Get out of bed',
+            },
+            { char: '千', pinyin: 'qiān', english: 'Thousand' },
+            { char: '晴', pinyin: 'qíng', english: 'Sunny / Clear' },
+            { char: '去年', pinyin: 'qù nián', english: 'Last year' },
+            { char: '让', pinyin: 'ràng', english: 'Let / Allow / Make' },
+            { char: '日', pinyin: 'rì', english: 'Sun / Day / Date' },
+            { char: '如果', pinyin: 'rú guǒ', english: 'If / In case' },
+            { char: '上班', pinyin: 'shàng bān', english: 'Go to work' },
+            { char: '身体', pinyin: 'shēn tǐ', english: 'Body / Health' },
+            {
+              char: '生病',
+              pinyin: 'shēng bìng',
+              english: 'Get sick / Fall ill',
+            },
+            { char: '生日', pinyin: 'shēng rì', english: 'Birthday' },
+            { char: '时间', pinyin: 'shí jiān', english: 'Time' },
+            {
+              char: '事情',
+              pinyin: 'shì qing',
+              english: 'Matter / Thing / Affair',
+            },
+            {
+              char: '手表',
+              pinyin: 'shǒu biǎo',
+              english: 'Watch (wristwatch)',
+            },
+            { char: '手机', pinyin: 'shǒu jī', english: 'Mobile phone' },
+            {
+              char: '送',
+              pinyin: 'sòng',
+              english: 'Give (as gift) / Send / See off',
+            },
+            {
+              char: '虽然',
+              pinyin: 'suī rán',
+              english: 'Although / Even though',
+            },
+            { char: '它', pinyin: 'tā', english: 'It' },
+            {
+              char: '踢足球',
+              pinyin: 'tī zú qiú',
+              english: 'Play football / Soccer',
+            },
+            { char: '题', pinyin: 'tí', english: 'Question / Problem / Topic' },
+            { char: '跳舞', pinyin: 'tiào wǔ', english: 'Dance' },
+            { char: '外', pinyin: 'wài', english: 'Outside / Foreign' },
+            { char: '完', pinyin: 'wán', english: 'Finish / Complete' },
+            { char: '玩', pinyin: 'wán', english: 'Play / Have fun' },
+            { char: '晚上', pinyin: 'wǎn shang', english: 'Evening / Night' },
+            { char: '往', pinyin: 'wǎng', english: 'Towards / To' },
+            { char: '为什么', pinyin: 'wèi shén me', english: 'Why' },
+            { char: '问', pinyin: 'wèn', english: 'Ask' },
+            { char: '问题', pinyin: 'wèn tí', english: 'Question / Problem' },
+            { char: '西瓜', pinyin: 'xī guā', english: 'Watermelon' },
+            { char: '希望', pinyin: 'xī wàng', english: 'Hope / Wish' },
+            { char: '洗', pinyin: 'xǐ', english: 'Wash' },
+            { char: '小时', pinyin: 'xiǎo shí', english: 'Hour' },
+            { char: '笑', pinyin: 'xiào', english: 'Laugh / Smile' },
+            { char: '新', pinyin: 'xīn', english: 'New' },
+            { char: '新闻', pinyin: 'xīn wén', english: 'News' },
+            { char: '姓', pinyin: 'xìng', english: 'Surname / Family name' },
+            { char: '休息', pinyin: 'xiū xi', english: 'Rest / Relax' },
+            { char: '雪', pinyin: 'xuě', english: 'Snow' },
+            { char: '颜色', pinyin: 'yán sè', english: 'Color' },
+            { char: '眼睛', pinyin: 'yǎn jing', english: 'Eye' },
+            { char: '羊肉', pinyin: 'yáng ròu', english: 'Mutton / Lamb' },
+            { char: '药', pinyin: 'yào', english: 'Medicine / Drug' },
+            { char: '要', pinyin: 'yào', english: 'Want / Need / Will' },
+            { char: '也', pinyin: 'yě', english: 'Also / Too' },
+            { char: '一起', pinyin: 'yī qǐ', english: 'Together' },
+            { char: '已经', pinyin: 'yǐ jīng', english: 'Already' },
+            { char: '一下', pinyin: 'yī xià', english: 'Once / A bit' },
+            { char: '意思', pinyin: 'yì si', english: 'Meaning' },
+            { char: '因为', pinyin: 'yīn wèi', english: 'Because' },
+            { char: '用', pinyin: 'yòng', english: 'Use' },
+            { char: '游泳', pinyin: 'yóu yǒng', english: 'Swim' },
+            { char: '右边', pinyin: 'yòu biān', english: 'Right side' },
+            { char: '鱼', pinyin: 'yú', english: 'Fish' },
+            { char: '元', pinyin: 'yuán', english: 'Yuan (currency)' },
+            { char: '远', pinyin: 'yuǎn', english: 'Far / Distant' },
+            { char: '运动', pinyin: 'yùn dòng', english: 'Sport / Exercise' },
+            { char: '再', pinyin: 'zài', english: 'Again / Once more' },
+            { char: '早上', pinyin: 'zǎo shang', english: 'Morning' },
+            { char: '丈夫', pinyin: 'zhàng fu', english: 'Husband' },
+            { char: '找', pinyin: 'zhǎo', english: 'Look for / Find' },
+            { char: '着', pinyin: 'zhe', english: '(ongoing action particle)' },
+            { char: '真', pinyin: 'zhēn', english: 'Real / True / Really' },
+            {
+              char: '正在',
+              pinyin: 'zhèng zài',
+              english: 'In the process of / Currently',
+            },
+            { char: '知道', pinyin: 'zhī dào', english: 'Know' },
+            {
+              char: '准备',
+              pinyin: 'zhǔn bèi',
+              english: 'Prepare / Get ready',
+            },
+            { char: '走', pinyin: 'zǒu', english: 'Walk / Go / Leave' },
+            { char: '最', pinyin: 'zuì', english: 'Most / -est' },
+            { char: '左边', pinyin: 'zuǒ biān', english: 'Left side' },
+          ],
+        },
+        lang1511: {
+          label: 'LANG 1511',
+          chinese: '课程',
+          desc: 'University course words by unit',
+          units: [
+            {
+              unit: 1,
+              words: [
+                { char: '你好', pinyin: 'nǐ hǎo', english: 'Hello' },
+                { char: '请问', pinyin: 'qǐng wèn', english: 'Excuse me' },
+                {
+                  char: '贵姓',
+                  pinyin: 'guì xìng',
+                  english: 'Your honorable surname',
+                },
+                { char: '姓', pinyin: 'xìng', english: 'Surname' },
+                { char: '叫', pinyin: 'jiào', english: 'To be called' },
+                { char: '名字', pinyin: 'míng zi', english: 'Name' },
+                { char: '老师', pinyin: 'lǎo shī', english: 'Teacher' },
+                { char: '学生', pinyin: 'xué shēng', english: 'Student' },
+              ],
+            },
+            {
+              unit: 2,
+              words: [
+                { char: '照片', pinyin: 'zhào piàn', english: 'Photo' },
+                { char: '爸爸', pinyin: 'bà ba', english: 'Dad' },
+                { char: '妈妈', pinyin: 'mā ma', english: 'Mom' },
+                { char: '女孩子', pinyin: 'nǚ hái zi', english: 'Girl' },
+                { char: '姐姐', pinyin: 'jiě jie', english: 'Older sister' },
+                { char: '男孩子', pinyin: 'nán hái zi', english: 'Boy' },
+                { char: '弟弟', pinyin: 'dì di', english: 'Younger brother' },
+                { char: '大哥', pinyin: 'dà gē', english: 'Eldest brother' },
+                { char: '儿子', pinyin: 'ér zi', english: 'Son' },
+                { char: '女儿', pinyin: 'nǚ ér', english: 'Daughter' },
+                { char: '家', pinyin: 'jiā', english: 'Family / Home' },
+                { char: '哥哥', pinyin: 'gē ge', english: 'Older brother' },
+                { char: '妹妹', pinyin: 'mèi mei', english: 'Younger sister' },
+              ],
+            },
+            {
+              unit: 3,
+              words: [
+                { char: '星期', pinyin: 'xīng qī', english: 'Week' },
+                { char: '生日', pinyin: 'shēng rì', english: 'Birthday' },
+                { char: '今年', pinyin: 'jīn nián', english: 'This year' },
+                { char: '多大', pinyin: 'duō dà', english: 'How old' },
+                { char: '岁', pinyin: 'suì', english: 'Years old' },
+                { char: '吃饭', pinyin: 'chī fàn', english: 'To eat' },
+                { char: '喜欢', pinyin: 'xǐ huan', english: 'To like' },
+                {
+                  char: '中国菜',
+                  pinyin: 'zhōng guó cài',
+                  english: 'Chinese food',
+                },
+                {
+                  char: '美国菜',
+                  pinyin: 'měi guó cài',
+                  english: 'American food',
+                },
+                { char: '点', pinyin: 'diǎn', english: "O'clock" },
+              ],
+            },
+            {
+              unit: 4,
+              words: [
+                { char: '周末', pinyin: 'zhōu mò', english: 'Weekend' },
+                { char: '打球', pinyin: 'dǎ qiú', english: 'Play ball' },
+                { char: '看电视', pinyin: 'kàn diàn shì', english: 'Watch TV' },
+                { char: '唱歌', pinyin: 'chàng gē', english: 'Sing' },
+                { char: '跳舞', pinyin: 'tiào wǔ', english: 'Dance' },
+                {
+                  char: '听音乐',
+                  pinyin: 'tīng yīn yuè',
+                  english: 'Listen to music',
+                },
+                { char: '看书', pinyin: 'kàn shū', english: 'Read books' },
+                {
+                  char: '看电影',
+                  pinyin: 'kàn diàn yǐng',
+                  english: 'Watch movies',
+                },
+                { char: '请客', pinyin: 'qǐng kè', english: 'To treat' },
+                { char: '觉得', pinyin: 'jué de', english: 'To feel / think' },
+              ],
+            },
+            {
+              unit: 5,
+              words: [
+                { char: '进来', pinyin: 'jìn lái', english: 'Come in' },
+                { char: '介绍', pinyin: 'jiè shào', english: 'Introduce' },
+                { char: '认识', pinyin: 'rèn shi', english: 'To know' },
+                { char: '高兴', pinyin: 'gāo xìng', english: 'Happy' },
+                { char: '漂亮', pinyin: 'piào liang', english: 'Beautiful' },
+                { char: '工作', pinyin: 'gōng zuò', english: 'Work' },
+                { char: '喝', pinyin: 'hē', english: 'Drink' },
+                { char: '茶', pinyin: 'chá', english: 'Tea' },
+                { char: '咖啡', pinyin: 'kā fēi', english: 'Coffee' },
+                { char: '可乐', pinyin: 'kě lè', english: 'Cola' },
+                { char: '水', pinyin: 'shuǐ', english: 'Water' },
+              ],
+            },
+            {
+              unit: 6,
+              words: [
+                { char: '问题', pinyin: 'wèn tí', english: 'Question' },
+                { char: '下午', pinyin: 'xià wǔ', english: 'Afternoon' },
+                { char: '开会', pinyin: 'kāi huì', english: 'Have a meeting' },
+                { char: '上午', pinyin: 'shàng wǔ', english: 'Morning' },
+                { char: '课', pinyin: 'kè', english: 'Class' },
+                { char: '考试', pinyin: 'kǎo shì', english: 'Exam' },
+                { char: '时候', pinyin: 'shí hou', english: 'Time / When' },
+                { char: '有空儿', pinyin: 'yǒu kòngr', english: 'Be free' },
+                { char: '方便', pinyin: 'fāng biàn', english: 'Convenient' },
+                { char: '办公室', pinyin: 'bàn gōng shì', english: 'Office' },
+              ],
+            },
+            {
+              unit: 7,
+              words: [
+                { char: '帮', pinyin: 'bāng', english: 'To help' },
+                { char: '复习', pinyin: 'fù xí', english: 'Review' },
+                {
+                  char: '中国字',
+                  pinyin: 'zhōng guó zì',
+                  english: 'Chinese characters',
+                },
+                { char: '写字', pinyin: 'xiě zì', english: 'Write characters' },
+                { char: '练习', pinyin: 'liàn xí', english: 'Practice' },
+                { char: '一起', pinyin: 'yì qǐ', english: 'Together' },
+                { char: '笔', pinyin: 'bǐ', english: 'Pen' },
+                { char: '纸', pinyin: 'zhǐ', english: 'Paper' },
+                { char: '懂', pinyin: 'dǒng', english: 'Understand' },
+                { char: '语法', pinyin: 'yǔ fǎ', english: 'Grammar' },
+                { char: '容易', pinyin: 'róng yì', english: 'Easy' },
+                { char: '生词', pinyin: 'shēng cí', english: 'New words' },
+                {
+                  char: '汉字',
+                  pinyin: 'hàn zì',
+                  english: 'Chinese characters',
+                },
+                { char: '难', pinyin: 'nán', english: 'Difficult' },
+              ],
+            },
+            {
+              unit: 8,
+              words: [
+                { char: '日记', pinyin: 'rì jì', english: 'Diary' },
+                { char: '起床', pinyin: 'qǐ chuáng', english: 'Get up' },
+                { char: '洗澡', pinyin: 'xǐ zǎo', english: 'Take a bath' },
+                { char: '早饭', pinyin: 'zǎo fàn', english: 'Breakfast' },
+                {
+                  char: '听录音',
+                  pinyin: 'tīng lù yīn',
+                  english: 'Listen to recordings',
+                },
+                { char: '教室', pinyin: 'jiào shì', english: 'Classroom' },
+                { char: '上课', pinyin: 'shàng kè', english: 'Attend class' },
+                { char: '发音', pinyin: 'fā yīn', english: 'Pronunciation' },
+                { char: '课文', pinyin: 'kè wén', english: 'Text' },
+                { char: '餐厅', pinyin: 'cān tīng', english: 'Cafeteria' },
+                { char: '午饭', pinyin: 'wǔ fàn', english: 'Lunch' },
+                { char: '图书馆', pinyin: 'tú shū guǎn', english: 'Library' },
+                { char: '上网', pinyin: 'shàng wǎng', english: 'Go online' },
+                { char: '晚饭', pinyin: 'wǎn fàn', english: 'Dinner' },
+                { char: '宿舍', pinyin: 'sù shè', english: 'Dorm' },
+                { char: '聊天儿', pinyin: 'liáo tiānr', english: 'Chat' },
+                {
+                  char: '做功课',
+                  pinyin: 'zuò gōng kè',
+                  english: 'Do homework',
+                },
+                { char: '回家', pinyin: 'huí jiā', english: 'Go home' },
+                { char: '睡觉', pinyin: 'shuì jiào', english: 'Sleep' },
+                {
+                  char: '打电话',
+                  pinyin: 'dǎ diàn huà',
+                  english: 'Make a phone call',
+                },
+              ],
+            },
+            {
+              unit: 9,
+              words: [
+                { char: '衣服', pinyin: 'yī fu', english: 'Clothes' },
+                { char: '衬衫', pinyin: 'chèn shān', english: 'Shirt' },
+                { char: '颜色', pinyin: 'yán sè', english: 'Color' },
+                { char: '裤子', pinyin: 'kù zi', english: 'Pants' },
+                { char: '大号', pinyin: 'dà hào', english: 'Large size' },
+                { char: '中号', pinyin: 'zhōng hào', english: 'Medium size' },
+                { char: '小号', pinyin: 'xiǎo hào', english: 'Small size' },
+                { char: '贵', pinyin: 'guì', english: 'Expensive' },
+                { char: '便宜', pinyin: 'pián yi', english: 'Cheap' },
+                { char: '长短', pinyin: 'cháng duǎn', english: 'Length' },
+                { char: '合适', pinyin: 'hé shì', english: 'Suitable' },
+                { char: '钱', pinyin: 'qián', english: 'Money' },
+              ],
+            },
+            {
+              unit: 10,
+              words: [
+                { char: '寒假', pinyin: 'hán jià', english: 'Winter break' },
+                { char: '回家', pinyin: 'huí jiā', english: 'Go home' },
+                {
+                  char: '飞机票',
+                  pinyin: 'fēi jī piào',
+                  english: 'Plane ticket',
+                },
+                { char: '飞机', pinyin: 'fēi jī', english: 'Airplane' },
+                { char: '机场', pinyin: 'jī chǎng', english: 'Airport' },
+                {
+                  char: '公共汽车',
+                  pinyin: 'gōng gòng qì chē',
+                  english: 'Bus',
+                },
+                { char: '地铁', pinyin: 'dì tiě', english: 'Subway' },
+                { char: '汽车', pinyin: 'qì chē', english: 'Car' },
+                { char: '站', pinyin: 'zhàn', english: 'Station / Stop' },
+                { char: '下车', pinyin: 'xià chē', english: 'Get off' },
+                { char: '换', pinyin: 'huàn', english: 'Change / Transfer' },
+                { char: '麻烦', pinyin: 'má fan', english: 'Troublesome' },
+                { char: '打车', pinyin: 'dǎ chē', english: 'Take a taxi' },
+                { char: '出租汽车', pinyin: 'chū zū qì chē', english: 'Taxi' },
+                { char: '开车', pinyin: 'kāi chē', english: 'Drive' },
+              ],
+            },
+          ],
+        },
       }
-    });
-  });
-}
 
-document.addEventListener('mouseup', () => {
-  if (isDragging) {
-    if (!hasDragged && dragContainer !== null && dragStartIndex !== null) {
-      // Plain click — toggle single button
-      const btns = getBtns(dragContainer);
-      const btn = btns[dragStartIndex];
-      if (btn) {
-        const type = dragType;
-        const id = type === 'unit' ? parseInt(btn.dataset.unit) : parseInt(btn.dataset.hsk);
-        const set = type === 'unit' ? selectedUnits : selectedHSKLevels;
-        if (dragAction === 'select') { set.add(id); btn.classList.add('selected'); }
-        else { set.delete(id); btn.classList.remove('selected'); }
+      let vocab = wordSets.hsk1.words // active word set
+
+      // ── STATE ────────────────────────────────────────────────────────
+      let settings = {
+        answerStyle: 'multiple-choice',
+        defaultMode: 2,
+        sessionSize: 20,
       }
-    }
-    isDragging = false;
-    hasDragged = false;
-    dragAction = null;
-    dragType = null;
-    dragStartIndex = null;
-    dragContainer = null;
-    setTimeout(() => {
-      const startBtn = document.querySelector('.start-btn');
-      const rect = startBtn.getBoundingClientRect();
-      if (rect.bottom > window.innerHeight || rect.top < 0) {
-        startBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      let sessionMode = 2
+      let queue = [] // [{word, stage}]  stage: 1|2|3
+      let qIdx = 0
+      let score = 0
+      let wrongCount = 0
+      let totalAttempts = 0
+      let allTimeStats = { studied: 0, correct: 0, sessions: 0 }
+      let answered = false
+
+      function shuffle(arr) {
+        return [...arr].sort(() => Math.random() - 0.5)
       }
-    }, 100);
-  }
-});
 
-function toggleHSK(level, el) {
-  if (selectedHSKLevels.has(level)) { selectedHSKLevels.delete(level); el.classList.remove('selected'); }
-  else { selectedHSKLevels.add(level); el.classList.add('selected'); }
-  setTimeout(() => {
-    const btn = document.querySelector('.start-btn');
-    const rect = btn.getBoundingClientRect();
-    if (rect.bottom > window.innerHeight || rect.top < 0) {
-      btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 100);
-}
+      // ── PAGES ────────────────────────────────────────────────────────
+      function showPage(id) {
+        document
+          .querySelectorAll('.page')
+          .forEach((p) => p.classList.remove('active'))
+        document.getElementById(id).classList.add('active')
+        if (id === 'wordset') {
+          // Clear all selections
+          document
+            .querySelectorAll('.ws-btn')
+            .forEach((c) => c.classList.remove('ws-selected'))
+          selectedWordSet = null
+          document.getElementById('unit-picker').style.display = 'none'
+          document.getElementById('hsk-picker').style.display = 'none'
+          document.getElementById('settings-toggle').style.display = 'none'
+          document.getElementById('settings-dropdown').style.display = 'none'
+          document.getElementById('settings-arrow').style.transform = ''
+        }
+        updateStatsBar()
+      }
 
-function toggleUnit(num, el) {
-  if (selectedUnits.has(num)) { selectedUnits.delete(num); el.classList.remove('selected'); }
-  else { selectedUnits.add(num); el.classList.add('selected'); }
-  setTimeout(() => {
-    const btn = document.querySelector('.start-btn');
-    const rect = btn.getBoundingClientRect();
-    if (rect.bottom > window.innerHeight || rect.top < 0) {
-      btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, 100);
-}
+      function updateStatsBar() {
+        document.getElementById('statTotal').textContent = allTimeStats.studied
+        document.getElementById('statCorrect').textContent =
+          allTimeStats.correct
+        document.getElementById('statSessions').textContent =
+          allTimeStats.sessions
+      }
 
-function selectAllUnits() {
-  wordSets.lang1511.units.forEach(u => selectedUnits.add(u.unit));
-  renderUnitPicker();
-}
+      // ── WORD SET SELECT ─────────────────────────────────────────────
+      let selectedWordSet = 'hsk1'
+      let lastSession = null // { wordSetKey, units, settings, vocab }
+      let selectedUnits = new Set()
+      let selectedHSKLevels = new Set()
 
-function clearAllUnits() {
-  selectedUnits.clear();
-  renderUnitPicker();
-}
+      function selectWordSet(key, el) {
+        selectedWordSet = key
+        document
+          .querySelectorAll('.ws-btn')
+          .forEach((c) => c.classList.remove('ws-selected'))
+        el.classList.add('ws-selected')
+        const picker = document.getElementById('unit-picker')
+        const hskPicker = document.getElementById('hsk-picker')
+        if (key === 'lang1511') {
+          picker.style.display = 'block'
+          hskPicker.style.display = 'none'
+          renderUnitPicker()
+        } else if (key === 'hsk') {
+          hskPicker.style.display = 'block'
+          picker.style.display = 'none'
+        } else {
+          picker.style.display = 'none'
+          hskPicker.style.display = 'none'
+        }
+        // For last session, restore settings visually
+        if (key === 'last' && lastSession) {
+          settings = { ...lastSession.settings }
+          syncSettingsUI()
+        }
+        // Show and open settings
+        const toggle = document.getElementById('settings-toggle')
+        const dropdown = document.getElementById('settings-dropdown')
+        const arrow = document.getElementById('settings-arrow')
+        toggle.style.display = 'flex'
+        toggle.style.alignItems = 'center'
+        dropdown.style.display = 'block'
+        arrow.style.transform = 'rotate(90deg)'
+        // Scroll to show settings toggle area
+        setTimeout(() => {
+          toggle.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 100)
+      }
 
-function goToModeSelect() {
-  if (selectedWordSet === 'hsk') {
-    if (selectedHSKLevels.size === 0) { alert('Please select at least one HSK level.'); return; }
-    vocab = [];
-    if (selectedHSKLevels.has(1)) vocab = vocab.concat(wordSets.hsk1.words);
-    if (selectedHSKLevels.has(2)) vocab = vocab.concat(wordSets.hsk2.words);
-    lastSession = { wordSetKey: 'hsk', units: new Set(selectedHSKLevels), settings: { ...settings }, vocab: [...vocab] };
-    const desc = 'HSK ' + [...selectedHSKLevels].sort().join(' + ') + ' · ' + vocab.length + ' words';
-    document.getElementById('last-session-desc').textContent = desc;
-    const lastBtn = document.getElementById('ws-last');
-    lastBtn.style.display = ''; lastBtn.style.opacity = '1';
-    showPage('home');
-    return;
-  }
-  if (selectedWordSet === 'last') {
-    if (!lastSession) return;
-    vocab = lastSession.vocab;
-    settings = { ...lastSession.settings };
-    sessionMode = settings.defaultMode;
-    showPage('home');
-    return;
-  }
-  if (selectedWordSet === 'lang1511') {
-    if (selectedUnits.size === 0) { alert('Please select at least one unit.'); return; }
-    vocab = wordSets.lang1511.units
-      .filter(u => selectedUnits.has(u.unit))
-      .flatMap(u => u.words);
-  } else {
-    vocab = wordSets[selectedWordSet].words;
-  }
-  // Save as last session
-  lastSession = {
-    wordSetKey: selectedWordSet,
-    units: new Set(selectedUnits),
-    settings: { ...settings },
-    vocab: [...vocab]
-  };
-  // Build description for the card
-  let desc = '';
-  if (selectedWordSet === 'hsk1') desc = 'HSK 1 · ' + vocab.length + ' words';
-  else if (selectedWordSet === 'hsk2') desc = 'HSK 2 · ' + vocab.length + ' words';
-  else if (selectedWordSet === 'lang1511') desc = 'LANG 1511 · Units ' + [...selectedUnits].sort((a,b)=>a-b).join(', ');
-  document.getElementById('last-session-desc').textContent = desc;
-  const lastBtn = document.getElementById('ws-last');
-  lastBtn.style.display = '';
-  lastBtn.style.opacity = '1';
-  showPage('home');
-}
+      function renderUnitPicker() {
+        const grid = document.getElementById('unit-picker-grid')
+        const units = wordSets.lang1511.units
+        grid.innerHTML = units
+          .map((u) => {
+            const sel = selectedUnits.has(u.unit) ? ' selected' : ''
+            return `<button class="unit-btn${sel}" data-unit="${u.unit}">Unit ${u.unit} <span style="font-size:0.75rem;opacity:0.6">(${u.words.length})</span></button>`
+          })
+          .join('')
+      }
 
-function syncSettingsUI() {
-  // Answer style
-  document.querySelectorAll('[id^="sopt-mc"],[id^="sopt-type"]').forEach(b => b.classList.remove('selected'));
-  document.getElementById(settings.answerStyle === 'multiple-choice' ? 'sopt-mc' : 'sopt-type').classList.add('selected');
-  // Mode
-  ['m1','m2','m3'].forEach(m => document.getElementById('sopt-'+m)?.classList.remove('selected'));
-  document.getElementById('sopt-m'+settings.defaultMode)?.classList.add('selected');
-  // Session size
-  ['c10','c20','c30'].forEach(c => document.getElementById('sopt-'+c)?.classList.remove('selected'));
-  const sizeMap = {10:'c10',20:'c20',30:'c30'};
-  document.getElementById('sopt-'+(sizeMap[settings.sessionSize]||'c20'))?.classList.add('selected');
-}
+      // ── DRAG SELECT ─────────────────────────────────────────────────
+      let isDragging = false
+      let hasDragged = false
+      let dragAction = null
+      let dragType = null
+      let dragStartIndex = null
+      let dragContainer = null
 
-// ── MODE SELECT ──────────────────────────────────────────────────
-function selectMode(m, el) {
-  sessionMode = m;
-  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-}
+      function getBtns(containerEl) {
+        return Array.from(containerEl.querySelectorAll('.unit-btn'))
+      }
 
-// ── SETTINGS ────────────────────────────────────────────────────
-function selectSetting(key, val, el) {
-  settings[key] = val;
-  // deselect siblings
-  el.parentElement.querySelectorAll('.setting-opt').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-}
-function toggleSettings() {
-  const dropdown = document.getElementById('settings-dropdown');
-  const arrow = document.getElementById('settings-arrow');
-  const open = dropdown.style.display === 'none';
-  dropdown.style.display = open ? 'block' : 'none';
-  arrow.style.transform = open ? 'rotate(90deg)' : '';
-}
+      function initDragSelect(containerEl, type) {
+        containerEl.addEventListener('mousedown', (e) => {
+          const btn = e.target.closest('.unit-btn')
+          if (!btn) return
+          isDragging = true
+          hasDragged = false
+          dragType = type
+          dragContainer = containerEl
+          const btns = getBtns(containerEl)
+          dragStartIndex = btns.indexOf(btn)
+          const id =
+            type === 'unit'
+              ? parseInt(btn.dataset.unit)
+              : parseInt(btn.dataset.hsk)
+          const set = type === 'unit' ? selectedUnits : selectedHSKLevels
+          dragAction = set.has(id) ? 'deselect' : 'select'
+        })
 
-// ── BUILD QUEUE ──────────────────────────────────────────────────
-function buildQueue() {
-  const size = Math.min(settings.sessionSize, vocab.length);
-  const words = shuffle(vocab).slice(0, size);
-  queue = [];
-  const stages = sessionMode === 1 ? [1] : sessionMode === 2 ? [1, 2] : [1, 2, 3];
-  words.forEach(w => stages.forEach(s => queue.push({ word: w, stage: s })));
-  // For mode 2&3, group by word so stages stay together
-  if (sessionMode > 1) {
-    const grouped = [];
-    words.forEach(w => {
-      stages.forEach(s => grouped.push({ word: w, stage: s }));
-    });
-    queue = grouped;
-  }
-}
+        containerEl.addEventListener('mousemove', (e) => {
+          if (!isDragging || dragType !== type) return
+          const btn = e.target.closest('.unit-btn')
+          if (!btn) return
+          const btns = getBtns(containerEl)
+          const currentIndex = btns.indexOf(btn)
+          if (currentIndex === dragStartIndex) return // must move to a different button
+          hasDragged = true
+          // Apply to all buttons between start and current index (range)
+          const lo = Math.min(dragStartIndex, currentIndex)
+          const hi = Math.max(dragStartIndex, currentIndex)
+          btns.forEach((b, i) => {
+            if (i >= lo && i <= hi) {
+              const id =
+                type === 'unit'
+                  ? parseInt(b.dataset.unit)
+                  : parseInt(b.dataset.hsk)
+              const set = type === 'unit' ? selectedUnits : selectedHSKLevels
+              if (dragAction === 'select') {
+                set.add(id)
+                b.classList.add('selected')
+              } else {
+                set.delete(id)
+                b.classList.remove('selected')
+              }
+            }
+          })
+        })
+      }
 
-// ── START ────────────────────────────────────────────────────────
-function startStudy() {
-  buildQueue();
-  qIdx = 0; score = 0; wrongCount = 0; totalAttempts = 0; answered = false;
-  allTimeStats.sessions++;
-  showPage('study');
-  renderCard();
-}
+      document.addEventListener('mouseup', () => {
+        if (isDragging) {
+          if (
+            !hasDragged &&
+            dragContainer !== null &&
+            dragStartIndex !== null
+          ) {
+            // Plain click — toggle single button
+            const btns = getBtns(dragContainer)
+            const btn = btns[dragStartIndex]
+            if (btn) {
+              const type = dragType
+              const id =
+                type === 'unit'
+                  ? parseInt(btn.dataset.unit)
+                  : parseInt(btn.dataset.hsk)
+              const set = type === 'unit' ? selectedUnits : selectedHSKLevels
+              if (dragAction === 'select') {
+                set.add(id)
+                btn.classList.add('selected')
+              } else {
+                set.delete(id)
+                btn.classList.remove('selected')
+              }
+            }
+          }
+          isDragging = false
+          hasDragged = false
+          dragAction = null
+          dragType = null
+          dragStartIndex = null
+          dragContainer = null
+          setTimeout(() => {
+            const startBtn = document.querySelector('.start-btn')
+            const rect = startBtn.getBoundingClientRect()
+            if (rect.bottom > window.innerHeight || rect.top < 0) {
+              startBtn.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+          }, 100)
+        }
+      })
 
-// ── RENDER CARD ──────────────────────────────────────────────────
-function renderCard() {
-  answered = false;
-  const { word, stage } = queue[qIdx];
-  const totalWords = queue.filter((q,i) => q.stage === (sessionMode === 1 ? 1 : 1) && true).length;
-  
-  // Progress
-  const pct = Math.round((qIdx / queue.length) * 100);
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressLabel').textContent = `Card ${qIdx + 1} of ${queue.length}`;
-  document.getElementById('scoreDisplay').textContent = score;
+      function toggleHSK(level, el) {
+        if (selectedHSKLevels.has(level)) {
+          selectedHSKLevels.delete(level)
+          el.classList.remove('selected')
+        } else {
+          selectedHSKLevels.add(level)
+          el.classList.add('selected')
+        }
+        setTimeout(() => {
+          const btn = document.querySelector('.start-btn')
+          const rect = btn.getBoundingClientRect()
+          if (rect.bottom > window.innerHeight || rect.top < 0) {
+            btn.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 100)
+      }
 
-  // Stage dots (for mode 2 & 3)
-  const dotsEl = document.getElementById('stageDots');
-  dotsEl.innerHTML = '';
-  if (sessionMode > 1) {
-    const maxStage = sessionMode;
-    for (let i = 1; i <= maxStage; i++) {
-      const d = document.createElement('div');
-      d.className = 'stage-dot' + (i === stage ? ' active' : i < stage ? ' done' : '');
-      dotsEl.appendChild(d);
-    }
-  }
+      function toggleUnit(num, el) {
+        if (selectedUnits.has(num)) {
+          selectedUnits.delete(num)
+          el.classList.remove('selected')
+        } else {
+          selectedUnits.add(num)
+          el.classList.add('selected')
+        }
+        setTimeout(() => {
+          const btn = document.querySelector('.start-btn')
+          const rect = btn.getBoundingClientRect()
+          if (rect.bottom > window.innerHeight || rect.top < 0) {
+            btn.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 100)
+      }
 
-  // Reset feedback & next
-  const fb = document.getElementById('feedback');
-  fb.className = 'feedback';
-  fb.textContent = '';
-  document.getElementById('nextBtn').classList.remove('visible'); document.getElementById('enterHint').style.display='none';
+      function selectAllUnits() {
+        wordSets.lang1511.units.forEach((u) => selectedUnits.add(u.unit))
+        renderUnitPicker()
+      }
 
-  // Write to whichever face is currently visible (no flip state change = no jump)
-  const cardInner = document.getElementById('cardInner');
-  const isFlipped = cardInner.classList.contains('flipped');
-  const front = isFlipped ? document.getElementById('cardBack') : document.getElementById('cardFront');
-  const back  = isFlipped ? document.getElementById('cardFront') : document.getElementById('cardBack');
-  front.innerHTML = '';
-  back.innerHTML = '';
+      function clearAllUnits() {
+        selectedUnits.clear()
+        renderUnitPicker()
+      }
 
-  // Build answer area
-  const answerArea = document.getElementById('answerArea');
-  answerArea.innerHTML = '';
+      function goToModeSelect() {
+        if (selectedWordSet === 'hsk') {
+          if (selectedHSKLevels.size === 0) {
+            alert('Please select at least one HSK level.')
+            return
+          }
+          vocab = []
+          if (selectedHSKLevels.has(1))
+            vocab = vocab.concat(wordSets.hsk1.words)
+          if (selectedHSKLevels.has(2))
+            vocab = vocab.concat(wordSets.hsk2.words)
+          lastSession = {
+            wordSetKey: 'hsk',
+            units: new Set(selectedHSKLevels),
+            settings: { ...settings },
+            vocab: [...vocab],
+          }
+          const desc =
+            'HSK ' +
+            [...selectedHSKLevels].sort().join(' + ') +
+            ' · ' +
+            vocab.length +
+            ' words'
+          document.getElementById('last-session-desc').textContent = desc
+          const lastBtn = document.getElementById('ws-last')
+          lastBtn.style.display = ''
+          lastBtn.style.opacity = '1'
+          showPage('home')
+          return
+        }
+        if (selectedWordSet === 'last') {
+          if (!lastSession) return
+          vocab = lastSession.vocab
+          settings = { ...lastSession.settings }
+          sessionMode = settings.defaultMode
+          showPage('home')
+          return
+        }
+        if (selectedWordSet === 'lang1511') {
+          if (selectedUnits.size === 0) {
+            alert('Please select at least one unit.')
+            return
+          }
+          vocab = wordSets.lang1511.units
+            .filter((u) => selectedUnits.has(u.unit))
+            .flatMap((u) => u.words)
+        } else {
+          vocab = wordSets[selectedWordSet].words
+        }
+        // Save as last session
+        lastSession = {
+          wordSetKey: selectedWordSet,
+          units: new Set(selectedUnits),
+          settings: { ...settings },
+          vocab: [...vocab],
+        }
+        // Build description for the card
+        let desc = ''
+        if (selectedWordSet === 'hsk1')
+          desc = 'HSK 1 · ' + vocab.length + ' words'
+        else if (selectedWordSet === 'hsk2')
+          desc = 'HSK 2 · ' + vocab.length + ' words'
+        else if (selectedWordSet === 'lang1511')
+          desc =
+            'LANG 1511 · Units ' +
+            [...selectedUnits].sort((a, b) => a - b).join(', ')
+        document.getElementById('last-session-desc').textContent = desc
+        const lastBtn = document.getElementById('ws-last')
+        lastBtn.style.display = ''
+        lastBtn.style.opacity = '1'
+        showPage('home')
+      }
 
-  if (sessionMode === 1) {
-    // Front: character + pinyin → guess English
-    front.innerHTML = `
+      function syncSettingsUI() {
+        // Answer style
+        document
+          .querySelectorAll('[id^="sopt-mc"],[id^="sopt-type"]')
+          .forEach((b) => b.classList.remove('selected'))
+        document
+          .getElementById(
+            settings.answerStyle === 'multiple-choice'
+              ? 'sopt-mc'
+              : 'sopt-type',
+          )
+          .classList.add('selected')
+        // Mode
+        ;['m1', 'm2', 'm3'].forEach((m) =>
+          document.getElementById('sopt-' + m)?.classList.remove('selected'),
+        )
+        document
+          .getElementById('sopt-m' + settings.defaultMode)
+          ?.classList.add('selected')
+        // Session size
+        ;['c10', 'c20', 'c30'].forEach((c) =>
+          document.getElementById('sopt-' + c)?.classList.remove('selected'),
+        )
+        const sizeMap = { 10: 'c10', 20: 'c20', 30: 'c30' }
+        document
+          .getElementById('sopt-' + (sizeMap[settings.sessionSize] || 'c20'))
+          ?.classList.add('selected')
+      }
+
+      // ── MODE SELECT ──────────────────────────────────────────────────
+      function selectMode(m, el) {
+        sessionMode = m
+        document
+          .querySelectorAll('.mode-card')
+          .forEach((c) => c.classList.remove('selected'))
+        el.classList.add('selected')
+      }
+
+      // ── SETTINGS ────────────────────────────────────────────────────
+      function selectSetting(key, val, el) {
+        settings[key] = val
+        // deselect siblings
+        el.parentElement
+          .querySelectorAll('.setting-opt')
+          .forEach((o) => o.classList.remove('selected'))
+        el.classList.add('selected')
+      }
+      function toggleSettings() {
+        const dropdown = document.getElementById('settings-dropdown')
+        const arrow = document.getElementById('settings-arrow')
+        const open = dropdown.style.display === 'none'
+        dropdown.style.display = open ? 'block' : 'none'
+        arrow.style.transform = open ? 'rotate(90deg)' : ''
+      }
+
+      // ── BUILD QUEUE ──────────────────────────────────────────────────
+      function buildQueue() {
+        const size = Math.min(settings.sessionSize, vocab.length)
+        const words = shuffle(vocab).slice(0, size)
+        queue = []
+        const stages =
+          sessionMode === 1 ? [1] : sessionMode === 2 ? [1, 2] : [1, 2, 3]
+        words.forEach((w) =>
+          stages.forEach((s) => queue.push({ word: w, stage: s })),
+        )
+        // For mode 2&3, group by word so stages stay together
+        if (sessionMode > 1) {
+          const grouped = []
+          words.forEach((w) => {
+            stages.forEach((s) => grouped.push({ word: w, stage: s }))
+          })
+          queue = grouped
+        }
+      }
+
+      // ── START ────────────────────────────────────────────────────────
+      function startStudy() {
+        buildQueue()
+        qIdx = 0
+        score = 0
+        wrongCount = 0
+        totalAttempts = 0
+        answered = false
+        allTimeStats.sessions++
+        showPage('study')
+        renderCard()
+      }
+
+      // ── RENDER CARD ──────────────────────────────────────────────────
+      function renderCard() {
+        answered = false
+        const { word, stage } = queue[qIdx]
+        const totalWords = queue.filter(
+          (q, i) => q.stage === (sessionMode === 1 ? 1 : 1) && true,
+        ).length
+
+        // Progress
+        const pct = Math.round((qIdx / queue.length) * 100)
+        document.getElementById('progressFill').style.width = pct + '%'
+        document.getElementById('progressLabel').textContent =
+          `Card ${qIdx + 1} of ${queue.length}`
+        document.getElementById('scoreDisplay').textContent = score
+
+        // Stage dots (for mode 2 & 3)
+        const dotsEl = document.getElementById('stageDots')
+        dotsEl.innerHTML = ''
+        if (sessionMode > 1) {
+          const maxStage = sessionMode
+          for (let i = 1; i <= maxStage; i++) {
+            const d = document.createElement('div')
+            d.className =
+              'stage-dot' + (i === stage ? ' active' : i < stage ? ' done' : '')
+            dotsEl.appendChild(d)
+          }
+        }
+
+        // Reset feedback & next
+        const fb = document.getElementById('feedback')
+        fb.className = 'feedback'
+        fb.textContent = ''
+        document.getElementById('nextBtn').classList.remove('visible')
+        document.getElementById('enterHint').style.display = 'none'
+
+        // Write to whichever face is currently visible (no flip state change = no jump)
+        const cardInner = document.getElementById('cardInner')
+        const isFlipped = cardInner.classList.contains('flipped')
+        const front = isFlipped
+          ? document.getElementById('cardBack')
+          : document.getElementById('cardFront')
+        const back = isFlipped
+          ? document.getElementById('cardFront')
+          : document.getElementById('cardBack')
+        front.innerHTML = ''
+        back.innerHTML = ''
+
+        // Build answer area
+        const answerArea = document.getElementById('answerArea')
+        answerArea.innerHTML = ''
+
+        if (sessionMode === 1) {
+          // Front: character + pinyin → guess English
+          front.innerHTML = `
       <div class="card-tag">What does this mean?</div>
       <div class="card-char">${word.char}</div>
-      <div class="card-pinyin">${word.pinyin}</div>`;
-    back.innerHTML = `
+      <div class="card-pinyin">${word.pinyin}</div>`
+          back.innerHTML = `
       <div class="card-tag">English</div>
-      <div class="card-english">${word.english}</div>`;
-    buildAnswerUI('english', word);
-
-  } else if (stage === 1) {
-    // Front: character → guess pinyin
-    front.innerHTML = `
+      <div class="card-english">${word.english}</div>`
+          buildAnswerUI('english', word)
+        } else if (stage === 1) {
+          // Front: character → guess pinyin
+          front.innerHTML = `
       <div class="card-tag">What is the pinyin?</div>
-      <div class="card-char">${word.char}</div>`;
-    back.innerHTML = `
+      <div class="card-char">${word.char}</div>`
+          back.innerHTML = `
       <div class="card-tag">Pinyin</div>
       <div class="card-pinyin" style="font-size:2rem">${word.pinyin}</div>
-`;
-    buildAnswerUI('pinyin', word);
-
-  } else if (stage === 2) {
-    // Front: character + pinyin → guess English
-    front.innerHTML = `
+`
+          buildAnswerUI('pinyin', word)
+        } else if (stage === 2) {
+          // Front: character + pinyin → guess English
+          front.innerHTML = `
       <div class="card-tag">What does this mean?</div>
       <div class="card-char">${word.char}</div>
-      <div class="card-pinyin">${word.pinyin}</div>`;
-    back.innerHTML = `
+      <div class="card-pinyin">${word.pinyin}</div>`
+          back.innerHTML = `
       <div class="card-tag">English</div>
-      <div class="card-english">${word.english}</div>`;
-    buildAnswerUI('english', word);
-
-  } else if (stage === 3) {
-    // Front: English → recall character (flip to reveal)
-    front.innerHTML = `
+      <div class="card-english">${word.english}</div>`
+          buildAnswerUI('english', word)
+        } else if (stage === 3) {
+          // Front: English → recall character (flip to reveal)
+          front.innerHTML = `
       <div class="card-tag">Recall the character</div>
       <div class="card-english" style="font-size:2rem;margin:12px 0">${word.english}</div>
-      <div class="flip-hint">↩ Click to reveal</div>`;
-    back.innerHTML = `
+      <div class="flip-hint">↩ Click to reveal</div>`
+          back.innerHTML = `
       <div class="card-tag">Character</div>
       <div class="card-char">${word.char}</div>
-      <div class="card-pinyin">${word.pinyin}</div>`;
-    // flip on click for stage 3
-    document.getElementById('cardFront').onclick = () => flipCard();
-    document.getElementById('cardBack').onclick = () => flipCard();
-    answerArea.innerHTML = `
+      <div class="card-pinyin">${word.pinyin}</div>`
+          // flip on click for stage 3
+          document.getElementById('cardFront').onclick = () => flipCard()
+          document.getElementById('cardBack').onclick = () => flipCard()
+          answerArea.innerHTML = `
       <button class="flip-btn" onclick="flipCard()">Reveal Character</button>
       <div style="display:none" id="selfRate">
         <p style="text-align:center;font-size:0.85rem;color:var(--text-muted);margin-bottom:10px;font-style:italic">Did you remember it?</p>
@@ -1414,196 +2503,242 @@ function renderCard() {
           <button class="choice-btn correct" style="flex:1;text-align:center" onclick="rateself(true)">✓ Yes</button>
           <button class="choice-btn wrong" style="flex:1;text-align:center" onclick="rateself(false)">✗ No</button>
         </div>
-      </div>`;
-    return;
-  }
-}
+      </div>`
+          return
+        }
+      }
 
-function flipCard() {
-  document.getElementById('cardInner').classList.toggle('flipped');
-  // show self-rate after flip for stage 3
-  const sr = document.getElementById('selfRate');
-  if (sr) sr.style.display = 'block';
-  document.querySelector('.flip-btn') && (document.querySelector('.flip-btn').style.display = 'none');
-}
+      function flipCard() {
+        document.getElementById('cardInner').classList.toggle('flipped')
+        // show self-rate after flip for stage 3
+        const sr = document.getElementById('selfRate')
+        if (sr) sr.style.display = 'block'
+        document.querySelector('.flip-btn') &&
+          (document.querySelector('.flip-btn').style.display = 'none')
+      }
 
-function rateself(correct) {
-  totalAttempts++;
-  if (correct) { score++; allTimeStats.correct++; }
-  else wrongCount++;
-  allTimeStats.studied++;
-  showFeedback(correct, queue[qIdx].word.char + ' · ' + queue[qIdx].word.pinyin);
-  document.querySelectorAll('#selfRate button').forEach(b => b.disabled = true);
-  document.getElementById('nextBtn').classList.add('visible'); document.getElementById('enterHint').style.display='block';
-}
+      function rateself(correct) {
+        totalAttempts++
+        if (correct) {
+          score++
+          allTimeStats.correct++
+        } else wrongCount++
+        allTimeStats.studied++
+        showFeedback(
+          correct,
+          queue[qIdx].word.char + ' · ' + queue[qIdx].word.pinyin,
+        )
+        document
+          .querySelectorAll('#selfRate button')
+          .forEach((b) => (b.disabled = true))
+        document.getElementById('nextBtn').classList.add('visible')
+        document.getElementById('enterHint').style.display = 'block'
+      }
 
-// ── ANSWER UI ────────────────────────────────────────────────────
-function buildAnswerUI(target, word) {
-  const answerArea = document.getElementById('answerArea');
+      // ── ANSWER UI ────────────────────────────────────────────────────
+      function buildAnswerUI(target, word) {
+        const answerArea = document.getElementById('answerArea')
 
-  if (settings.answerStyle === 'multiple-choice') {
-    // Get 3 distractors
-    const distractors = shuffle(vocab.filter(v => v !== word)).slice(0, 3);
-    const options = shuffle([word, ...distractors]);
-    const html = options.map(opt => {
-      const label = target === 'pinyin' ? opt.pinyin : opt.english;
-      return `<button class="choice-btn" onclick="checkAnswer(this,'${escStr(label)}','${escStr(target === 'pinyin' ? word.pinyin : word.english)}')">${label}</button>`;
-    }).join('');
-    answerArea.innerHTML = `<div class="choices">${html}</div>`;
-
-  } else {
-    const placeholder = target === 'pinyin' ? 'Type pinyin (e.g. nǐ hǎo)...' : 'Type English meaning...';
-    answerArea.innerHTML = `
+        if (settings.answerStyle === 'multiple-choice') {
+          // Get 3 distractors
+          const distractors = shuffle(vocab.filter((v) => v !== word)).slice(
+            0,
+            3,
+          )
+          const options = shuffle([word, ...distractors])
+          const html = options
+            .map((opt) => {
+              const label = target === 'pinyin' ? opt.pinyin : opt.english
+              return `<button class="choice-btn" onclick="checkAnswer(this,'${escStr(label)}','${escStr(target === 'pinyin' ? word.pinyin : word.english)}')">${label}</button>`
+            })
+            .join('')
+          answerArea.innerHTML = `<div class="choices">${html}</div>`
+        } else {
+          const placeholder =
+            target === 'pinyin'
+              ? 'Type pinyin (e.g. nǐ hǎo)...'
+              : 'Type English meaning...'
+          answerArea.innerHTML = `
       <div class="type-area">
         <input class="type-input" id="typeInput" placeholder="${placeholder}" onkeydown="if(event.key==='Enter')submitType('${escStr(target === 'pinyin' ? word.pinyin : word.english)}')">
         <button class="submit-btn" onclick="submitType('${escStr(target === 'pinyin' ? word.pinyin : word.english)}')">Check</button>
-      </div>`;
-    setTimeout(() => document.getElementById('typeInput')?.focus(), 100);
-  }
-}
+      </div>`
+          setTimeout(() => document.getElementById('typeInput')?.focus(), 100)
+        }
+      }
 
-function escStr(s) { return s.replace(/'/g, "\\'"); }
+      function escStr(s) {
+        return s.replace(/'/g, "\\'")
+      }
 
-function checkAnswer(btn, chosen, correct) {
-  if (answered) return;
-  answered = true;
-  totalAttempts++;
-  const isCorrect = chosen.trim().toLowerCase() === correct.trim().toLowerCase();
-  const allBtns = btn.parentElement.querySelectorAll('.choice-btn');
-  allBtns.forEach(b => {
-    b.disabled = true;
-    if (b.textContent.trim().toLowerCase() === correct.trim().toLowerCase()) b.classList.add('correct');
-  });
-  if (!isCorrect) { btn.classList.add('wrong'); wrongCount++; }
-  else { score++; allTimeStats.correct++; }
-  allTimeStats.studied++;
-  showFeedback(isCorrect, correct);
-  document.getElementById('nextBtn').classList.add('visible'); document.getElementById('enterHint').style.display='block';
-}
+      function checkAnswer(btn, chosen, correct) {
+        if (answered) return
+        answered = true
+        totalAttempts++
+        const isCorrect =
+          chosen.trim().toLowerCase() === correct.trim().toLowerCase()
+        const allBtns = btn.parentElement.querySelectorAll('.choice-btn')
+        allBtns.forEach((b) => {
+          b.disabled = true
+          if (
+            b.textContent.trim().toLowerCase() === correct.trim().toLowerCase()
+          )
+            b.classList.add('correct')
+        })
+        if (!isCorrect) {
+          btn.classList.add('wrong')
+          wrongCount++
+        } else {
+          score++
+          allTimeStats.correct++
+        }
+        allTimeStats.studied++
+        showFeedback(isCorrect, correct)
+        document.getElementById('nextBtn').classList.add('visible')
+        document.getElementById('enterHint').style.display = 'block'
+      }
 
-function submitType(correct) {
-  if (answered) return;
-  const input = document.getElementById('typeInput');
-  if (!input.value.trim()) return;
-  answered = true;
-  totalAttempts++;
-  // Flexible match: ignore tone marks for pinyin comparison
-  const normalize = s => s.toLowerCase().replace(/[āáǎà]/g,'a').replace(/[ēéěè]/g,'e').replace(/[īíǐì]/g,'i').replace(/[ōóǒò]/g,'o').replace(/[ūúǔù]/g,'u').replace(/ǖ/g,'u').trim();
-  const isCorrect = normalize(input.value) === normalize(correct);
-  input.classList.add(isCorrect ? 'correct' : 'wrong');
-  input.disabled = true;
-  document.querySelector('.submit-btn').disabled = true;
-  if (isCorrect) { score++; allTimeStats.correct++; }
-  else wrongCount++;
-  allTimeStats.studied++;
-  showFeedback(isCorrect, correct);
-  document.getElementById('nextBtn').classList.add('visible'); document.getElementById('enterHint').style.display='block';
-}
+      function submitType(correct) {
+        if (answered) return
+        const input = document.getElementById('typeInput')
+        if (!input.value.trim()) return
+        answered = true
+        totalAttempts++
+        // Flexible match: ignore tone marks for pinyin comparison
+        const normalize = (s) =>
+          s
+            .toLowerCase()
+            .replace(/[āáǎà]/g, 'a')
+            .replace(/[ēéěè]/g, 'e')
+            .replace(/[īíǐì]/g, 'i')
+            .replace(/[ōóǒò]/g, 'o')
+            .replace(/[ūúǔù]/g, 'u')
+            .replace(/ǖ/g, 'u')
+            .trim()
+        const isCorrect = normalize(input.value) === normalize(correct)
+        input.classList.add(isCorrect ? 'correct' : 'wrong')
+        input.disabled = true
+        document.querySelector('.submit-btn').disabled = true
+        if (isCorrect) {
+          score++
+          allTimeStats.correct++
+        } else wrongCount++
+        allTimeStats.studied++
+        showFeedback(isCorrect, correct)
+        document.getElementById('nextBtn').classList.add('visible')
+        document.getElementById('enterHint').style.display = 'block'
+      }
 
-function showFeedback(correct, correctAnswer) {
-  // feedback handled visually by green/red highlights
-}
+      function showFeedback(correct, correctAnswer) {
+        // feedback handled visually by green/red highlights
+      }
 
-// ── NEXT ─────────────────────────────────────────────────────────
-function nextStep() {
-  qIdx++;
-  if (qIdx >= queue.length) {
-    showResults();
-    return;
-  }
+      // ── NEXT ─────────────────────────────────────────────────────────
+      function nextStep() {
+        qIdx++
+        if (qIdx >= queue.length) {
+          showResults()
+          return
+        }
 
-  const cardInner = document.getElementById('cardInner');
-  const answerArea = document.getElementById('answerArea');
+        const cardInner = document.getElementById('cardInner')
+        const answerArea = document.getElementById('answerArea')
 
-  // Determine which face is currently showing and load next Q onto the hidden face
-  const isFlipped = cardInner.classList.contains('flipped');
-  const hiddenFace = isFlipped
-    ? document.getElementById('cardFront')
-    : document.getElementById('cardBack');
+        // Determine which face is currently showing and load next Q onto the hidden face
+        const isFlipped = cardInner.classList.contains('flipped')
+        const hiddenFace = isFlipped
+          ? document.getElementById('cardFront')
+          : document.getElementById('cardBack')
 
-  // Pre-load next question onto the hidden face
-  const { word, stage } = queue[qIdx];
-  hiddenFace.innerHTML = buildFrontHTML(word, stage);
+        // Pre-load next question onto the hidden face
+        const { word, stage } = queue[qIdx]
+        hiddenFace.innerHTML = buildFrontHTML(word, stage)
 
-  // Clear answer area and next button
-  answerArea.innerHTML = '';
-  document.getElementById('nextBtn').classList.remove('visible'); document.getElementById('enterHint').style.display='none';
-  document.getElementById('feedback').className = 'feedback';
+        // Clear answer area and next button
+        answerArea.innerHTML = ''
+        document.getElementById('nextBtn').classList.remove('visible')
+        document.getElementById('enterHint').style.display = 'none'
+        document.getElementById('feedback').className = 'feedback'
 
-  // Flip to reveal the hidden face (no snap-back needed)
-  if (isFlipped) {
-    cardInner.classList.remove('flipped');
-  } else {
-    cardInner.classList.add('flipped');
-  }
+        // Flip to reveal the hidden face (no snap-back needed)
+        if (isFlipped) {
+          cardInner.classList.remove('flipped')
+        } else {
+          cardInner.classList.add('flipped')
+        }
 
-  // After flip completes, build the full card state (answers etc.) and reset for next interaction
-  setTimeout(() => {
-    renderCard();
-  }, 560);
-}
+        // After flip completes, build the full card state (answers etc.) and reset for next interaction
+        setTimeout(() => {
+          renderCard()
+        }, 560)
+      }
 
-function buildFrontHTML(word, stage) {
-  if (sessionMode === 1) {
-    return `<div class="card-tag">What does this mean?</div>
+      function buildFrontHTML(word, stage) {
+        if (sessionMode === 1) {
+          return `<div class="card-tag">What does this mean?</div>
             <div class="card-char">${word.char}</div>
-            <div class="card-pinyin">${word.pinyin}</div>`;
-  } else if (stage === 1) {
-    return `<div class="card-tag">What is the pinyin?</div>
-            <div class="card-char">${word.char}</div>`;
-  } else if (stage === 2) {
-    return `<div class="card-tag">What does this mean?</div>
+            <div class="card-pinyin">${word.pinyin}</div>`
+        } else if (stage === 1) {
+          return `<div class="card-tag">What is the pinyin?</div>
+            <div class="card-char">${word.char}</div>`
+        } else if (stage === 2) {
+          return `<div class="card-tag">What does this mean?</div>
             <div class="card-char">${word.char}</div>
-            <div class="card-pinyin">${word.pinyin}</div>`;
-  } else {
-    return `<div class="card-tag">Recall the character</div>
+            <div class="card-pinyin">${word.pinyin}</div>`
+        } else {
+          return `<div class="card-tag">Recall the character</div>
             <div class="card-english" style="font-size:2rem;margin:12px 0">${word.english}</div>
-            <div class="flip-hint">↩ Click to reveal</div>`;
-  }
-}
+            <div class="flip-hint">↩ Click to reveal</div>`
+        }
+      }
 
+      // ── RESULTS ──────────────────────────────────────────────────────
+      function showResults() {
+        const pct =
+          totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0
+        document.getElementById('resCorrect').textContent = score
+        document.getElementById('resWrong').textContent = wrongCount
+        document.getElementById('resPercent').textContent = pct + '%'
+        const words = queue.filter((q) => q.stage === 1).length
+        document.getElementById('resultsSubtitle').textContent =
+          `You practiced ${words} word${words !== 1 ? 's' : ''} · ${pct}% accuracy`
+        showPage('results')
+      }
 
-// ── RESULTS ──────────────────────────────────────────────────────
-function showResults() {
-  const pct = totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0;
-  document.getElementById('resCorrect').textContent = score;
-  document.getElementById('resWrong').textContent = wrongCount;
-  document.getElementById('resPercent').textContent = pct + '%';
-  const words = queue.filter(q => q.stage === 1).length;
-  document.getElementById('resultsSubtitle').textContent = `You practiced ${words} word${words !== 1 ? 's' : ''} · ${pct}% accuracy`;
-  showPage('results');
-}
+      // ── INIT ─────────────────────────────────────────────────────────
+      updateStatsBar()
 
-// ── INIT ─────────────────────────────────────────────────────────
-updateStatsBar();
+      // Press Enter to advance to next card
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return
+        // Don't fire if typing in an input
+        if (
+          document.activeElement &&
+          document.activeElement.tagName === 'INPUT'
+        )
+          return
+        const nextBtn = document.getElementById('nextBtn')
+        if (nextBtn && nextBtn.classList.contains('visible')) {
+          nextStep()
+        }
+      })
 
-// Press Enter to advance to next card
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
-  // Don't fire if typing in an input
-  if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
-  const nextBtn = document.getElementById('nextBtn');
-  if (nextBtn && nextBtn.classList.contains('visible')) {
-    nextStep();
-  }
-});
+      // Wordset button clicks
+      document.querySelectorAll('.ws-btn').forEach((btn) => {
+        btn.addEventListener('click', function () {
+          selectWordSet(this.dataset.key, this)
+        })
+      })
+      // Init drag select on pickers
+      initDragSelect(document.getElementById('unit-picker-grid'), 'unit')
+      initDragSelect(document.getElementById('hsk-picker-grid'), 'hsk')
 
-// Wordset button clicks
-document.querySelectorAll('.ws-btn').forEach(btn => {
-  btn.addEventListener('click', function() {
-    selectWordSet(this.dataset.key, this);
-  });
-});
-// Init drag select on pickers
-initDragSelect(document.getElementById('unit-picker-grid'), 'unit');
-initDragSelect(document.getElementById('hsk-picker-grid'), 'hsk');
-
-// Mode card clicks via delegation
-document.querySelectorAll('.mode-card').forEach(card => {
-  card.addEventListener('click', function() {
-    selectMode(parseInt(this.dataset.mode), this);
-  });
-});
-</script>
-</body>
+      // Mode card clicks via delegation
+      document.querySelectorAll('.mode-card').forEach((card) => {
+        card.addEventListener('click', function () {
+          selectMode(parseInt(this.dataset.mode), this)
+        })
+      })
+    </script>
+  </body>
 </html>
