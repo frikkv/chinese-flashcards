@@ -1416,9 +1416,10 @@ function WordSetPage({
           style={{ marginTop: 24 }}
           onClick={soundOnlyOpen ? handleStartSoundOnly : handleGoNext}
         >
-          {soundOnlyOpen ||
-          (selectedWordSet === 'last' && lastSession?.soundSettings)
+          {soundOnlyOpen || (selectedWordSet === 'last' && lastSession?.soundSettings)
             ? 'Start Sound Only →'
+            : selectedWordSet === 'last'
+            ? 'Start →'
             : 'Next →'}
         </button>
         <div style={{ height: 40 }} />
