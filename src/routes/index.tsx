@@ -7,7 +7,7 @@ import type { Word } from '../data/vocabulary'
 export const Route = createFileRoute('/')({ component: FlashcardsApp })
 
 // ── TYPES ────────────────────────────────────────────────────────
-type Page = 'wordset' | 'study' | 'results' | 'sound'
+type Page = 'wordset' | 'study' | 'results' | 'sound' | 'tone'
 type AnswerStyle = 'multiple-choice' | 'type'
 
 interface Settings {
@@ -27,6 +27,7 @@ interface LastSession {
   units: Set<number>
   settings: Settings
   soundSettings?: SoundSettings
+  toneSessionSize?: 10 | 20 | 30
   vocab: Word[]
   desc: string
 }
@@ -69,6 +70,100 @@ function normalizeAnswer(s: string): string {
     .replace(/[ōóǒò]/g, 'o')
     .replace(/[ūúǔùǖ]/g, 'u')
     .trim()
+}
+
+// ── TONE HELPERS ─────────────────────────────────────────────────
+const TONE_VOWELS: Record<string, string[]> = {
+  a: ['a', 'ā', 'á', 'ǎ', 'à'],
+  e: ['e', 'ē', 'é', 'ě', 'è'],
+  i: ['i', 'ī', 'í', 'ǐ', 'ì'],
+  o: ['o', 'ō', 'ó', 'ǒ', 'ò'],
+  u: ['u', 'ū', 'ú', 'ǔ', 'ù'],
+  ü: ['ü', 'ǖ', 'ǘ', 'ǚ', 'ǜ'],
+}
+
+function stripTones(s: string): string {
+  return s
+    .replace(/[āáǎà]/g, 'a')
+    .replace(/[ēéěè]/g, 'e')
+    .replace(/[īíǐì]/g, 'i')
+    .replace(/[ōóǒò]/g, 'o')
+    .replace(/[ūúǔù]/g, 'u')
+    .replace(/[ǖǘǚǜ]/g, 'ü')
+}
+
+function getSyllableTone(syllable: string): number {
+  if (/[āēīōūǖ]/.test(syllable)) return 1
+  if (/[áéíóúǘ]/.test(syllable)) return 2
+  if (/[ǎěǐǒǔǚ]/.test(syllable)) return 3
+  if (/[àèìòùǜ]/.test(syllable)) return 4
+  return 0
+}
+
+function applyToneToSyllable(syllable: string, tone: number): string {
+  if (tone === 0) return syllable
+  for (const v of ['a', 'e']) {
+    if (syllable.includes(v)) return syllable.replace(v, TONE_VOWELS[v][tone])
+  }
+  if (syllable.includes('ou')) return syllable.replace('o', TONE_VOWELS['o'][tone])
+  let lastIdx = -1
+  let lastVowel = ''
+  for (const v of ['i', 'o', 'u', 'ü']) {
+    const idx = syllable.lastIndexOf(v)
+    if (idx > lastIdx) {
+      lastIdx = idx
+      lastVowel = v
+    }
+  }
+  if (lastIdx !== -1)
+    return (
+      syllable.slice(0, lastIdx) +
+      TONE_VOWELS[lastVowel][tone] +
+      syllable.slice(lastIdx + 1)
+    )
+  return syllable
+}
+
+function buildToneChoices(word: Word, vocab: Word[]): string[] {
+  const syllables = word.pinyin.split(' ')
+  const correctTones = syllables.map(getSyllableTone)
+  const stripped = syllables.map(stripTones)
+  const distractors = new Set<string>()
+
+  if (syllables.length === 1) {
+    shuffle([1, 2, 3, 4].filter((t) => t !== correctTones[0]))
+      .slice(0, 3)
+      .forEach((t) => distractors.add(applyToneToSyllable(stripped[0], t)))
+  } else {
+    let attempts = 0
+    while (distractors.size < 3 && attempts < 200) {
+      attempts++
+      const newTones = [...correctTones]
+      const numChanges = Math.min(
+        1 + Math.floor(Math.random() * 2),
+        syllables.length,
+      )
+      shuffle(syllables.map((_, i) => i))
+        .slice(0, numChanges)
+        .forEach((i) => {
+          const others = [0, 1, 2, 3, 4].filter((t) => t !== newTones[i])
+          newTones[i] = others[Math.floor(Math.random() * others.length)]
+        })
+      if (newTones.every((t, i) => t === correctTones[i])) continue
+      const variant = stripped
+        .map((s, i) => applyToneToSyllable(s, newTones[i]))
+        .join(' ')
+      if (variant !== word.pinyin) distractors.add(variant)
+    }
+  }
+
+  if (distractors.size < 3) {
+    shuffle(vocab.filter((w) => w.char !== word.char))
+      .slice(0, 3 - distractors.size)
+      .forEach((w) => distractors.add(w.pinyin))
+  }
+
+  return shuffle([word.pinyin, ...Array.from(distractors).slice(0, 3)])
 }
 
 function buildQueue(vocab: Word[], mode: 1 | 2 | 3, size: number): QueueItem[] {
@@ -117,13 +212,35 @@ function getAnswerContent(
 }
 
 // ── TTS ──────────────────────────────────────────────────────────
+let _zhVoice: SpeechSynthesisVoice | null = null
+
+function loadZhVoice() {
+  const voices = window.speechSynthesis.getVoices()
+  _zhVoice =
+    voices.find((v) => v.lang === 'zh-CN') ??
+    voices.find((v) => v.lang === 'zh-TW') ??
+    voices.find((v) => v.lang.startsWith('zh')) ??
+    null
+}
+
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  window.speechSynthesis.addEventListener('voiceschanged', loadZhVoice)
+  loadZhVoice()
+}
+
 function speakHanzi(hanzi: string) {
   if (!('speechSynthesis' in window) || !hanzi) return
   window.speechSynthesis.cancel()
-  const utterance = new SpeechSynthesisUtterance(hanzi)
-  utterance.lang = 'zh-CN'
-  utterance.rate = 0.9
-  window.speechSynthesis.speak(utterance)
+  setTimeout(() => {
+    const chars = [...hanzi]
+    const text =
+      chars.length > 1 ? chars.join('\u2009') + '\u2009。' : hanzi + '。'
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'zh-CN'
+    utterance.rate = 0.7
+    if (_zhVoice) utterance.voice = _zhVoice
+    window.speechSynthesis.speak(utterance)
+  }, 50)
 }
 
 // ── CARD FACE ────────────────────────────────────────────────────
@@ -204,6 +321,8 @@ function FlashcardsApp() {
     answerStyle: 'multiple-choice',
     sessionSize: 10,
   })
+  const [toneVocab, setToneVocab] = useState<Word[]>([])
+  const [toneSessionSize, setToneSessionSize] = useState<10 | 20 | 30>(10)
 
   // All-time stats
   const [allTimeStats, setAllTimeStats] = useState<AllTimeStats>({
@@ -479,6 +598,12 @@ function FlashcardsApp() {
           if (session) setLastSession(session)
           setPage('sound')
         }}
+        onStartToneQuiz={(v, sz, session) => {
+          setToneVocab(v)
+          setToneSessionSize(sz)
+          if (session) setLastSession(session)
+          setPage('tone')
+        }}
       />
     )
   }
@@ -488,6 +613,16 @@ function FlashcardsApp() {
       <SoundOnlyPage
         vocab={soundVocab}
         soundSettings={soundSettings}
+        onBack={() => setPage('wordset')}
+      />
+    )
+  }
+
+  if (page === 'tone') {
+    return (
+      <ToneQuizPage
+        vocab={toneVocab}
+        sessionSize={toneSessionSize}
         onBack={() => setPage('wordset')}
       />
     )
@@ -951,6 +1086,230 @@ function SoundOnlyPage({
   )
 }
 
+// ── TONE QUIZ PAGE ────────────────────────────────────────────────
+function ToneQuizPage({
+  vocab,
+  sessionSize,
+  onBack,
+}: {
+  vocab: Word[]
+  sessionSize: 10 | 20 | 30
+  onBack: () => void
+}) {
+  function buildQueue(): Word[] {
+    const count =
+      sessionSize === 30 ? vocab.length : Math.min(sessionSize, vocab.length)
+    return shuffle(vocab).slice(0, count)
+  }
+
+  const [queue, setQueue] = useState<Word[]>(() => buildQueue())
+  const [idx, setIdx] = useState(0)
+  const [score, setScore] = useState(0)
+  const [totalAttempts, setTotalAttempts] = useState(0)
+  const [answered, setAnswered] = useState(false)
+  const [nextBtnVisible, setNextBtnVisible] = useState(false)
+  const [done, setDone] = useState(false)
+  const [choices, setChoices] = useState<string[]>([])
+  const [choiceStates, setChoiceStates] = useState<
+    Record<string, 'correct' | 'wrong'>
+  >({})
+
+  const nextBtnVisibleRef = useRef(false)
+  const handleNextRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    nextBtnVisibleRef.current = nextBtnVisible
+  }, [nextBtnVisible])
+
+  useEffect(() => {
+    const word = queue[idx]
+    if (!word) return
+    setAnswered(false)
+    setNextBtnVisible(false)
+    setChoiceStates({})
+    setChoices(buildToneChoices(word, vocab))
+    const t = setTimeout(() => speakHanzi(word.char), 150)
+    return () => clearTimeout(t)
+  }, [idx, queue]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault()
+        const word = queue[idx]
+        if (word && !done) speakHanzi(word.char)
+        return
+      }
+      if (e.key !== 'Enter') return
+      if (nextBtnVisibleRef.current) handleNextRef.current()
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [queue, idx, done]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleChoice(choice: string) {
+    if (answered) return
+    const currentWord = queue[idx]
+    setAnswered(true)
+    setTotalAttempts((p) => p + 1)
+    const isCorrect = choice === currentWord.pinyin
+    const states: Record<string, 'correct' | 'wrong'> = {
+      [currentWord.pinyin]: 'correct',
+    }
+    if (!isCorrect) states[choice] = 'wrong'
+    setChoiceStates(states)
+    if (isCorrect) setScore((p) => p + 1)
+    setNextBtnVisible(true)
+  }
+
+  function handleNext() {
+    if (idx + 1 >= queue.length) {
+      setDone(true)
+      return
+    }
+    setIdx((p) => p + 1)
+  }
+  handleNextRef.current = handleNext
+
+  function startSession() {
+    const newQ = buildQueue()
+    setQueue(newQ)
+    setIdx(0)
+    setScore(0)
+    setTotalAttempts(0)
+    setDone(false)
+  }
+
+  const currentWord = queue[idx] ?? null
+  const pct = queue.length > 0 ? Math.round((idx / queue.length) * 100) : 0
+
+  if (done) {
+    const finalPct =
+      totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0
+    return (
+      <div className="fc-app">
+        <div className="fc-results-container">
+          <div className="fc-results-char">好！</div>
+          <div>
+            <div className="fc-results-title">Session Complete</div>
+            <div className="fc-results-sub">
+              You practiced {queue.length} word{queue.length !== 1 ? 's' : ''} ·{' '}
+              {finalPct}% accuracy
+            </div>
+          </div>
+          <div className="fc-results-grid">
+            <div className="fc-result-stat">
+              <div className="fc-result-num" style={{ color: '#27ae60' }}>
+                {score}
+              </div>
+              <div className="fc-result-label">Correct</div>
+            </div>
+            <div className="fc-result-stat">
+              <div className="fc-result-num" style={{ color: '#e74c3c' }}>
+                {totalAttempts - score}
+              </div>
+              <div className="fc-result-label">Incorrect</div>
+            </div>
+            <div className="fc-result-stat">
+              <div className="fc-result-num">{finalPct}%</div>
+              <div className="fc-result-label">Accuracy</div>
+            </div>
+          </div>
+          <div className="fc-results-actions">
+            <button className="fc-start-btn" onClick={startSession}>
+              Study Again
+            </button>
+            <button className="fc-results-btn" onClick={onBack}>
+              Home
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fc-app">
+      <button onClick={onBack} className="fc-back-btn">
+        ← Home
+      </button>
+
+      <div className="fc-study-header">
+        <div style={{ flex: 1 }}>
+          <div className="fc-progress-label">
+            Card {idx + 1} of {queue.length}
+          </div>
+          <div className="fc-progress-bar">
+            <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+        <div className="fc-score-badge">
+          Score: <b style={{ color: '#27ae60' }}>{score}</b>
+        </div>
+      </div>
+
+      <div className="fc-card-scene">
+        <div className="fc-card-inner">
+          <div className="fc-card-face">
+            <div className="fc-card-tag">Which tones are correct?</div>
+            {currentWord && (
+              <>
+                <div className="fc-card-pinyin" style={{ fontSize: '2rem' }}>
+                  {stripTones(currentWord.pinyin)}
+                </div>
+                <div className="fc-card-english">{currentWord.english}</div>
+                <button
+                  className="fc-speaker-btn"
+                  style={{ marginTop: 8 }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    speakHanzi(currentWord.char)
+                  }}
+                  aria-label="Play pronunciation"
+                >
+                  <Volume2 size={16} />
+                </button>
+                <div className="fc-sound-hint">Tap or press Space to replay</div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="fc-answer-area">
+        <div className="fc-choices">
+          {choices.map((choice) => (
+            <button
+              key={choice}
+              className={`fc-choice-btn${choiceStates[choice] ? ` ${choiceStates[choice]}` : ''}`}
+              disabled={answered}
+              onClick={() => handleChoice(choice)}
+            >
+              {choice}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
+        <button
+          className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
+          onClick={handleNext}
+        >
+          Next →
+        </button>
+        {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
+      </div>
+    </div>
+  )
+}
+
 // ── WORD SET PAGE ─────────────────────────────────────────────────
 function WordSetPage({
   lastSession,
@@ -958,6 +1317,7 @@ function WordSetPage({
   settings: initialSettings,
   onContinue,
   onStartSoundOnly,
+  onStartToneQuiz,
 }: {
   lastSession: LastSession | null
   allTimeStats: AllTimeStats
@@ -973,6 +1333,11 @@ function WordSetPage({
     soundSettings: SoundSettings,
     session?: LastSession,
   ) => void
+  onStartToneQuiz: (
+    vocab: Word[],
+    sessionSize: 10 | 20 | 30,
+    session?: LastSession,
+  ) => void
 }) {
   const [selectedWordSet, setSelectedWordSet] = useState<string | null>(null)
   const [selectedUnits, setSelectedUnits] = useState<Set<number>>(new Set())
@@ -986,6 +1351,7 @@ function WordSetPage({
     answerStyle: 'multiple-choice',
     sessionSize: 10,
   })
+  const [toneQuizOpen, setToneQuizOpen] = useState(false)
 
   // Drag-select state
   const mouseIsDownRef = useRef(false)
@@ -1080,11 +1446,33 @@ function WordSetPage({
     onStartSoundOnly(v, ss, session)
   }
 
+  function handleStartToneQuiz() {
+    const v = buildSelectedVocab()
+    if (!v) return
+    const session: LastSession = {
+      wordSetKey: selectedWordSet ?? '',
+      hskLevels: new Set(selectedHSKLevels),
+      units: new Set(selectedUnits),
+      settings: { ...settings },
+      toneSessionSize: settings.sessionSize,
+      vocab: v,
+      desc:
+        selectedWordSet === 'hsk'
+          ? `HSK ${[...selectedHSKLevels].sort().join(' + ')} · ${v.length} words`
+          : `LANG 1511 · Units ${[...selectedUnits].sort((a, b) => a - b).join(', ')}`,
+    }
+    onStartToneQuiz(v, settings.sessionSize, session)
+  }
+
   function handleGoNext() {
     if (selectedWordSet === 'last') {
       if (!lastSession) return
       if (lastSession.soundSettings) {
         onStartSoundOnly(lastSession.vocab, lastSession.soundSettings)
+        return
+      }
+      if (lastSession.toneSessionSize !== undefined) {
+        onStartToneQuiz(lastSession.vocab, lastSession.toneSessionSize)
         return
       }
       onContinue(
@@ -1300,7 +1688,14 @@ function WordSetPage({
             {(selectedWordSet === 'hsk' || selectedWordSet === 'lang1511') && (
               <div className="fc-settings-divider" />
             )}
-            <div className="fc-settings-section">
+            <div
+              className="fc-settings-section"
+              style={
+                soundOnlyOpen || toneQuizOpen
+                  ? { opacity: 0.35, pointerEvents: 'none' }
+                  : undefined
+              }
+            >
               <div className="fc-settings-label">Study Mode</div>
               <div className="fc-settings-options">
                 {([1, 2, 3] as const).map((m) => (
@@ -1388,6 +1783,7 @@ function WordSetPage({
                     className={`fc-setting-opt${soundOnlyOpen && soundSettings.answerFormat === val ? ' selected' : ''}`}
                     onClick={() => {
                       setSoundOnlyOpen(true)
+                      setToneQuizOpen(false)
                       setSoundSettings((s) => ({ ...s, answerFormat: val }))
                     }}
                   >
@@ -1396,18 +1792,54 @@ function WordSetPage({
                 ))}
               </div>
             </div>
+            <div className="fc-settings-section">
+              <div className="fc-settings-label">Tone Quiz Mode</div>
+              <div className="fc-settings-options">
+                <button
+                  className={`fc-setting-opt${!toneQuizOpen ? ' selected' : ''}`}
+                  onClick={() => setToneQuizOpen(false)}
+                >
+                  Off
+                </button>
+                <button
+                  className={`fc-setting-opt${toneQuizOpen ? ' selected' : ''}`}
+                  onClick={() => {
+                    setToneQuizOpen(true)
+                    setSoundOnlyOpen(false)
+                  }}
+                >
+                  On
+                </button>
+              </div>
+              {toneQuizOpen && (
+                <p className="fc-settings-mode-hint">
+                  See pinyin without tones + English, pick the correct tones.
+                </p>
+              )}
+            </div>
           </div>
         )}
 
         <button
           className="fc-start-btn"
-          onClick={soundOnlyOpen ? handleStartSoundOnly : handleGoNext}
+          onClick={
+            soundOnlyOpen
+              ? handleStartSoundOnly
+              : toneQuizOpen
+                ? handleStartToneQuiz
+                : handleGoNext
+          }
         >
-          {soundOnlyOpen || (selectedWordSet === 'last' && lastSession?.soundSettings)
+          {soundOnlyOpen ||
+          (selectedWordSet === 'last' && lastSession?.soundSettings)
             ? 'Start Sound Only →'
-            : selectedWordSet === 'last'
-            ? 'Start →'
-            : 'Start Studying →'}
+            : toneQuizOpen ||
+                (selectedWordSet === 'last' &&
+                  lastSession?.toneSessionSize !== undefined)
+              ? 'Start Tone Quiz →'
+              : selectedWordSet === 'last'
+                ? 'Start →'
+                : 'Start Studying →'}
         </button>
       </div>
     </div>
