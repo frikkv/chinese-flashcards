@@ -13,8 +13,10 @@ const config = defineConfig({
     tsconfigPaths({ projects: ['./tsconfig.json'] }),
     tailwindcss(),
     tanstackStart({
-      server: {
-        preset: 'netlify',
+      spa: {
+        prerender: {
+          outputPath: '/index',
+        },
       },
     }),
     viteReact(),
