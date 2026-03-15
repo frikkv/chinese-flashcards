@@ -47,6 +47,7 @@ interface SoundSettings {
   answerFormat: SoundAnswerFormat
   answerStyle: AnswerStyle
   sessionSize: 10 | 20 | 30
+  stageCount?: 1 | 2
 }
 
 interface CardContent {
@@ -215,6 +216,9 @@ function getAnswerContent(
 }
 
 // ── TTS ──────────────────────────────────────────────────────────
+let _currentAudio: HTMLAudioElement | null = null
+
+// Fallback: Web Speech API for any word without a cached MP3
 let _zhVoice: SpeechSynthesisVoice | null = null
 
 function loadZhVoice() {
@@ -231,19 +235,49 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   loadZhVoice()
 }
 
-function speakHanzi(hanzi: string) {
-  if (!('speechSynthesis' in window) || !hanzi) return
+function speakFallback(hanzi: string) {
+  if (!('speechSynthesis' in window)) return
   window.speechSynthesis.cancel()
   setTimeout(() => {
     const chars = [...hanzi]
     const text =
-      chars.length > 1 ? chars.join('\u2009') + '\u2009。' : hanzi + '。'
+      chars.length > 1
+        ? chars.join('\u2009') + '\u2009，。'
+        : hanzi + '，。'
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'zh-CN'
-    utterance.rate = 0.7
+    utterance.rate = 0.65
     if (_zhVoice) utterance.voice = _zhVoice
     window.speechSynthesis.speak(utterance)
-  }, 50)
+  }, 80)
+}
+
+function speakHanzi(hanzi: string) {
+  if (!hanzi) return
+
+  // Stop any currently playing audio
+  if (_currentAudio) {
+    _currentAudio.pause()
+    _currentAudio.currentTime = 0
+    _currentAudio = null
+  }
+  window.speechSynthesis?.cancel()
+
+  const src = '/audio/' + encodeURIComponent(hanzi) + '.mp3'
+  const audio = new Audio(src)
+  _currentAudio = audio
+
+  function play() {
+    if (_currentAudio !== audio) return // superseded by a newer call
+    audio.play().catch(() => speakFallback(hanzi))
+  }
+
+  if (audio.readyState >= 3) {
+    play()
+  } else {
+    audio.addEventListener('canplaythrough', play, { once: true })
+    audio.addEventListener('error', () => speakFallback(hanzi), { once: true })
+  }
 }
 
 // ── CARD FACE ────────────────────────────────────────────────────
@@ -447,6 +481,11 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   const fetchDistractorsMutation = useMutation(
     trpc.distractors.getDistractors.mutationOptions(),
   )
+  const prefetchDistractorsMutation = useMutation(
+    trpc.distractors.getDistractors.mutationOptions(),
+  )
+  // Stores an in-flight or completed prefetch so doRenderCard can consume it instantly
+  const prefetchPromiseRef = useRef<{ vocabKey: string; promise: Promise<string[]> } | null>(null)
   const currentDistractorFetchRef = useRef<string | null>(null)
   const answeredRef = useRef(false)
 
@@ -617,6 +656,19 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setAnswerChoices(shuffle([vars.correctAnswer, ...data.distractors]))
   }, [fetchDistractorsMutation.data]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Kick off a distractor prefetch for a word so it's ready before doRenderCard runs
+  function prefetchDistractors(word: Word) {
+    const promise = prefetchDistractorsMutation
+      .mutateAsync({
+        vocabKey: word.char,
+        char: word.char,
+        pinyin: word.pinyin,
+        correctAnswer: word.english,
+      })
+      .then((r) => r.distractors)
+    prefetchPromiseRef.current = { vocabKey: word.char, promise }
+  }
+
   function doRenderCard(idx: number, currentFlipped: boolean, q: QueueItem[]) {
     const item = q[idx]
     if (!item) return
@@ -656,21 +708,43 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
       if (s.answerStyle === 'multiple-choice') {
         setCardMode('mc')
-        const distractors = shuffle(v.filter((w) => w !== word)).slice(0, 3)
-        const options = shuffle([word, ...distractors])
-        setAnswerChoices(
-          options.map((o) => (target === 'english' ? o.english : o.pinyin)),
-        )
-        // Fetch AI distractors for English targets; fallback choices shown immediately above
         if (target === 'english') {
+          setAnswerChoices([])
           currentDistractorFetchRef.current = word.char
-          fetchDistractorsMutation.mutate({
-            vocabKey: word.char,
-            char: word.char,
-            pinyin: word.pinyin,
-            correctAnswer: word.english,
-          })
+          const prefetch = prefetchPromiseRef.current
+          if (prefetch?.vocabKey === word.char) {
+            // Consume the prefetch promise — may already be resolved (instant) or still in flight
+            prefetchPromiseRef.current = null
+            prefetch.promise
+              .then((distractors) => {
+                if (currentDistractorFetchRef.current === word.char && !answeredRef.current) {
+                  setAnswerChoices(shuffle([word.english, ...distractors]))
+                  currentDistractorFetchRef.current = null
+                }
+              })
+              .catch(() => {
+                // Prefetch failed — fall back to normal fetch
+                fetchDistractorsMutation.mutate({
+                  vocabKey: word.char,
+                  char: word.char,
+                  pinyin: word.pinyin,
+                  correctAnswer: word.english,
+                })
+              })
+          } else {
+            // No prefetch available (first card or pinyin card before this)
+            fetchDistractorsMutation.mutate({
+              vocabKey: word.char,
+              char: word.char,
+              pinyin: word.pinyin,
+              correctAnswer: word.english,
+            })
+          }
         } else {
+          // Pinyin targets have no AI fetch — set choices immediately
+          const distractors = shuffle(v.filter((w) => w !== word)).slice(0, 3)
+          const options = shuffle([word, ...distractors])
+          setAnswerChoices(options.map((o) => o.pinyin))
           currentDistractorFetchRef.current = null
         }
       } else {
@@ -699,6 +773,16 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setAllTimeStats((prev) => ({ ...prev, sessions: prev.sessions + 1 }))
     sessionModeRef.current = mode
     settingsRef.current = s
+
+    // Prefetch distractors for the first card so it's ready immediately
+    if (s.answerStyle === 'multiple-choice') {
+      const first = q[0]
+      if (first && first.stage !== 3) {
+        const target = mode === 1 || first.stage === 2 ? 'english' : 'pinyin'
+        if (target === 'english') prefetchDistractors(first.word)
+      }
+    }
+
     doRenderCard(0, false, q)
     setPage('study')
   }
@@ -810,6 +894,14 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       setFaceB(nextQContent)
     }
 
+    // Prefetch distractors for next card NOW — the 560ms flip gives them time to load
+    const mode = sessionModeRef.current
+    const s = settingsRef.current
+    if (s.answerStyle === 'multiple-choice' && nextItem.stage !== 3) {
+      const target = mode === 1 || nextItem.stage === 2 ? 'english' : 'pinyin'
+      if (target === 'english') prefetchDistractors(nextItem.word)
+    }
+
     setAnswerChoices([])
     setNextBtnVisible(false)
 
@@ -831,11 +923,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     if (page !== 'study') return
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Enter') return
-      if (
-        document.activeElement &&
-        (document.activeElement as HTMLElement).tagName === 'INPUT'
-      )
-        return
+      const tag = (document.activeElement as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (nextBtnVisibleRef.current) handleNextRef.current()
     }
     document.addEventListener('keydown', handler)
@@ -1058,6 +1147,14 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
                 </>
               )}
 
+              {cardMode === 'mc' && answerChoices.length === 0 && !answered && (
+                <div className="fc-choices fc-choices--loading">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="fc-choice-btn fc-choice-btn--skeleton" />
+                  ))}
+                </div>
+              )}
+
               {cardMode === 'mc' && answerChoices.length > 0 && (
                 <div className="fc-choices">
                   {answerChoices.map((choice) => (
@@ -1116,6 +1213,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
           {/* RIGHT: inline AI chat (grid row 2, col 2) */}
           <div className="fc-study-right">
             <ChatPanel cardContext={chatCtx} inline />
+            <PronunciationBox />
           </div>
 
         </div>
@@ -1247,35 +1345,36 @@ function ChatPanel({
                 ? `Ask anything about ${cardContext.char} or Chinese in general.`
                 : 'Ask me anything about Mandarin Chinese!'}
             </div>
-            <div className="fc-chat-suggestions">
-              {suggestions.map((s) => (
-                <button
-                  key={s}
-                  className="fc-chat-suggest-btn"
-                  onClick={() => sendMessage(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
           </div>
         ) : (
-          <>
-            {messages.map((msg, i) => (
-              <div key={i} className={`fc-chat-msg ${msg.role}`}>
-                <div className="fc-chat-bubble">{msg.content}</div>
-              </div>
+          messages.map((msg, i) => (
+            <div key={i} className={`fc-chat-msg ${msg.role}`}>
+              <div className="fc-chat-bubble">{msg.content}</div>
+            </div>
+          ))
+        )}
+        {/* Suggestions always visible at the bottom, updating with each new card */}
+        {!isLoading && (
+          <div className="fc-chat-suggestions">
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                className="fc-chat-suggest-btn"
+                onClick={() => sendMessage(s)}
+              >
+                {s}
+              </button>
             ))}
-            {isLoading && (
-              <div className="fc-chat-msg assistant">
-                <div className="fc-chat-bubble fc-chat-typing">
-                  <span />
-                  <span />
-                  <span />
-                </div>
-              </div>
-            )}
-          </>
+          </div>
+        )}
+        {isLoading && (
+          <div className="fc-chat-msg assistant">
+            <div className="fc-chat-bubble fc-chat-typing">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -1319,6 +1418,104 @@ function ChatPanel({
   )
 }
 
+// ── PRONUNCIATION BOX ─────────────────────────────────────────────
+const MAX_TRANSLATIONS = 5
+
+function isChineseText(text: string) {
+  return /[\u4e00-\u9fff]/.test(text)
+}
+
+function PronunciationBox() {
+  const trpc = useTRPC()
+  const [input, setInput] = useState('')
+  const [translationsLeft, setTranslationsLeft] = useState(MAX_TRANSLATIONS)
+  const [result, setResult] = useState<{ char: string; pinyin: string } | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+
+  const translateMutation = useMutation(trpc.chat.translateToZh.mutationOptions())
+
+  const isChinese = isChineseText(input.trim())
+  const translationBlocked = !isChinese && translationsLeft <= 0
+
+  async function handlePlay() {
+    const text = input.trim()
+    if (!text || isLoading || translationBlocked) return
+    setErrorMsg('')
+    setIsLoading(true)
+
+    try {
+      if (isChinese) {
+        setResult(null)
+        speakHanzi(text)
+      } else {
+        const translated = await translateMutation.mutateAsync({ text })
+        setResult(translated)
+        speakHanzi(translated.char)
+        setTranslationsLeft((n) => n - 1)
+      }
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'Something went wrong.'
+      setErrorMsg(msg)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handlePlay()
+    }
+  }
+
+  return (
+    <div className="fc-pronbox">
+      <div className="fc-pronbox-header">
+        <span className="fc-pronbox-title">Pronunciation</span>
+        <span className="fc-pronbox-limit">
+          {translationsLeft > 0
+            ? `${translationsLeft} English translation${translationsLeft !== 1 ? 's' : ''} left`
+            : 'Translation limit reached'}
+        </span>
+      </div>
+      <div className="fc-pronbox-body">
+        <textarea
+          className="fc-pronbox-input"
+          rows={3}
+          placeholder="Type Chinese, pinyin, or English…"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
+        />
+        <button
+          className="fc-pronbox-play"
+          onClick={handlePlay}
+          disabled={isLoading || !input.trim() || translationBlocked}
+          aria-label="Play pronunciation"
+        >
+          {isLoading ? (
+            <span className="fc-pronbox-spinner" />
+          ) : (
+            <Volume2 size={18} />
+          )}
+        </button>
+      </div>
+      {result && (
+        <div className="fc-pronbox-result">
+          <span className="fc-pronbox-result-char">{result.char}</span>
+          <span className="fc-pronbox-result-pinyin">{result.pinyin}</span>
+        </div>
+      )}
+      {errorMsg && <div className="fc-pronbox-error">{errorMsg}</div>}
+    </div>
+  )
+}
+
 // ── SOUND ONLY PAGE ───────────────────────────────────────────────
 function SoundOnlyPage({
   vocab,
@@ -1331,7 +1528,7 @@ function SoundOnlyPage({
   onBack: () => void
   onSessionComplete?: (stats: { correct: number; total: number }) => void
 }) {
-  const { answerFormat, answerStyle, sessionSize } = soundSettings
+  const { answerFormat, answerStyle, sessionSize, stageCount = 1 } = soundSettings
 
   function buildQueue(): Word[] {
     const count =
@@ -1341,6 +1538,7 @@ function SoundOnlyPage({
 
   const [queue, setQueue] = useState<Word[]>(() => buildQueue())
   const [idx, setIdx] = useState(0)
+  const [stage, setStage] = useState<1 | 2>(1)
   const [score, setScore] = useState(0)
   const [totalAttempts, setTotalAttempts] = useState(0)
   const [answered, setAnswered] = useState(false)
@@ -1348,6 +1546,10 @@ function SoundOnlyPage({
   const [done, setDone] = useState(false)
   const [choiceWords, setChoiceWords] = useState<Word[]>([])
   const [choiceStates, setChoiceStates] = useState<
+    Record<string, 'correct' | 'wrong'>
+  >({})
+  const [englishChoices, setEnglishChoices] = useState<Word[]>([])
+  const [englishChoiceStates, setEnglishChoiceStates] = useState<
     Record<string, 'correct' | 'wrong'>
   >({})
   const [typeValue, setTypeValue] = useState('')
@@ -1363,9 +1565,11 @@ function SoundOnlyPage({
   useEffect(() => {
     const word = queue[idx]
     if (!word) return
+    setStage(1)
     setAnswered(false)
     setNextBtnVisible(false)
     setChoiceStates({})
+    setEnglishChoiceStates({})
     setTypeValue('')
     setTypeResult(null)
     if (answerStyle === 'multiple-choice') {
@@ -1373,6 +1577,12 @@ function SoundOnlyPage({
         vocab.filter((w) => w.char !== word.char),
       ).slice(0, 3)
       setChoiceWords(shuffle([word, ...distractors]))
+      if (stageCount === 2) {
+        const engDistractors = shuffle(
+          vocab.filter((w) => w.char !== word.char),
+        ).slice(0, 3)
+        setEnglishChoices(shuffle([word, ...engDistractors]))
+      }
     }
     const t = setTimeout(() => speakHanzi(word.char), 150)
     return () => clearTimeout(t)
@@ -1382,11 +1592,11 @@ function SoundOnlyPage({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (document.activeElement as HTMLElement)?.tagName
-      if (tag === 'INPUT') return
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.code === 'Space') {
         e.preventDefault()
         const word = queue[idx]
-        if (word && !done) speakHanzi(word.char)
+        if (word && !done && stage === 1) speakHanzi(word.char)
         return
       }
       if (e.key !== 'Enter') return
@@ -1394,7 +1604,7 @@ function SoundOnlyPage({
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [queue, idx, done]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [queue, idx, done, stage]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleChoice(word: Word) {
     if (answered) return
@@ -1407,6 +1617,21 @@ function SoundOnlyPage({
     }
     if (!isCorrect) states[word.char] = 'wrong'
     setChoiceStates(states)
+    if (isCorrect) setScore((p) => p + 1)
+    setNextBtnVisible(true)
+  }
+
+  function handleEnglishChoice(word: Word) {
+    if (answered) return
+    const currentWord = queue[idx]
+    setAnswered(true)
+    setTotalAttempts((p) => p + 1)
+    const isCorrect = word.char === currentWord.char
+    const states: Record<string, 'correct' | 'wrong'> = {
+      [currentWord.char]: 'correct',
+    }
+    if (!isCorrect) states[word.char] = 'wrong'
+    setEnglishChoiceStates(states)
     if (isCorrect) setScore((p) => p + 1)
     setNextBtnVisible(true)
   }
@@ -1424,6 +1649,13 @@ function SoundOnlyPage({
   }
 
   function handleNext() {
+    // In 2-stage mode, first Next press advances to stage 2
+    if (stageCount === 2 && stage === 1) {
+      setStage(2)
+      setAnswered(false)
+      setNextBtnVisible(false)
+      return
+    }
     if (idx + 1 >= queue.length) {
       setDone(true)
       onSessionComplete?.({ correct: score, total: totalAttempts })
@@ -1437,6 +1669,7 @@ function SoundOnlyPage({
     const newQ = buildQueue()
     setQueue(newQ)
     setIdx(0)
+    setStage(1)
     setScore(0)
     setTotalAttempts(0)
     setDone(false)
@@ -1490,124 +1723,174 @@ function SoundOnlyPage({
     )
   }
 
+  const soundChatCtx: ChatCardContext | undefined = currentWord
+    ? { char: currentWord.char, pinyin: currentWord.pinyin, english: currentWord.english }
+    : undefined
+
   return (
     <div className="fc-app">
       <button onClick={onBack} className="fc-back-btn">
         ← Home
       </button>
 
-      <div className="fc-study-header">
-        <div style={{ flex: 1 }}>
-          <div className="fc-progress-label">
-            Card {idx + 1} of {queue.length}
+      <div className="fc-study-workspace">
+        <div className="fc-study-header">
+          <div style={{ flex: 1 }}>
+            <div className="fc-progress-label">
+              Card {idx + 1} of {queue.length}
+            </div>
+            <div className="fc-progress-bar">
+              <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
           </div>
-          <div className="fc-progress-bar">
-            <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-        <div className="fc-score-badge">
-          Score: <b style={{ color: '#27ae60' }}>{score}</b>
-        </div>
-      </div>
-
-      {/* Audio card */}
-      <div className="fc-card-scene">
-        <div className="fc-card-inner">
-          <div className="fc-card-face">
-            <div className="fc-card-tag">What word do you hear?</div>
-            <button
-              className="fc-sound-play-btn"
-              onClick={(e) => {
-                e.currentTarget.blur()
-                currentWord && speakHanzi(currentWord.char)
-              }}
-              aria-label="Replay pronunciation"
-            >
-              <Volume2 size={36} />
-            </button>
-            <div className="fc-sound-hint">Tap or press Space to replay</div>
+          <div className="fc-score-badge">
+            Score: <b style={{ color: '#27ae60' }}>{score}</b>
           </div>
         </div>
-      </div>
 
-      {/* Answers */}
-      <div className="fc-answer-area">
-        {answerStyle === 'multiple-choice' && choiceWords.length > 0 && (
-          <div
-            className={`fc-choices${answerFormat === 'both' || (answerFormat === 'char' && answered) ? ' fc-choices--tall' : ''}`}
-          >
-            {choiceWords.map((w) => (
-              <button
-                key={w.char}
-                className={`fc-choice-btn${choiceStates[w.char] ? ` ${choiceStates[w.char]}` : ''}`}
-                disabled={answered}
-                onClick={() => handleChoice(w)}
-              >
-                {answerFormat === 'char' &&
-                  (answered ? (
-                    <span className="fc-sound-choice-both">
-                      <span className="fc-sound-choice-char">{w.char}</span>
-                      <span className="fc-sound-choice-pinyin">{w.pinyin}</span>
-                    </span>
-                  ) : (
-                    <span className="fc-sound-choice-char">{w.char}</span>
-                  ))}
-                {answerFormat === 'pinyin' && w.pinyin}
-                {answerFormat === 'both' && (
-                  <span className="fc-sound-choice-both">
-                    <span className="fc-sound-choice-char">{w.char}</span>
-                    <span className="fc-sound-choice-pinyin">{w.pinyin}</span>
-                  </span>
-                )}
-              </button>
-            ))}
+        <div className="fc-study-body">
+          <div className="fc-stage-dots">
+            {stageCount === 2 &&
+              [1, 2].map((s) => (
+                <div
+                  key={s}
+                  className={`fc-stage-dot${stage === s ? ' active' : stage > s ? ' done' : ''}`}
+                />
+              ))}
           </div>
-        )}
 
-        {answerStyle === 'type' && (
-          <div className="fc-type-area">
-            <input
-              className={`fc-type-input${typeResult ? ` ${typeResult}` : ''}`}
-              placeholder="Type pinyin (e.g. nǐ hǎo)..."
-              value={typeValue}
-              disabled={answered}
-              onChange={(e) => setTypeValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleTypeSubmit()
-              }}
-              autoFocus
-            />
-            {answered && typeResult === 'wrong' && currentWord && (
-              <div className="fc-type-correct">
-                Correct: {currentWord.pinyin} ({currentWord.char})
+          <div className="fc-card-answers">
+            {/* Stage 1: audio card */}
+            {stage === 1 && (
+              <div className="fc-card-scene">
+                <div className="fc-card-inner">
+                  <div className="fc-card-face">
+                    <div className="fc-card-tag">What word do you hear?</div>
+                    <button
+                      className="fc-sound-play-btn"
+                      onClick={(e) => {
+                        e.currentTarget.blur()
+                        currentWord && speakHanzi(currentWord.char)
+                      }}
+                      aria-label="Replay pronunciation"
+                    >
+                      <Volume2 size={36} />
+                    </button>
+                    <div className="fc-sound-hint">Tap or press Space to replay</div>
+                  </div>
+                </div>
               </div>
             )}
-            <button
-              className="fc-submit-btn"
-              disabled={answered}
-              onClick={handleTypeSubmit}
-            >
-              Check
-            </button>
-          </div>
-        )}
-      </div>
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 4,
-        }}
-      >
-        <button
-          className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
-          onClick={handleNext}
-        >
-          Next →
-        </button>
-        {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
+            {/* Stage 2: character card → guess English */}
+            {stage === 2 && currentWord && (
+              <div className="fc-card-scene">
+                <div className="fc-card-inner">
+                  <div className="fc-card-face">
+                    <div className="fc-card-tag">What does this mean?</div>
+                    <div className="fc-card-char">{currentWord.char}</div>
+                    <div className="fc-card-pinyin">{currentWord.pinyin}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Answers */}
+            <div className="fc-answer-area">
+              {/* Stage 1 answers */}
+              {stage === 1 && answerStyle === 'multiple-choice' && choiceWords.length > 0 && (
+                <div
+                  className={`fc-choices${answerFormat === 'both' || (answerFormat === 'char' && answered) ? ' fc-choices--tall' : ''}`}
+                >
+                  {choiceWords.map((w) => (
+                    <button
+                      key={w.char}
+                      className={`fc-choice-btn${choiceStates[w.char] ? ` ${choiceStates[w.char]}` : ''}`}
+                      disabled={answered}
+                      onClick={() => handleChoice(w)}
+                    >
+                      {answerFormat === 'char' &&
+                        (answered ? (
+                          <span className="fc-sound-choice-both">
+                            <span className="fc-sound-choice-char">{w.char}</span>
+                            <span className="fc-sound-choice-pinyin">{w.pinyin}</span>
+                          </span>
+                        ) : (
+                          <span className="fc-sound-choice-char">{w.char}</span>
+                        ))}
+                      {answerFormat === 'pinyin' && w.pinyin}
+                      {answerFormat === 'both' && (
+                        <span className="fc-sound-choice-both">
+                          <span className="fc-sound-choice-char">{w.char}</span>
+                          <span className="fc-sound-choice-pinyin">{w.pinyin}</span>
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {stage === 1 && answerStyle === 'type' && (
+                <div className="fc-type-area">
+                  <input
+                    className={`fc-type-input${typeResult ? ` ${typeResult}` : ''}`}
+                    placeholder="Type pinyin (e.g. nǐ hǎo)..."
+                    value={typeValue}
+                    disabled={answered}
+                    onChange={(e) => setTypeValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleTypeSubmit()
+                    }}
+                    autoFocus
+                  />
+                  {answered && typeResult === 'wrong' && currentWord && (
+                    <div className="fc-type-correct">
+                      Correct: {currentWord.pinyin} ({currentWord.char})
+                    </div>
+                  )}
+                  <button
+                    className="fc-submit-btn"
+                    disabled={answered}
+                    onClick={handleTypeSubmit}
+            >
+                    Check
+                  </button>
+                </div>
+              )}
+
+              {/* Stage 2 answers: guess English meaning */}
+              {stage === 2 && englishChoices.length > 0 && (
+                <div className="fc-choices">
+                  {englishChoices.map((w) => (
+                    <button
+                      key={w.char}
+                      className={`fc-choice-btn${englishChoiceStates[w.char] ? ` ${englishChoiceStates[w.char]}` : ''}`}
+                      disabled={answered}
+                      onClick={() => handleEnglishChoice(w)}
+                    >
+                      {w.english}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="fc-study-next-area">
+            <button
+              className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
+              onClick={handleNext}
+            >
+              Next →
+            </button>
+            {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
+          </div>
+
+          <div className="fc-study-right">
+            <ChatPanel cardContext={soundChatCtx} inline />
+            <PronunciationBox />
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -1662,6 +1945,8 @@ function ToneQuizPage({
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const tag = (document.activeElement as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (e.code === 'Space') {
         e.preventDefault()
         const word = queue[idx]
@@ -1757,84 +2042,94 @@ function ToneQuizPage({
     )
   }
 
+  const toneChatCtx: ChatCardContext | undefined = currentWord
+    ? { char: currentWord.char, pinyin: currentWord.pinyin, english: currentWord.english }
+    : undefined
+
   return (
     <div className="fc-app">
       <button onClick={onBack} className="fc-back-btn">
         ← Home
       </button>
 
-      <div className="fc-study-header">
-        <div style={{ flex: 1 }}>
-          <div className="fc-progress-label">
-            Card {idx + 1} of {queue.length}
+      <div className="fc-study-workspace">
+        <div className="fc-study-header">
+          <div style={{ flex: 1 }}>
+            <div className="fc-progress-label">
+              Card {idx + 1} of {queue.length}
+            </div>
+            <div className="fc-progress-bar">
+              <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
           </div>
-          <div className="fc-progress-bar">
-            <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
+          <div className="fc-score-badge">
+            Score: <b style={{ color: '#27ae60' }}>{score}</b>
           </div>
         </div>
-        <div className="fc-score-badge">
-          Score: <b style={{ color: '#27ae60' }}>{score}</b>
-        </div>
-      </div>
 
-      <div className="fc-card-scene">
-        <div className="fc-card-inner">
-          <div className="fc-card-face">
-            <div className="fc-card-tag">Which tones are correct?</div>
-            {currentWord && (
-              <>
-                <div className="fc-card-pinyin" style={{ fontSize: '2rem' }}>
-                  {stripTones(currentWord.pinyin)}
+        <div className="fc-study-body">
+          <div className="fc-stage-dots" />
+
+          <div className="fc-card-answers">
+            <div className="fc-card-scene">
+              <div className="fc-card-inner">
+                <div className="fc-card-face">
+                  <div className="fc-card-tag">Which tones are correct?</div>
+                  {currentWord && (
+                    <>
+                      <div className="fc-card-pinyin" style={{ fontSize: '2rem' }}>
+                        {stripTones(currentWord.pinyin)}
+                      </div>
+                      <div className="fc-card-english">{currentWord.english}</div>
+                      <button
+                        className="fc-speaker-btn"
+                        style={{ marginTop: 8 }}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          speakHanzi(currentWord.char)
+                        }}
+                        aria-label="Play pronunciation"
+                      >
+                        <Volume2 size={16} />
+                      </button>
+                      <div className="fc-sound-hint">Tap or press Space to replay</div>
+                    </>
+                  )}
                 </div>
-                <div className="fc-card-english">{currentWord.english}</div>
-                <button
-                  className="fc-speaker-btn"
-                  style={{ marginTop: 8 }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    speakHanzi(currentWord.char)
-                  }}
-                  aria-label="Play pronunciation"
-                >
-                  <Volume2 size={16} />
-                </button>
-                <div className="fc-sound-hint">Tap or press Space to replay</div>
-              </>
-            )}
+              </div>
+            </div>
+
+            <div className="fc-answer-area">
+              <div className="fc-choices">
+                {choices.map((choice) => (
+                  <button
+                    key={choice}
+                    className={`fc-choice-btn${choiceStates[choice] ? ` ${choiceStates[choice]}` : ''}`}
+                    disabled={answered}
+                    onClick={() => handleChoice(choice)}
+                  >
+                    {choice}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="fc-study-next-area">
+            <button
+              className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
+              onClick={handleNext}
+            >
+              Next →
+            </button>
+            {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
+          </div>
+
+          <div className="fc-study-right">
+            <ChatPanel cardContext={toneChatCtx} inline />
+            <PronunciationBox />
           </div>
         </div>
-      </div>
-
-      <div className="fc-answer-area">
-        <div className="fc-choices">
-          {choices.map((choice) => (
-            <button
-              key={choice}
-              className={`fc-choice-btn${choiceStates[choice] ? ` ${choiceStates[choice]}` : ''}`}
-              disabled={answered}
-              onClick={() => handleChoice(choice)}
-            >
-              {choice}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 4,
-        }}
-      >
-        <button
-          className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
-          onClick={handleNext}
-        >
-          Next →
-        </button>
-        {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
       </div>
     </div>
   )
@@ -1970,6 +2265,7 @@ function WordSetPage({
       answerFormat: soundSettings.answerFormat,
       answerStyle: settings.answerStyle,
       sessionSize: settings.sessionSize,
+      stageCount: settings.defaultMode >= 2 ? 2 : 1,
     }
     const session: LastSession = {
       wordSetKey: selectedWordSet ?? '',
@@ -2250,11 +2546,7 @@ function WordSetPage({
             )}
             <div
               className="fc-settings-section"
-              style={
-                soundOnlyOpen || toneQuizOpen
-                  ? { opacity: 0.35, pointerEvents: 'none' }
-                  : undefined
-              }
+              style={toneQuizOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
             >
               <div className="fc-settings-label">Study Mode</div>
               <div className="fc-settings-options">
@@ -2262,6 +2554,8 @@ function WordSetPage({
                   <button
                     key={m}
                     className={`fc-setting-opt${settings.defaultMode === m ? ' selected' : ''}`}
+                    disabled={soundOnlyOpen && m === 3}
+                    style={soundOnlyOpen && m === 3 ? { opacity: 0.35 } : undefined}
                     onClick={() =>
                       setSettings((s) => ({ ...s, defaultMode: m }))
                     }
@@ -2322,7 +2616,10 @@ function WordSetPage({
                 ))}
               </div>
             </div>
-            <div className="fc-settings-section">
+            <div
+              className="fc-settings-section"
+              style={toneQuizOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
+            >
               <div className="fc-settings-label">Sound Only Mode</div>
               <div className="fc-settings-options">
                 <button
@@ -2345,6 +2642,8 @@ function WordSetPage({
                       setSoundOnlyOpen(true)
                       setToneQuizOpen(false)
                       setSoundSettings((s) => ({ ...s, answerFormat: val }))
+                      if (settings.defaultMode === 3)
+                        setSettings((s) => ({ ...s, defaultMode: 1 }))
                     }}
                   >
                     {label}
@@ -2352,7 +2651,10 @@ function WordSetPage({
                 ))}
               </div>
             </div>
-            <div className="fc-settings-section">
+            <div
+              className="fc-settings-section"
+              style={soundOnlyOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
+            >
               <div className="fc-settings-label">Tone Quiz Mode</div>
               <div className="fc-settings-options">
                 <button

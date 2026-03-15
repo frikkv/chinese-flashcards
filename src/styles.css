@@ -560,6 +560,18 @@ body {
   border-color: var(--fc-blue);
   background: #f0f5fa;
 }
+.fc-choice-btn--skeleton {
+  height: 58px;
+  cursor: default;
+  background: linear-gradient(90deg, var(--fc-border) 25%, #ede9e1 50%, var(--fc-border) 75%);
+  background-size: 200% 100%;
+  animation: fc-shimmer 1.4s infinite;
+  pointer-events: none;
+}
+@keyframes fc-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 .fc-choice-btn.correct {
   border-color: var(--fc-success);
   background: var(--fc-success-light);
@@ -1181,6 +1193,116 @@ body {
   text-align: center;
   padding: 4px 16px 8px;
   flex-shrink: 0;
+}
+
+/* ── PRONUNCIATION BOX ── */
+.fc-pronbox {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1.5px solid var(--fc-border);
+  border-radius: 14px;
+  background: var(--fc-surface);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.fc-pronbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 6px;
+  border-bottom: 1px solid var(--fc-border);
+  flex-shrink: 0;
+}
+.fc-pronbox-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--fc-text);
+  letter-spacing: 0.01em;
+}
+.fc-pronbox-limit {
+  font-size: 0.78rem;
+  color: var(--fc-muted);
+}
+.fc-pronbox-body {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  align-items: flex-end;
+}
+.fc-pronbox-input {
+  flex: 1;
+  border: 1.5px solid var(--fc-border);
+  border-radius: 10px;
+  padding: 8px 11px;
+  font-size: 0.93rem;
+  font-family: inherit;
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  resize: none;
+  line-height: 1.5;
+  outline: none;
+}
+.fc-pronbox-input:focus {
+  border-color: var(--fc-muted);
+}
+.fc-pronbox-input:disabled {
+  opacity: 0.5;
+}
+.fc-pronbox-play {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--fc-text);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.fc-pronbox-play:hover:not(:disabled) {
+  background: #333;
+}
+.fc-pronbox-play:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.fc-pronbox-spinner {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: fc-spin 0.7s linear infinite;
+}
+@keyframes fc-spin {
+  to { transform: rotate(360deg); }
+}
+.fc-pronbox-result {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 14px 10px;
+  border-top: 1px solid var(--fc-border);
+}
+.fc-pronbox-result-char {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.4rem;
+  color: var(--fc-text);
+}
+.fc-pronbox-result-pinyin {
+  font-size: 0.88rem;
+  color: var(--fc-muted);
+}
+.fc-pronbox-error {
+  font-size: 0.82rem;
+  color: var(--fc-wrong);
+  padding: 4px 14px 8px;
 }
 
 /* ── RESPONSIVE ── */

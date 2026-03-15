@@ -18,7 +18,8 @@
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
-    "db:gen-distractors": "tsx scripts/generate-distractors.ts"
+    "db:gen-distractors": "tsx scripts/generate-distractors.ts",
+    "audio:generate": "tsx scripts/generate-audio.ts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.5.4",

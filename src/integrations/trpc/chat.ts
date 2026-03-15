@@ -122,4 +122,38 @@ export const chatRouter = createTRPCRouter({
 
       return { content: assistantContent }
     }),
+
+  translateToZh: publicProcedure
+    .input(z.object({ text: z.string().min(1).max(300) }))
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = (ctx.session?.user.id ?? 'anonymous') + ':translate'
+      if (!checkRateLimit(rateLimitKey)) {
+        throw new TRPCError({
+          code: 'TOO_MANY_REQUESTS',
+          message: 'Too many requests. Please wait a moment.',
+        })
+      }
+
+      const completion = await getOpenAI().chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content:
+              'Translate the given text to Mandarin Chinese. Respond ONLY with a JSON object: {"char":"...","pinyin":"..."}. No explanation, no markdown, no other text.',
+          },
+          { role: 'user', content: input.text },
+        ],
+        max_tokens: 150,
+        temperature: 0.2,
+      })
+
+      const raw = completion.choices[0]?.message?.content?.trim() ?? ''
+      try {
+        const parsed = JSON.parse(raw)
+        return { char: String(parsed.char ?? ''), pinyin: String(parsed.pinyin ?? '') }
+      } catch {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Translation failed.' })
+      }
+    }),
 })
