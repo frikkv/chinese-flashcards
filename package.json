@@ -17,7 +17,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:gen-distractors": "tsx scripts/generate-distractors.ts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.5.4",
@@ -41,6 +42,7 @@
     "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.577.0",
     "mammoth": "^1.12.0",
+    "openai": "^6.29.0",
     "pdf-parse": "^2.4.5",
     "pg": "^8.16.3",
     "radix-ui": "^1.4.3",

@@ -49,6 +49,7 @@ body {
   align-items: center;
   padding: 52px 32px 80px;
   gap: 36px;
+  position: relative;
 }
 
 /* ── TYPOGRAPHY ── */
@@ -315,6 +316,45 @@ body {
 .fc-wordset-container .fc-start-btn {
   margin-top: 0;
 }
+/* ── STUDY WORKSPACE ── */
+
+/* Outer column: full-width header, then the two-column body */
+.fc-study-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 1000px;
+}
+
+/*
+ * Two-column grid.
+ * Left column (560px): row 1 = dots, row 2 = card+answers, row 3 = next-btn
+ * Right column (1fr):  row 2 = chat  ← shares exactly the same grid row as card+answers
+ * CSS grid stretch means the chat is automatically the same height as the left row-2 block.
+ */
+.fc-study-body {
+  display: grid;
+  grid-template-columns: 560px 1fr;
+  row-gap: 20px;
+  column-gap: 28px;
+  width: 100%;
+}
+
+/* Explicit grid placement so auto-placement doesn't scramble the order */
+.fc-study-body > .fc-stage-dots   { grid-column: 1; grid-row: 1; min-height: 9px; justify-content: center; }
+.fc-study-body > .fc-card-answers { grid-column: 1; grid-row: 2; }
+.fc-study-body > .fc-study-next-area { grid-column: 1; grid-row: 3; }
+.fc-study-body > .fc-study-right  { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; }
+
+/* Card + answer wrapper — flex column, defines the shared row height */
+.fc-card-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
 /* ── STUDY PAGE ── */
 .fc-back-btn {
   position: fixed;
@@ -339,7 +379,6 @@ body {
 }
 .fc-study-header {
   width: 100%;
-  max-width: 600px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -469,6 +508,10 @@ body {
   font-size: clamp(5rem, 14vw, 10rem);
   line-height: 1;
   color: var(--fc-text);
+}
+/* Slightly smaller char when pinyin is also present — keeps both inside the fixed card height */
+.fc-card-char--compact {
+  font-size: clamp(3rem, 9vw, 6rem);
 }
 .fc-card-pinyin {
   font-size: 1.9rem;
@@ -603,6 +646,16 @@ body {
 .fc-flip-btn:hover {
   border-color: var(--fc-red);
   color: var(--fc-red);
+}
+
+/* ── NEXT BUTTON AREA ── */
+/* Always reserves space so the layout doesn't jump when the button appears */
+.fc-study-next-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 56px;
 }
 
 /* ── NEXT BUTTON ── */
@@ -759,7 +812,408 @@ body {
   margin-top: 2px;
 }
 
+/* ── AUTH ── */
+.fc-auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 380px;
+  margin: auto;
+}
+.fc-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+.fc-auth-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 4px;
+}
+.fc-auth-input {
+  flex: unset;
+  width: 100%;
+}
+.fc-auth-error {
+  font-size: 0.88rem;
+  color: var(--fc-wrong);
+  text-align: center;
+}
+.fc-auth-switch {
+  font-size: 0.9rem;
+  color: var(--fc-muted);
+  text-align: center;
+  margin: 0;
+}
+.fc-auth-link {
+  background: none;
+  border: none;
+  color: var(--fc-blue);
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  text-decoration: underline;
+  padding: 0;
+}
+.fc-auth-loading {
+  justify-content: center;
+}
+.fc-auth-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--fc-border);
+  border-top-color: var(--fc-blue);
+  border-radius: 50%;
+  animation: fc-spin 0.8s linear infinite;
+}
+@keyframes fc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.fc-last-session-hint {
+  font-size: 0.82rem;
+  color: var(--fc-light);
+  font-style: italic;
+  text-align: center;
+  margin-top: 6px;
+}
+.fc-auth-skip {
+  background: none;
+  border: none;
+  color: var(--fc-light);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: 'Lora', serif;
+  padding: 0;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+.fc-auth-skip:hover {
+  color: var(--fc-muted);
+}
+.fc-signout-btn {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: none;
+  border: 1.5px solid var(--fc-border);
+  border-radius: 10px;
+  padding: 7px 16px;
+  font-family: 'Lora', serif;
+  font-size: 0.82rem;
+  color: var(--fc-muted);
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+.fc-signout-btn:hover {
+  border-color: var(--fc-text);
+  color: var(--fc-text);
+}
+
+/* ── CHAT PANEL ── */
+
+/* Inline panel — lives inside .fc-study-right, fills the column height */
+.fc-chat-panel--inline {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 28px;
+  box-shadow: var(--fc-shadow-lg);
+  overflow: hidden;
+}
+
+/* Overlay panel — modal, used for chat outside the study layout */
+.fc-chat-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.18);
+  z-index: 210;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0 20px 24px;
+  animation: fc-fade-in 0.15s ease;
+}
+@keyframes fc-fade-in {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+.fc-chat-panel--overlay {
+  width: 100%;
+  max-width: 420px;
+  height: 540px;
+  max-height: calc(100vh - 80px);
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 20px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fc-slide-up 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes fc-slide-up {
+  from { transform: translateY(20px); opacity: 0 }
+  to { transform: translateY(0); opacity: 1 }
+}
+
+/* Shared structure */
+.fc-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--fc-border);
+  gap: 10px;
+  flex-shrink: 0;
+}
+.fc-chat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.fc-chat-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fc-light);
+  white-space: nowrap;
+}
+.fc-chat-card-tag {
+  font-size: 0.85rem;
+  color: var(--fc-blue);
+  background: #f0f5fa;
+  border: 1px solid #d0e0ef;
+  border-radius: 8px;
+  padding: 2px 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+  font-family: 'Noto Serif SC', serif;
+}
+.fc-chat-close {
+  background: none;
+  border: none;
+  color: var(--fc-light);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.fc-chat-close:hover {
+  color: var(--fc-text);
+  background: var(--fc-border);
+}
+.fc-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 18px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fc-chat-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 88%;
+}
+.fc-chat-msg.user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.fc-chat-msg.assistant {
+  align-self: flex-start;
+}
+.fc-chat-bubble {
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Lora', Georgia, serif;
+}
+.fc-chat-msg.user .fc-chat-bubble {
+  background: var(--fc-text);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.fc-chat-msg.assistant .fc-chat-bubble {
+  background: var(--fc-bg);
+  border: 1px solid var(--fc-border);
+  color: var(--fc-text);
+  border-bottom-left-radius: 4px;
+}
+.fc-chat-typing {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 10px 14px;
+}
+.fc-chat-typing span {
+  width: 6px;
+  height: 6px;
+  background: var(--fc-light);
+  border-radius: 50%;
+  animation: fc-typing-dot 1.2s infinite;
+}
+.fc-chat-typing span:nth-child(2) { animation-delay: 0.2s }
+.fc-chat-typing span:nth-child(3) { animation-delay: 0.4s }
+@keyframes fc-typing-dot {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.5 }
+  40% { transform: scale(1); opacity: 1 }
+}
+.fc-chat-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--fc-muted);
+  font-size: 0.88rem;
+  font-style: italic;
+  text-align: center;
+  padding: 28px 22px;
+}
+.fc-chat-empty-char {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 3rem;
+  color: var(--fc-red);
+  opacity: 0.25;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.fc-chat-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 8px;
+  width: 100%;
+  font-style: normal;
+}
+.fc-chat-suggest-btn {
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 12px;
+  padding: 9px 14px;
+  font-family: 'Lora', serif;
+  font-size: 0.83rem;
+  color: var(--fc-text);
+  cursor: pointer;
+  text-align: left;
+  line-height: 1.4;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
+}
+.fc-chat-suggest-btn:hover {
+  border-color: var(--fc-red);
+  background: var(--fc-red-light);
+  color: var(--fc-red);
+}
+.fc-chat-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--fc-border);
+  flex-shrink: 0;
+}
+.fc-chat-input {
+  flex: 1;
+  border: 1.5px solid var(--fc-border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-family: 'Lora', serif;
+  font-size: 0.9rem;
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  outline: none;
+  resize: none;
+  transition: border-color 0.2s;
+  line-height: 1.4;
+}
+.fc-chat-input:focus {
+  border-color: var(--fc-muted);
+}
+.fc-chat-send {
+  background: var(--fc-text);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 1rem;
+  transition: background 0.2s, opacity 0.2s;
+  align-self: flex-end;
+}
+.fc-chat-send:hover {
+  background: #333;
+}
+.fc-chat-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.fc-chat-error {
+  font-size: 0.82rem;
+  color: var(--fc-wrong);
+  text-align: center;
+  padding: 4px 16px 8px;
+  flex-shrink: 0;
+}
+
 /* ── RESPONSIVE ── */
+
+/* Desktop: lock card + answer heights so both columns stay the same size */
+@media (min-width: 901px) {
+  /* Fixed card height — content scales inside, never pushes the card taller */
+  .fc-card-face {
+    height: 340px;
+    min-height: unset;
+    overflow: hidden;
+  }
+
+  /* Reserve consistent space for the answer area regardless of which mode is active */
+  .fc-answer-area {
+    min-height: 144px;
+  }
+}
+
+/* Tablet: stack the study layout vertically */
+@media (max-width: 900px) {
+  .fc-study-workspace {
+    max-width: 560px;
+  }
+  .fc-study-body {
+    grid-template-columns: 1fr;
+  }
+  .fc-study-body > .fc-stage-dots   { grid-column: 1; grid-row: 1; }
+  .fc-study-body > .fc-card-answers { grid-column: 1; grid-row: 2; }
+  .fc-study-body > .fc-study-next-area { grid-column: 1; grid-row: 3; }
+  .fc-study-body > .fc-study-right  { grid-column: 1; grid-row: 4; min-height: 440px; }
+}
+
 @media (max-width: 560px) {
   .fc-app {
     padding: 32px 16px 60px;
@@ -771,5 +1225,8 @@ body {
   .fc-stats-bar {
     gap: 20px;
     padding: 16px 20px;
+  }
+  .fc-study-body > .fc-study-right {
+    min-height: 380px;
   }
 }

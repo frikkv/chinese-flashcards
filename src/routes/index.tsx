@@ -1,10 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { Volume2 } from 'lucide-react'
 import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
 import type { Word } from '../data/vocabulary'
+import { authClient } from '#/lib/auth-client'
+import { useTRPC } from '#/integrations/trpc/react'
 
-export const Route = createFileRoute('/')({ component: FlashcardsApp })
+export const Route = createFileRoute('/')({ component: AuthGate })
 
 // ── TYPES ────────────────────────────────────────────────────────
 type Page = 'wordset' | 'study' | 'results' | 'sound' | 'tone'
@@ -270,7 +273,11 @@ function CardFace({
       {content && (
         <>
           <div className="fc-card-tag">{content.tag}</div>
-          {content.char && <div className="fc-card-char">{content.char}</div>}
+          {content.char && (
+            <div className={`fc-card-char${content.pinyin ? ' fc-card-char--compact' : ''}`}>
+              {content.char}
+            </div>
+          )}
           {content.pinyin && (
             <div
               className="fc-card-pinyin"
@@ -300,12 +307,222 @@ function CardFace({
   )
 }
 
+// ── AUTH ──────────────────────────────────────────────────────────
+function AuthPage({ onSkip }: { onSkip: () => void }) {
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [name, setName] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      if (mode === 'signup') {
+        const res = await authClient.signUp.email({ email, password, name })
+        if (res.error) setError(res.error.message ?? 'Sign up failed')
+      } else {
+        const res = await authClient.signIn.email({ email, password })
+        if (res.error) setError(res.error.message ?? 'Sign in failed')
+      }
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fc-app">
+      <div className="fc-auth-container">
+        <h1 className="fc-hero-title">学中文</h1>
+        <form className="fc-auth-form" onSubmit={handleSubmit}>
+          <h2 className="fc-auth-title">
+            {mode === 'signin' ? 'Sign In' : 'Create Account'}
+          </h2>
+          {mode === 'signup' && (
+            <input
+              className="fc-type-input fc-auth-input"
+              type="text"
+              placeholder="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              autoFocus
+            />
+          )}
+          <input
+            className="fc-type-input fc-auth-input"
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus={mode === 'signin'}
+          />
+          <input
+            className="fc-type-input fc-auth-input"
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          {error && <div className="fc-auth-error">{error}</div>}
+          <button className="fc-start-btn" type="submit" disabled={loading}>
+            {loading
+              ? 'Please wait…'
+              : mode === 'signin'
+                ? 'Sign In →'
+                : 'Create Account →'}
+          </button>
+        </form>
+        <p className="fc-auth-switch">
+          {mode === 'signin'
+            ? "Don't have an account? "
+            : 'Already have an account? '}
+          <button
+            className="fc-auth-link"
+            type="button"
+            onClick={() => {
+              setMode(mode === 'signin' ? 'signup' : 'signin')
+              setError('')
+            }}
+          >
+            {mode === 'signin' ? 'Sign up' : 'Sign in'}
+          </button>
+        </p>
+        <button className="fc-auth-skip" type="button" onClick={onSkip}>
+          Continue without an account
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function AuthGate() {
+  const { data: session, isPending } = authClient.useSession()
+  const [skipped, setSkipped] = useState(false)
+
+  if (isPending) {
+    return (
+      <div className="fc-app fc-auth-loading">
+        <div className="fc-auth-spinner" />
+      </div>
+    )
+  }
+
+  if (!session && !skipped) return <AuthPage onSkip={() => setSkipped(true)} />
+  return <FlashcardsApp onSignIn={session ? undefined : () => setSkipped(false)} />
+}
+
+function wordSetDetailOf(session: LastSession | null): string {
+  if (!session) return ''
+  if (session.wordSetKey === 'hsk')
+    return [...session.hskLevels].sort().join(',')
+  return [...session.units].sort((a, b) => a - b).join(',')
+}
+
 // ── MAIN APP ─────────────────────────────────────────────────────
-function FlashcardsApp() {
+function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
+  const trpc = useTRPC()
+  const { data: authSession } = authClient.useSession()
+  const isSignedIn = !!authSession?.user
+
+  // Load per-user progress (only when signed in)
+  const progressQuery = useQuery({
+    ...trpc.progress.getProgress.queryOptions(),
+    enabled: isSignedIn,
+  })
+  const recordCard = useMutation(trpc.progress.recordCard.mutationOptions())
+  const saveLastSessionMutation = useMutation(
+    trpc.progress.saveLastSession.mutationOptions(),
+  )
+  const saveSessionMutation = useMutation(
+    trpc.progress.saveSession.mutationOptions(),
+  )
+  const fetchDistractorsMutation = useMutation(
+    trpc.distractors.getDistractors.mutationOptions(),
+  )
+  const currentDistractorFetchRef = useRef<string | null>(null)
+  const answeredRef = useRef(false)
+
   const [page, setPage] = useState<Page>('wordset')
 
   // Word set selection
   const [lastSession, setLastSession] = useState<LastSession | null>(null)
+
+  // Reconstruct lastSession from the user_last_session table on login
+  useEffect(() => {
+    const db = progressQuery.data?.lastSession
+    if (!db || lastSession) return
+    if (!db.wordSetDetail) return  // no valid data yet
+    const detail = db.wordSetDetail
+      .split(',')
+      .map(Number)
+      .filter(Boolean)
+    let vocab: Word[] = []
+    if (db.wordSetKey === 'hsk') {
+      if (detail.includes(1)) vocab = vocab.concat(hsk1Words)
+      if (detail.includes(2)) vocab = vocab.concat(hsk2Words)
+    } else if (db.wordSetKey === 'lang1511') {
+      const unitSet = new Set(detail)
+      vocab = lang1511Units
+        .filter((u) => unitSet.has(u.unit))
+        .flatMap((u) => u.words)
+    }
+    if (vocab.length === 0) return
+    const size = ([10, 20, 30] as const).includes(db.sessionSize as 10 | 20 | 30)
+      ? (db.sessionSize as 10 | 20 | 30)
+      : 20
+    const hskLevels = new Set<number>(
+      db.wordSetKey === 'hsk' ? detail : [],
+    )
+    const units = new Set<number>(
+      db.wordSetKey === 'lang1511' ? detail : [],
+    )
+    const desc =
+      db.wordSetKey === 'hsk'
+        ? `HSK ${[...hskLevels].sort().join(' + ')} · ${vocab.length} words`
+        : `LANG 1511 · Units ${[...units].sort((a, b) => a - b).join(', ')}`
+    const modeStr = db.mode
+    let soundSettings: SoundSettings | undefined
+    let toneSessionSize: 10 | 20 | 30 | undefined
+    let reconstructedSettings: Settings = {
+      answerStyle: 'multiple-choice',
+      defaultMode: 1,
+      sessionSize: size,
+    }
+    if (modeStr === 'sound') {
+      soundSettings = {
+        answerFormat: 'char',
+        answerStyle: 'multiple-choice',
+        sessionSize: size,
+      }
+    } else if (modeStr === 'tone') {
+      toneSessionSize = size
+    } else {
+      const modeNum = parseInt(modeStr.split(':')[1] ?? '1')
+      reconstructedSettings = {
+        answerStyle: 'multiple-choice',
+        defaultMode: ([1, 2, 3].includes(modeNum) ? modeNum : 1) as 1 | 2 | 3,
+        sessionSize: size,
+      }
+    }
+    setLastSession({
+      wordSetKey: db.wordSetKey,
+      hskLevels,
+      units,
+      settings: reconstructedSettings,
+      soundSettings,
+      toneSessionSize,
+      vocab,
+      desc,
+    })
+  }, [progressQuery.data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Settings + mode
   const [settings, setSettings] = useState<Settings>({
@@ -386,6 +603,19 @@ function FlashcardsApp() {
   useEffect(() => {
     nextBtnVisibleRef.current = nextBtnVisible
   }, [nextBtnVisible])
+  useEffect(() => {
+    answeredRef.current = answered
+  }, [answered])
+
+  // Upgrade to AI distractors when they arrive (if same card, not yet answered)
+  useEffect(() => {
+    const data = fetchDistractorsMutation.data
+    const vars = fetchDistractorsMutation.variables
+    if (!data || !vars) return
+    if (vars.vocabKey !== currentDistractorFetchRef.current) return
+    if (answeredRef.current) return
+    setAnswerChoices(shuffle([vars.correctAnswer, ...data.distractors]))
+  }, [fetchDistractorsMutation.data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function doRenderCard(idx: number, currentFlipped: boolean, q: QueueItem[]) {
     const item = q[idx]
@@ -431,6 +661,18 @@ function FlashcardsApp() {
         setAnswerChoices(
           options.map((o) => (target === 'english' ? o.english : o.pinyin)),
         )
+        // Fetch AI distractors for English targets; fallback choices shown immediately above
+        if (target === 'english') {
+          currentDistractorFetchRef.current = word.char
+          fetchDistractorsMutation.mutate({
+            vocabKey: word.char,
+            char: word.char,
+            pinyin: word.pinyin,
+            correctAnswer: word.english,
+          })
+        } else {
+          currentDistractorFetchRef.current = null
+        }
       } else {
         setCardMode('type')
         setAnswerChoices([])
@@ -479,6 +721,10 @@ function FlashcardsApp() {
     setAllTimeStats((p) => ({ ...p, studied: p.studied + 1 }))
     setAnswered(true)
     setNextBtnVisible(true)
+    if (isSignedIn) {
+      const word = queueRef.current[qIdx]?.word
+      if (word) recordCard.mutate({ cardId: word.char, correct })
+    }
   }
 
   function handleChoiceAnswer(chosen: string) {
@@ -503,6 +749,10 @@ function FlashcardsApp() {
     }
     setAllTimeStats((p) => ({ ...p, studied: p.studied + 1 }))
     setNextBtnVisible(true)
+    if (isSignedIn) {
+      const word = queueRef.current[qIdx]?.word
+      if (word) recordCard.mutate({ cardId: word.char, correct: isCorrect })
+    }
   }
 
   function handleTypeSubmit() {
@@ -520,6 +770,10 @@ function FlashcardsApp() {
     }
     setAllTimeStats((p) => ({ ...p, studied: p.studied + 1 }))
     setNextBtnVisible(true)
+    if (isSignedIn) {
+      const word = queueRef.current[qIdx]?.word
+      if (word) recordCard.mutate({ cardId: word.char, correct: isCorrect })
+    }
   }
 
   function handleNext() {
@@ -529,6 +783,16 @@ function FlashcardsApp() {
 
     if (nextIdx >= currentQ.length) {
       setPage('results')
+      if (isSignedIn) {
+        saveSessionMutation.mutate({
+          wordSetKey: lastSession?.wordSetKey ?? 'unknown',
+          wordSetDetail: wordSetDetailOf(lastSession),
+          mode: `study:${sessionModeRef.current}`,
+          sessionSize: settingsRef.current.sessionSize,
+          correctCount: score,
+          totalCount: totalAttempts,
+        })
+      }
       return
     }
 
@@ -585,25 +849,51 @@ function FlashcardsApp() {
         lastSession={lastSession}
         allTimeStats={allTimeStats}
         settings={settings}
+        dbLastSession={progressQuery.data?.lastCompletedSession ?? null}
         onContinue={(v, mode, s, session) => {
           setVocab(v)
           setSessionMode(mode)
           setSettings(s)
           if (session) setLastSession(session)
           handleStartStudy(v, mode, s)
+          if (isSignedIn && session) {
+            saveLastSessionMutation.mutate({
+              wordSetKey: session.wordSetKey,
+              wordSetDetail: wordSetDetailOf(session),
+              mode: `study:${mode}`,
+              sessionSize: s.sessionSize,
+            })
+          }
         }}
         onStartSoundOnly={(v, ss, session) => {
           setSoundVocab(v)
           setSoundSettings(ss)
           if (session) setLastSession(session)
           setPage('sound')
+          if (isSignedIn && session) {
+            saveLastSessionMutation.mutate({
+              wordSetKey: session.wordSetKey,
+              wordSetDetail: wordSetDetailOf(session),
+              mode: 'sound',
+              sessionSize: ss.sessionSize,
+            })
+          }
         }}
         onStartToneQuiz={(v, sz, session) => {
           setToneVocab(v)
           setToneSessionSize(sz)
           if (session) setLastSession(session)
           setPage('tone')
+          if (isSignedIn && session) {
+            saveLastSessionMutation.mutate({
+              wordSetKey: session.wordSetKey,
+              wordSetDetail: wordSetDetailOf(session),
+              mode: 'tone',
+              sessionSize: sz,
+            })
+          }
         }}
+        onSignIn={onSignIn}
       />
     )
   }
@@ -614,6 +904,19 @@ function FlashcardsApp() {
         vocab={soundVocab}
         soundSettings={soundSettings}
         onBack={() => setPage('wordset')}
+        onSessionComplete={
+          isSignedIn
+            ? (stats) =>
+                saveSessionMutation.mutate({
+                  wordSetKey: lastSession?.wordSetKey ?? 'unknown',
+                  wordSetDetail: wordSetDetailOf(lastSession),
+                  mode: 'sound',
+                  sessionSize: soundSettings.sessionSize,
+                  correctCount: stats.correct,
+                  totalCount: stats.total,
+                })
+            : undefined
+        }
       />
     )
   }
@@ -624,6 +927,19 @@ function FlashcardsApp() {
         vocab={toneVocab}
         sessionSize={toneSessionSize}
         onBack={() => setPage('wordset')}
+        onSessionComplete={
+          isSignedIn
+            ? (stats) =>
+                saveSessionMutation.mutate({
+                  wordSetKey: lastSession?.wordSetKey ?? 'unknown',
+                  wordSetDetail: wordSetDetailOf(lastSession),
+                  mode: 'tone',
+                  sessionSize: toneSessionSize,
+                  correctCount: stats.correct,
+                  totalCount: stats.total,
+                })
+            : undefined
+        }
       />
     )
   }
@@ -648,149 +964,357 @@ function FlashcardsApp() {
   const currentItem = queue[qIdx]
   const pct = queue.length > 0 ? Math.round((qIdx / queue.length) * 100) : 0
 
+  // Card context for the inline chat — updates automatically as cards advance
+  const chatCtx: ChatCardContext | undefined = currentItem?.word
+    ? {
+        char: currentItem.word.char,
+        pinyin: currentItem.word.pinyin,
+        english: currentItem.word.english,
+        category: lastSession?.wordSetKey,
+      }
+    : undefined
+
   return (
     <div className="fc-app">
-      {/* Back button */}
+      {/* Back button (fixed) */}
       <button onClick={() => setPage('wordset')} className="fc-back-btn">
         ← Home
       </button>
 
-      {/* Progress header */}
-      <div className="fc-study-header">
-        <div style={{ flex: 1 }}>
-          <div className="fc-progress-label">
-            Card {qIdx + 1} of {queue.length}
+      {/* Study workspace: header spans full width, body is two-column grid */}
+      <div className="fc-study-workspace">
+
+        {/* Progress header — spans both columns */}
+        <div className="fc-study-header">
+          <div style={{ flex: 1 }}>
+            <div className="fc-progress-label">
+              Card {qIdx + 1} of {queue.length}
+            </div>
+            <div className="fc-progress-bar">
+              <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
           </div>
-          <div className="fc-progress-bar">
-            <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
+          <div className="fc-score-badge">
+            Score: <b style={{ color: '#27ae60' }}>{score}</b>
           </div>
         </div>
-        <div className="fc-score-badge">
-          Score: <b style={{ color: '#27ae60' }}>{score}</b>
+
+        {/* Two-column grid body */}
+        <div className="fc-study-body">
+
+          {/* Stage dots (grid row 1, col 1) */}
+          <div className="fc-stage-dots">
+            {sessionMode > 1 && currentItem
+              ? Array.from({ length: sessionMode }, (_, i) => i + 1).map((i) => (
+                  <div
+                    key={i}
+                    className={`fc-stage-dot${i === currentItem.stage ? ' active' : i < currentItem.stage ? ' done' : ''}`}
+                  />
+                ))
+              : null}
+          </div>
+
+          {/* Card + answers (grid row 2, col 1) */}
+          <div className="fc-card-answers">
+            {/* Card */}
+            <div className="fc-card-scene">
+              <div className={`fc-card-inner${isFlipped ? ' flipped' : ''}`}>
+                <CardFace content={faceA} hanzi={currentItem?.word.char ?? ''} />
+                <CardFace content={faceB} isBack hanzi={currentItem?.word.char ?? ''} />
+              </div>
+            </div>
+
+            {/* Answer area */}
+            <div className="fc-answer-area">
+              {cardMode === 'selfrate' && (
+                <>
+                  {!showSelfRate ? (
+                    <button className="fc-flip-btn" onClick={handleReveal}>
+                      Reveal Character
+                    </button>
+                  ) : (
+                    <div>
+                      <p className="fc-self-rate-label">Did you remember it?</p>
+                      <div className="fc-choices" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                        <button
+                          className={`fc-choice-btn${answered ? ' correct' : ''}`}
+                          disabled={answered}
+                          onClick={() => handleSelfRate(true)}
+                          style={{ textAlign: 'center' }}
+                        >
+                          ✓ Yes
+                        </button>
+                        <button
+                          className={`fc-choice-btn${answered ? ' wrong' : ''}`}
+                          disabled={answered}
+                          onClick={() => handleSelfRate(false)}
+                          style={{ textAlign: 'center' }}
+                        >
+                          ✗ No
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {cardMode === 'mc' && answerChoices.length > 0 && (
+                <div className="fc-choices">
+                  {answerChoices.map((choice) => (
+                    <button
+                      key={choice}
+                      className={`fc-choice-btn${choiceStates[choice] ? ` ${choiceStates[choice]}` : ''}`}
+                      disabled={answered}
+                      onClick={() => handleChoiceAnswer(choice)}
+                    >
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {cardMode === 'type' && (
+                <div className="fc-type-area">
+                  <input
+                    className={`fc-type-input${typeResult ? ` ${typeResult}` : ''}`}
+                    placeholder={
+                      answerTarget === 'pinyin'
+                        ? 'Type pinyin (e.g. nǐ hǎo)...'
+                        : 'Type English meaning...'
+                    }
+                    value={typeValue}
+                    disabled={answered}
+                    onChange={(e) => setTypeValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleTypeSubmit()
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    className="fc-submit-btn"
+                    disabled={answered}
+                    onClick={handleTypeSubmit}
+                  >
+                    Check
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Next button (grid row 3, col 1) */}
+          <div className="fc-study-next-area">
+            <button
+              className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
+              onClick={handleNext}
+            >
+              Next →
+            </button>
+            {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
+          </div>
+
+          {/* RIGHT: inline AI chat (grid row 2, col 2) */}
+          <div className="fc-study-right">
+            <ChatPanel cardContext={chatCtx} inline />
+          </div>
+
         </div>
       </div>
+    </div>
+  )
+}
 
-      {/* Stage dots */}
-      {sessionMode > 1 && currentItem && (
-        <div className="fc-stage-dots">
-          {Array.from({ length: sessionMode }, (_, i) => i + 1).map((i) => (
-            <div
-              key={i}
-              className={`fc-stage-dot${i === currentItem.stage ? ' active' : i < currentItem.stage ? ' done' : ''}`}
-            />
-          ))}
-        </div>
-      )}
+// ── CHAT PANEL ───────────────────────────────────────────────────
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
 
-      {/* Card */}
-      <div className="fc-card-scene">
-        <div className={`fc-card-inner${isFlipped ? ' flipped' : ''}`}>
-          <CardFace content={faceA} hanzi={currentItem?.word.char ?? ''} />
-          <CardFace
-            content={faceB}
-            isBack
-            hanzi={currentItem?.word.char ?? ''}
-          />
+interface ChatCardContext {
+  char: string
+  pinyin: string
+  english: string
+  category?: string
+}
+
+const CHAT_SUGGESTIONS_DEFAULT = [
+  'How do I say "thank you" in Chinese?',
+  'Explain tones in Mandarin.',
+  'Give me 3 example sentences using 你好.',
+]
+
+function CHAT_SUGGESTIONS_FOR_CARD(ctx: ChatCardContext) {
+  return [
+    `Use ${ctx.char} in a sentence.`,
+    `What does ${ctx.char} mean exactly?`,
+    `How do I remember ${ctx.char}?`,
+  ]
+}
+
+function ChatPanel({
+  cardContext,
+  onClose,
+  inline = false,
+}: {
+  cardContext?: ChatCardContext
+  onClose?: () => void
+  inline?: boolean
+}) {
+  const trpc = useTRPC()
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const sendMutation = useMutation(trpc.chat.sendMessage.mutationOptions())
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, isLoading])
+
+  // Close on Escape (overlay mode only)
+  useEffect(() => {
+    if (inline) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose?.()
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [inline, onClose])
+
+  async function sendMessage(text: string) {
+    const userText = text.trim()
+    if (!userText || isLoading) return
+    setInput('')
+    setErrorMsg('')
+    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userText }]
+    setMessages(newMessages)
+    setIsLoading(true)
+    try {
+      const result = await sendMutation.mutateAsync({
+        messages: newMessages,
+        cardContext,
+      })
+      setMessages((prev) => [...prev, { role: 'assistant', content: result.content }])
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'Something went wrong. Please try again.'
+      setErrorMsg(msg)
+    } finally {
+      setIsLoading(false)
+      setTimeout(() => inputRef.current?.focus(), 50)
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage(input)
+    }
+  }
+
+  const suggestions = cardContext
+    ? CHAT_SUGGESTIONS_FOR_CARD(cardContext)
+    : CHAT_SUGGESTIONS_DEFAULT
+
+  const panel = (
+    <div className={inline ? 'fc-chat-panel--inline' : 'fc-chat-panel--overlay'}>
+      {/* Header */}
+      <div className="fc-chat-header">
+        <div className="fc-chat-header-left">
+          <span className="fc-chat-title">Ask AI</span>
         </div>
+        {!inline && onClose && (
+          <button className="fc-chat-close" onClick={onClose} aria-label="Close chat">
+            ✕
+          </button>
+        )}
       </div>
 
-      {/* Answer area */}
-      <div className="fc-answer-area">
-        {cardMode === 'selfrate' && (
-          <>
-            {!showSelfRate ? (
-              <button className="fc-flip-btn" onClick={handleReveal}>
-                Reveal Character
-              </button>
-            ) : (
-              <div>
-                <p className="fc-self-rate-label">Did you remember it?</p>
-                <div
-                  className="fc-choices"
-                  style={{ gridTemplateColumns: '1fr 1fr' }}
+      {/* Messages */}
+      <div className="fc-chat-messages">
+        {messages.length === 0 ? (
+          <div className="fc-chat-empty">
+            <div className="fc-chat-empty-char">
+              {cardContext ? cardContext.char : '问'}
+            </div>
+            <div>
+              {cardContext
+                ? `Ask anything about ${cardContext.char} or Chinese in general.`
+                : 'Ask me anything about Mandarin Chinese!'}
+            </div>
+            <div className="fc-chat-suggestions">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  className="fc-chat-suggest-btn"
+                  onClick={() => sendMessage(s)}
                 >
-                  <button
-                    className={`fc-choice-btn${answered ? ' correct' : ''}`}
-                    disabled={answered}
-                    onClick={() => handleSelfRate(true)}
-                    style={{ textAlign: 'center' }}
-                  >
-                    ✓ Yes
-                  </button>
-                  <button
-                    className={`fc-choice-btn${answered ? ' wrong' : ''}`}
-                    disabled={answered}
-                    onClick={() => handleSelfRate(false)}
-                    style={{ textAlign: 'center' }}
-                  >
-                    ✗ No
-                  </button>
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {messages.map((msg, i) => (
+              <div key={i} className={`fc-chat-msg ${msg.role}`}>
+                <div className="fc-chat-bubble">{msg.content}</div>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="fc-chat-msg assistant">
+                <div className="fc-chat-bubble fc-chat-typing">
+                  <span />
+                  <span />
+                  <span />
                 </div>
               </div>
             )}
           </>
         )}
-
-        {cardMode === 'mc' && answerChoices.length > 0 && (
-          <div className="fc-choices">
-            {answerChoices.map((choice) => (
-              <button
-                key={choice}
-                className={`fc-choice-btn${choiceStates[choice] ? ` ${choiceStates[choice]}` : ''}`}
-                disabled={answered}
-                onClick={() => handleChoiceAnswer(choice)}
-              >
-                {choice}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {cardMode === 'type' && (
-          <div className="fc-type-area">
-            <input
-              className={`fc-type-input${typeResult ? ` ${typeResult}` : ''}`}
-              placeholder={
-                answerTarget === 'pinyin'
-                  ? 'Type pinyin (e.g. nǐ hǎo)...'
-                  : 'Type English meaning...'
-              }
-              value={typeValue}
-              disabled={answered}
-              onChange={(e) => setTypeValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleTypeSubmit()
-              }}
-              autoFocus
-            />
-            <button
-              className="fc-submit-btn"
-              disabled={answered}
-              onClick={handleTypeSubmit}
-            >
-              Check
-            </button>
-          </div>
-        )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Next button */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 4,
-        }}
-      >
+      {/* Error */}
+      {errorMsg && <div className="fc-chat-error">{errorMsg}</div>}
+
+      {/* Input */}
+      <div className="fc-chat-input-row">
+        <textarea
+          ref={inputRef}
+          className="fc-chat-input"
+          rows={1}
+          placeholder="Ask about Chinese…"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
+        />
         <button
-          className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
-          onClick={handleNext}
+          className="fc-chat-send"
+          onClick={() => sendMessage(input)}
+          disabled={isLoading || !input.trim()}
+          aria-label="Send"
         >
-          Next →
+          ↑
         </button>
-        {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
       </div>
+    </div>
+  )
+
+  if (inline) return panel
+
+  return (
+    <div
+      className="fc-chat-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose?.()}
+    >
+      {panel}
     </div>
   )
 }
@@ -800,10 +1324,12 @@ function SoundOnlyPage({
   vocab,
   soundSettings,
   onBack,
+  onSessionComplete,
 }: {
   vocab: Word[]
   soundSettings: SoundSettings
   onBack: () => void
+  onSessionComplete?: (stats: { correct: number; total: number }) => void
 }) {
   const { answerFormat, answerStyle, sessionSize } = soundSettings
 
@@ -900,6 +1426,7 @@ function SoundOnlyPage({
   function handleNext() {
     if (idx + 1 >= queue.length) {
       setDone(true)
+      onSessionComplete?.({ correct: score, total: totalAttempts })
       return
     }
     setIdx((p) => p + 1)
@@ -1091,10 +1618,12 @@ function ToneQuizPage({
   vocab,
   sessionSize,
   onBack,
+  onSessionComplete,
 }: {
   vocab: Word[]
   sessionSize: 10 | 20 | 30
   onBack: () => void
+  onSessionComplete?: (stats: { correct: number; total: number }) => void
 }) {
   function buildQueue(): Word[] {
     const count =
@@ -1164,6 +1693,7 @@ function ToneQuizPage({
   function handleNext() {
     if (idx + 1 >= queue.length) {
       setDone(true)
+      onSessionComplete?.({ correct: score, total: totalAttempts })
       return
     }
     setIdx((p) => p + 1)
@@ -1315,13 +1845,22 @@ function WordSetPage({
   lastSession,
   allTimeStats,
   settings: initialSettings,
+  dbLastSession,
   onContinue,
   onStartSoundOnly,
   onStartToneQuiz,
+  onSignIn,
 }: {
   lastSession: LastSession | null
   allTimeStats: AllTimeStats
   settings: Settings
+  dbLastSession?: {
+    wordSetKey: string
+    mode: string
+    correctCount: number
+    totalCount: number
+    completedAt: Date
+  } | null
   onContinue: (
     vocab: Word[],
     mode: 1 | 2 | 3,
@@ -1338,6 +1877,7 @@ function WordSetPage({
     sessionSize: 10 | 20 | 30,
     session?: LastSession,
   ) => void
+  onSignIn?: () => void
 }) {
   const [selectedWordSet, setSelectedWordSet] = useState<string | null>(null)
   const [selectedUnits, setSelectedUnits] = useState<Set<number>>(new Set())
@@ -1504,9 +2044,25 @@ function WordSetPage({
 
   return (
     <div className="fc-app">
+      <button
+        className="fc-signout-btn"
+        onClick={() => (onSignIn ? onSignIn() : authClient.signOut())}
+      >
+        {onSignIn ? 'Sign in' : 'Sign out'}
+      </button>
       <div className="fc-wordset-container">
         <h1 className="fc-hero-title">学中文</h1>
         <p className="fc-hero-sub">Choose a word set to study.</p>
+        {dbLastSession && (
+          <p className="fc-last-session-hint">
+            Last studied:{' '}
+            {dbLastSession.completedAt.toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+            })}{' '}
+            · {dbLastSession.correctCount}/{dbLastSession.totalCount} correct
+          </p>
+        )}
 
         {allTimeStats.sessions > 0 && (
           <div className="fc-stats-bar fc-stats-bar--compact">
