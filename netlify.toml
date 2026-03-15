@@ -2,6 +2,16 @@
   command = "pnpm build"
   publish = "dist/client"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/server"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
