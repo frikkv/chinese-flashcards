@@ -281,6 +281,19 @@ function speakHanzi(hanzi: string) {
 }
 
 // ── CARD FACE ────────────────────────────────────────────────────
+// Card usable width ≈ 448px = 28rem (560px card – 56px padding each side).
+// Target 25rem so there's always a margin. Each CJK char is ~1em wide.
+function charFontStyle(
+  char: string,
+  compact: boolean,
+): React.CSSProperties | undefined {
+  const len = [...char].length
+  const cssMax = compact ? 6 : 10
+  const fitMax = 25 / len
+  if (fitMax >= cssMax) return undefined // CSS clamp handles it fine
+  return { fontSize: `${Math.max(1.5, fitMax).toFixed(2)}rem` }
+}
+
 function CardFace({
   content,
   isBack,
@@ -308,7 +321,10 @@ function CardFace({
         <>
           <div className="fc-card-tag">{content.tag}</div>
           {content.char && (
-            <div className={`fc-card-char${content.pinyin ? ' fc-card-char--compact' : ''}`}>
+            <div
+              className={`fc-card-char${content.pinyin ? ' fc-card-char--compact' : ''}`}
+              style={charFontStyle(content.char, !!content.pinyin)}
+            >
               {content.char}
             </div>
           )}
@@ -1788,7 +1804,7 @@ function SoundOnlyPage({
                 <div className="fc-card-inner">
                   <div className="fc-card-face">
                     <div className="fc-card-tag">What does this mean?</div>
-                    <div className="fc-card-char">{currentWord.char}</div>
+                    <div className="fc-card-char" style={charFontStyle(currentWord.char, true)}>{currentWord.char}</div>
                     <div className="fc-card-pinyin">{currentWord.pinyin}</div>
                   </div>
                 </div>

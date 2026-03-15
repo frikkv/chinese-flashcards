@@ -345,7 +345,7 @@ body {
 .fc-study-body > .fc-stage-dots   { grid-column: 1; grid-row: 1; min-height: 9px; justify-content: center; }
 .fc-study-body > .fc-card-answers { grid-column: 1; grid-row: 2; }
 .fc-study-body > .fc-study-next-area { grid-column: 1; grid-row: 3; }
-.fc-study-body > .fc-study-right  { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; }
+.fc-study-body > .fc-study-right  { grid-column: 2; grid-row: 2 / 4; display: flex; flex-direction: column; overflow: hidden; }
 
 /* Card + answer wrapper — flex column, defines the shared row height */
 .fc-card-answers {
@@ -508,6 +508,8 @@ body {
   font-size: clamp(5rem, 14vw, 10rem);
   line-height: 1;
   color: var(--fc-text);
+  white-space: nowrap;
+  max-width: 100%;
 }
 /* Slightly smaller char when pinyin is also present — keeps both inside the fixed card height */
 .fc-card-char--compact {
@@ -668,6 +670,7 @@ body {
   align-items: center;
   gap: 4px;
   min-height: 56px;
+  margin-top: -12px;
 }
 
 /* ── NEXT BUTTON ── */
