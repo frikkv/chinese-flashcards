@@ -3,6 +3,10 @@ import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { db } from '#/db/index'
 
+const trustedOrigins = process.env.BETTER_AUTH_URL
+  ? [process.env.BETTER_AUTH_URL]
+  : []
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
@@ -11,5 +15,6 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  trustedOrigins,
   plugins: [tanstackStartCookies()],
 })

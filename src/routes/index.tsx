@@ -2046,7 +2046,11 @@ function WordSetPage({
     <div className="fc-app">
       <button
         className="fc-signout-btn"
-        onClick={() => (onSignIn ? onSignIn() : authClient.signOut())}
+        onClick={() =>
+          onSignIn
+            ? onSignIn()
+            : authClient.signOut({ fetchOptions: { onSuccess: () => window.location.reload() } })
+        }
       >
         {onSignIn ? 'Sign in' : 'Sign out'}
       </button>
