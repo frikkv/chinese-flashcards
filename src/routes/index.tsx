@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect, useRef } from 'react'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { Volume2 } from 'lucide-react'
 import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
@@ -33,6 +33,62 @@ interface LastSession {
   toneSessionSize?: 10 | 20 | 30
   vocab: Word[]
   desc: string
+}
+
+// ── PROGRESS / MASTERY ────────────────────────────────────────────
+type ProgressCard = {
+  cardId: string
+  timesCorrect: number
+  timesAttempted: number
+}
+
+type MasteryStats = {
+  new: number
+  learning: number
+  known: number
+  total: number
+  accuracy: number | null
+  totalReviews: number
+  hardest: string[]
+}
+
+// Known: ≥3 correct answers AND ≥80% recent accuracy
+// Learning: attempted but not yet Known
+// New: never attempted
+function computeWordSetMastery(vocab: Word[], cards: ProgressCard[]): MasteryStats {
+  const map = new Map(cards.map((c) => [c.cardId, c]))
+  let newCount = 0,
+    learning = 0,
+    known = 0
+  let totalCorrect = 0,
+    totalAttempted = 0
+  const hardest: Array<{ char: string; accuracy: number }> = []
+  for (const word of vocab) {
+    const p = map.get(word.char)
+    if (!p || p.timesAttempted === 0) {
+      newCount++
+    } else {
+      totalCorrect += p.timesCorrect
+      totalAttempted += p.timesAttempted
+      const accuracy = p.timesCorrect / p.timesAttempted
+      if (p.timesCorrect >= 3 && accuracy >= 0.8) {
+        known++
+      } else {
+        learning++
+        if (p.timesAttempted >= 2) hardest.push({ char: word.char, accuracy })
+      }
+    }
+  }
+  hardest.sort((a, b) => a.accuracy - b.accuracy)
+  return {
+    new: newCount,
+    learning,
+    known,
+    total: vocab.length,
+    accuracy: totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : null,
+    totalReviews: totalAttempted,
+    hardest: hardest.slice(0, 5).map((h) => h.char),
+  }
 }
 
 interface AllTimeStats {
@@ -912,6 +968,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
     if (nextIdx >= currentQ.length) {
       setPage('results')
+      // Refetch progress so ResultsPage shows up-to-date mastery
+      if (isSignedIn) void progressQuery.refetch()
       if (isSignedIn) {
         saveSessionMutation.mutate({
           wordSetKey: lastSession?.wordSetKey ?? 'unknown',
@@ -983,7 +1041,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
         lastSession={lastSession}
         allTimeStats={allTimeStats}
         settings={settings}
-        dbLastSession={progressQuery.data?.lastCompletedSession ?? null}
+        cardProgress={progressQuery.data?.cards}
         onContinue={(v, mode, s, session) => {
           setVocab(v)
           setSessionMode(mode)
@@ -1088,6 +1146,9 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
         wrong={wrongCount}
         pct={pct}
         words={words}
+        vocab={vocab}
+        cardProgress={progressQuery.data?.cards}
+        streak={progressQuery.data?.streak}
         onStudyAgain={() => handleStartStudy(vocab, sessionMode, settings)}
         onHome={() => setPage('wordset')}
       />
@@ -2180,12 +2241,100 @@ function ToneQuizPage({
   )
 }
 
+// ── STREAK BANNER ─────────────────────────────────────────────────
+function StreakBanner({
+  streak,
+  thisWeekSessions,
+}: {
+  streak: number
+  thisWeekSessions: number
+}) {
+  if (streak === 0 && thisWeekSessions === 0) return null
+  return (
+    <div className="fc-streak-banner">
+      {streak > 0 && (
+        <div className="fc-streak-chip">
+          <span className="fc-streak-num">{streak}</span>
+          <span className="fc-streak-label">day streak</span>
+        </div>
+      )}
+      {thisWeekSessions > 0 && (
+        <div className="fc-streak-chip">
+          <span className="fc-streak-num">{thisWeekSessions}</span>
+          <span className="fc-streak-label">sessions this week</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── WORD SET DASHBOARD ────────────────────────────────────────────
+function WordSetDashboard({
+  vocab,
+  cardProgress,
+}: {
+  vocab: Word[]
+  cardProgress: ProgressCard[]
+}) {
+  const stats = computeWordSetMastery(vocab, cardProgress)
+  const knownPct = stats.total > 0 ? Math.round((stats.known / stats.total) * 100) : 0
+  return (
+    <div className="fc-mastery-dashboard">
+      <div className="fc-mastery-header">
+        <span className="fc-mastery-title">Your Progress</span>
+        <span className="fc-mastery-known-label">
+          {stats.known} / {stats.total} known
+        </span>
+      </div>
+      <div className="fc-mastery-bar-wrap">
+        <div className="fc-mastery-bar">
+          <div className="fc-mastery-bar-fill" style={{ width: `${knownPct}%` }} />
+        </div>
+        <span className="fc-mastery-pct">{knownPct}%</span>
+      </div>
+      <div className="fc-mastery-chips">
+        <div className="fc-mastery-chip fc-mastery-chip--new">
+          <span className="fc-mastery-chip-num">{stats.new}</span>
+          <span className="fc-mastery-chip-label">New</span>
+        </div>
+        <div className="fc-mastery-chip fc-mastery-chip--learning">
+          <span className="fc-mastery-chip-num">{stats.learning}</span>
+          <span className="fc-mastery-chip-label">Learning</span>
+        </div>
+        <div className="fc-mastery-chip fc-mastery-chip--known">
+          <span className="fc-mastery-chip-num">{stats.known}</span>
+          <span className="fc-mastery-chip-label">Known</span>
+        </div>
+      </div>
+      {(stats.accuracy !== null || stats.totalReviews > 0) && (
+        <div className="fc-mastery-meta">
+          {stats.accuracy !== null && <span>{stats.accuracy}% accuracy</span>}
+          {stats.accuracy !== null && stats.totalReviews > 0 && <span>·</span>}
+          {stats.totalReviews > 0 && <span>{stats.totalReviews} total reviews</span>}
+        </div>
+      )}
+      {stats.hardest.length > 0 && (
+        <div className="fc-mastery-hardest">
+          <span className="fc-mastery-hardest-label">Struggling with:</span>
+          <div className="fc-mastery-hardest-chars">
+            {stats.hardest.map((char) => (
+              <span key={char} className="fc-mastery-hardest-char">
+                {char}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── WORD SET PAGE ─────────────────────────────────────────────────
 function WordSetPage({
   lastSession,
   allTimeStats,
   settings: initialSettings,
-  dbLastSession,
+  cardProgress,
   onContinue,
   onStartSoundOnly,
   onStartToneQuiz,
@@ -2194,13 +2343,7 @@ function WordSetPage({
   lastSession: LastSession | null
   allTimeStats: AllTimeStats
   settings: Settings
-  dbLastSession?: {
-    wordSetKey: string
-    mode: string
-    correctCount: number
-    totalCount: number
-    completedAt: Date
-  } | null
+  cardProgress?: ProgressCard[]
   onContinue: (
     vocab: Word[],
     mode: 1 | 2 | 3,
@@ -2232,6 +2375,22 @@ function WordSetPage({
     sessionSize: 10,
   })
   const [toneQuizOpen, setToneQuizOpen] = useState(false)
+
+  const dashVocab = useMemo(() => {
+    if (selectedWordSet === 'hsk' && selectedHSKLevels.size > 0) {
+      let v: Word[] = []
+      if (selectedHSKLevels.has(1)) v = v.concat(hsk1Words)
+      if (selectedHSKLevels.has(2)) v = v.concat(hsk2Words)
+      return v
+    }
+    if (selectedWordSet === 'lang1511' && selectedUnits.size > 0) {
+      return lang1511Units
+        .filter((u) => selectedUnits.has(u.unit))
+        .flatMap((u) => u.words)
+    }
+    if (selectedWordSet === 'last' && lastSession) return lastSession.vocab
+    return null
+  }, [selectedWordSet, selectedHSKLevels, selectedUnits, lastSession])
 
   // Drag-select state
   const mouseIsDownRef = useRef(false)
@@ -2385,29 +2544,30 @@ function WordSetPage({
 
   return (
     <div className="fc-app">
-      <button
-        className="fc-signout-btn"
-        onClick={() =>
-          onSignIn
-            ? onSignIn()
-            : authClient.signOut({ fetchOptions: { onSuccess: () => window.location.reload() } })
-        }
-      >
-        {onSignIn ? 'Sign in' : 'Sign out'}
-      </button>
+      <div className="fc-nav-btns">
+        {onSignIn ? (
+          <button className="fc-profile-nav-btn" onClick={onSignIn}>
+            Sign in
+          </button>
+        ) : (
+          <>
+            <Link to="/profile" className="fc-profile-nav-btn">
+              Profile
+            </Link>
+            <button
+              className="fc-signout-btn"
+              onClick={() =>
+                authClient.signOut({ fetchOptions: { onSuccess: () => window.location.reload() } })
+              }
+            >
+              Sign out
+            </button>
+          </>
+        )}
+      </div>
       <div className="fc-wordset-container">
         <h1 className="fc-hero-title">学中文</h1>
         <p className="fc-hero-sub">Choose a word set to study.</p>
-        {dbLastSession && (
-          <p className="fc-last-session-hint">
-            Last studied:{' '}
-            {dbLastSession.completedAt.toLocaleDateString(undefined, {
-              month: 'short',
-              day: 'numeric',
-            })}{' '}
-            · {dbLastSession.correctCount}/{dbLastSession.totalCount} correct
-          </p>
-        )}
 
         {allTimeStats.sessions > 0 && (
           <div className="fc-stats-bar fc-stats-bar--compact">
@@ -2466,6 +2626,11 @@ function WordSetPage({
             </button>
           )}
         </div>
+
+        {/* Progress dashboard for selected word set */}
+        {dashVocab && cardProgress && (
+          <WordSetDashboard vocab={dashVocab} cardProgress={cardProgress} />
+        )}
 
         {/* Session Settings */}
         {selectedWordSet && selectedWordSet !== 'last' && (
@@ -2759,6 +2924,9 @@ function ResultsPage({
   wrong,
   pct,
   words,
+  vocab,
+  cardProgress,
+  streak,
   onStudyAgain,
   onHome,
 }: {
@@ -2766,9 +2934,21 @@ function ResultsPage({
   wrong: number
   pct: number
   words: number
+  vocab?: Word[]
+  cardProgress?: ProgressCard[]
+  streak?: number
   onStudyAgain: () => void
   onHome: () => void
 }) {
+  const mastery =
+    vocab && vocab.length > 0 && cardProgress
+      ? computeWordSetMastery(vocab, cardProgress)
+      : null
+  const knownPct =
+    mastery && mastery.total > 0
+      ? Math.round((mastery.known / mastery.total) * 100)
+      : 0
+
   return (
     <div className="fc-app">
       <div className="fc-results-container">
@@ -2797,6 +2977,62 @@ function ResultsPage({
             <div className="fc-result-label">Accuracy</div>
           </div>
         </div>
+
+        {mastery && (
+          <div className="fc-results-mastery">
+            <div className="fc-mastery-header">
+              <span className="fc-mastery-title">Word Set Progress</span>
+              <span className="fc-mastery-known-label">
+                {mastery.known} / {mastery.total} known
+              </span>
+            </div>
+            <div className="fc-mastery-bar-wrap">
+              <div className="fc-mastery-bar">
+                <div
+                  className="fc-mastery-bar-fill"
+                  style={{ width: `${knownPct}%` }}
+                />
+              </div>
+              <span className="fc-mastery-pct">{knownPct}%</span>
+            </div>
+            <div className="fc-mastery-chips">
+              <div className="fc-mastery-chip fc-mastery-chip--new">
+                <span className="fc-mastery-chip-num">{mastery.new}</span>
+                <span className="fc-mastery-chip-label">New</span>
+              </div>
+              <div className="fc-mastery-chip fc-mastery-chip--learning">
+                <span className="fc-mastery-chip-num">{mastery.learning}</span>
+                <span className="fc-mastery-chip-label">Learning</span>
+              </div>
+              <div className="fc-mastery-chip fc-mastery-chip--known">
+                <span className="fc-mastery-chip-num">{mastery.known}</span>
+                <span className="fc-mastery-chip-label">Known</span>
+              </div>
+            </div>
+            {mastery.hardest.length > 0 && (
+              <div className="fc-mastery-hardest">
+                <span className="fc-mastery-hardest-label">Keep practising:</span>
+                <div className="fc-mastery-hardest-chars">
+                  {mastery.hardest.map((char) => (
+                    <span key={char} className="fc-mastery-hardest-char">
+                      {char}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {streak !== undefined && streak > 0 && (
+          <div className="fc-results-streak">
+            <span className="fc-streak-num">{streak}</span>
+            <span className="fc-streak-label">
+              {streak === 1 ? 'day streak' : 'day streak — keep it up!'}
+            </span>
+          </div>
+        )}
+
         <div className="fc-results-actions">
           <button className="fc-start-btn" onClick={onStudyAgain}>
             Study Again

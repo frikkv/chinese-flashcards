@@ -2,12 +2,12 @@ import { z } from 'zod'
 import { eq, desc, sql } from 'drizzle-orm'
 import { createTRPCRouter, protectedProcedure } from './init'
 import { db } from '#/db'
-import { flashcardProgress, studySessions, userLastSession } from '#/db/schema'
+import { flashcardProgress, studySessions, userLastSession, accounts } from '#/db/schema'
 
 export const progressRouter = createTRPCRouter({
   getProgress: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-    const [cards, lastSessionRows, recentSessionRows] = await Promise.all([
+    const [cards, lastSessionRows, recentSessionRows, sessionDates] = await Promise.all([
       db
         .select()
         .from(flashcardProgress)
@@ -25,11 +25,45 @@ export const progressRouter = createTRPCRouter({
         .where(eq(studySessions.userId, userId))
         .orderBy(desc(studySessions.completedAt))
         .limit(1),
+      // Session dates for streak calculation (last 90 days)
+      db
+        .select({ completedAt: studySessions.completedAt })
+        .from(studySessions)
+        .where(eq(studySessions.userId, userId))
+        .orderBy(desc(studySessions.completedAt))
+        .limit(90),
     ])
+
+    // Compute study streak
+    const todayMidnight = new Date()
+    todayMidnight.setHours(0, 0, 0, 0)
+    const todayTs = todayMidnight.getTime()
+    const dateTsSet = new Set(
+      sessionDates.map((s) => {
+        const d = new Date(s.completedAt)
+        d.setHours(0, 0, 0, 0)
+        return d.getTime()
+      }),
+    )
+    // Streak starts from today if studied today, otherwise from yesterday
+    let streak = 0
+    let cur = dateTsSet.has(todayTs) ? todayTs : todayTs - 86_400_000
+    while (dateTsSet.has(cur)) {
+      streak++
+      cur -= 86_400_000
+    }
+    // Sessions this week
+    const weekAgoTs = todayTs - 7 * 86_400_000
+    const thisWeekSessions = sessionDates.filter(
+      (s) => new Date(s.completedAt).getTime() >= weekAgoTs,
+    ).length
+
     return {
       cards,
       lastSession: lastSessionRows[0] ?? null,
       lastCompletedSession: recentSessionRows[0] ?? null,
+      streak,
+      thisWeekSessions,
     }
   }),
 
@@ -116,4 +150,78 @@ export const progressRouter = createTRPCRouter({
         completedAt: new Date(),
       })
     }),
+
+  getProfileStats: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id
+    const [cards, allSessions, accountRows] = await Promise.all([
+      db.select().from(flashcardProgress).where(eq(flashcardProgress.userId, userId)),
+      db
+        .select()
+        .from(studySessions)
+        .where(eq(studySessions.userId, userId))
+        .orderBy(desc(studySessions.completedAt)),
+      db
+        .select({ providerId: accounts.providerId })
+        .from(accounts)
+        .where(eq(accounts.userId, userId))
+        .limit(5),
+    ])
+
+    // ── Streak & best streak ──────────────────────────────────────
+    const todayMidnight = new Date()
+    todayMidnight.setHours(0, 0, 0, 0)
+    const todayTs = todayMidnight.getTime()
+    const dateTsSet = new Set(
+      allSessions.map((s) => {
+        const d = new Date(s.completedAt)
+        d.setHours(0, 0, 0, 0)
+        return d.getTime()
+      }),
+    )
+    let streak = 0
+    let cur = dateTsSet.has(todayTs) ? todayTs : todayTs - 86_400_000
+    while (dateTsSet.has(cur)) {
+      streak++
+      cur -= 86_400_000
+    }
+
+    const sortedDates = [...dateTsSet].sort((a, b) => a - b)
+    let bestStreak = 0
+    let currentRun = 0
+    let prevTs: number | null = null
+    for (const ts of sortedDates) {
+      if (prevTs === null || ts - prevTs === 86_400_000) {
+        currentRun++
+      } else {
+        currentRun = 1
+      }
+      if (currentRun > bestStreak) bestStreak = currentRun
+      prevTs = ts
+    }
+
+    // ── This week ─────────────────────────────────────────────────
+    const weekAgoTs = todayTs - 7 * 86_400_000
+    const thisWeekSessions = allSessions.filter(
+      (s) => new Date(s.completedAt).getTime() >= weekAgoTs,
+    ).length
+
+    // ── Aggregates ────────────────────────────────────────────────
+    const totalSessions = allSessions.length
+    const totalCorrect = allSessions.reduce((sum, s) => sum + s.correctCount, 0)
+    const totalReviews = allSessions.reduce((sum, s) => sum + s.totalCount, 0)
+    const lastSession = allSessions[0] ?? null
+    const providers = accountRows.map((a) => a.providerId)
+
+    return {
+      cards,
+      streak,
+      bestStreak,
+      thisWeekSessions,
+      totalSessions,
+      totalCorrect,
+      totalReviews,
+      lastSession,
+      providers,
+    }
+  }),
 })

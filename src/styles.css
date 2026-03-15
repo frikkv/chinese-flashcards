@@ -1347,6 +1347,175 @@ body {
   padding: 4px 14px 8px;
 }
 
+/* ── STREAK BANNER ── */
+.fc-streak-banner {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.fc-streak-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 99px;
+  padding: 6px 18px;
+}
+.fc-streak-num {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--fc-text);
+}
+.fc-streak-label {
+  font-size: 0.8rem;
+  color: var(--fc-muted);
+}
+
+/* ── MASTERY DASHBOARD (word set page + results) ── */
+.fc-mastery-dashboard {
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 18px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.fc-results-mastery {
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 18px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.fc-mastery-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fc-mastery-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--fc-muted);
+}
+.fc-mastery-known-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+.fc-mastery-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fc-mastery-bar {
+  flex: 1;
+  height: 7px;
+  background: var(--fc-border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.fc-mastery-bar-fill {
+  height: 100%;
+  background: #27ae60;
+  border-radius: 99px;
+  transition: width 0.6s ease;
+  min-width: 0;
+}
+.fc-mastery-pct {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #27ae60;
+  min-width: 30px;
+  text-align: right;
+}
+.fc-mastery-chips {
+  display: flex;
+  gap: 8px;
+}
+.fc-mastery-chip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 9px 6px 7px;
+  border-radius: 12px;
+  background: var(--fc-bg);
+  border: 1px solid var(--fc-border);
+  gap: 3px;
+}
+.fc-mastery-chip--known {
+  border-color: rgba(39,174,96,0.25);
+  background: rgba(39,174,96,0.07);
+}
+.fc-mastery-chip--learning {
+  border-color: rgba(230,168,0,0.25);
+  background: rgba(230,168,0,0.07);
+}
+.fc-mastery-chip-num {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--fc-muted);
+  line-height: 1;
+}
+.fc-mastery-chip--known .fc-mastery-chip-num { color: #27ae60; }
+.fc-mastery-chip--learning .fc-mastery-chip-num { color: #c9900a; }
+.fc-mastery-chip-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--fc-light);
+  text-transform: uppercase;
+}
+.fc-mastery-meta {
+  display: flex;
+  gap: 6px;
+  font-size: 0.81rem;
+  color: var(--fc-muted);
+  flex-wrap: wrap;
+}
+.fc-mastery-hardest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fc-mastery-hardest-label {
+  font-size: 0.78rem;
+  color: var(--fc-light);
+  flex-shrink: 0;
+}
+.fc-mastery-hardest-chars {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fc-mastery-hardest-char {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.1rem;
+  color: var(--fc-text);
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 7px;
+  padding: 1px 9px 2px;
+}
+.fc-results-streak {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0 2px;
+}
+
 /* ── RESPONSIVE ── */
 
 /* Desktop: lock card + answer heights so both columns stay the same size */
@@ -1392,5 +1561,447 @@ body {
   }
   .fc-study-body > .fc-study-right {
     min-height: 380px;
+  }
+}
+
+/* ── PROFILE PAGE ───────────────────────────────────────────────── */
+.fc-profile-container {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+}
+
+.fc-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: var(--fc-shadow);
+}
+
+.fc-profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--fc-red);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.fc-profile-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fc-profile-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--fc-text);
+  line-height: 1.2;
+}
+
+.fc-profile-email {
+  font-size: 0.9rem;
+  color: var(--fc-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fc-profile-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--fc-light);
+  margin-top: 2px;
+}
+
+.fc-profile-dot {
+  opacity: 0.5;
+}
+
+/* ── SECTION ─────────────────────────────────────────────────────── */
+.fc-profile-section {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: var(--fc-shadow);
+}
+
+.fc-profile-section-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fc-muted);
+  margin-bottom: 18px;
+}
+
+/* ── STAT GRID ───────────────────────────────────────────────────── */
+.fc-profile-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.fc-profile-stat {
+  background: var(--fc-bg);
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fc-profile-stat-num {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--fc-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  word-break: break-word;
+}
+
+.fc-profile-stat-label {
+  font-size: 0.72rem;
+  color: var(--fc-muted);
+  line-height: 1.3;
+}
+
+/* ── WORD SET PROGRESS ───────────────────────────────────────────── */
+.fc-profile-wordset-group {
+  margin-bottom: 20px;
+}
+
+.fc-profile-wordset-group:last-child {
+  margin-bottom: 0;
+}
+
+.fc-profile-wordset-group-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-text);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fc-profile-wordset-group-known {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--fc-muted);
+}
+
+.fc-profile-wordset-row {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--fc-border);
+}
+
+.fc-profile-wordset-row:first-of-type {
+  border-top: none;
+}
+
+.fc-profile-wordset-name {
+  font-size: 0.82rem;
+  color: var(--fc-text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fc-profile-wordset-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fc-profile-wordset-bar {
+  flex: 1;
+  height: 6px;
+  background: #edeae4;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fc-profile-wordset-bar-fill {
+  height: 100%;
+  background: #27ae60;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.fc-profile-wordset-pct {
+  font-size: 0.72rem;
+  color: var(--fc-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
+}
+
+.fc-profile-wordset-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.fc-profile-chip {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.fc-profile-chip--new {
+  background: #edeae4;
+  color: var(--fc-muted);
+}
+
+.fc-profile-chip--learning {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.fc-profile-chip--known {
+  background: #edfbf3;
+  color: #1a7a45;
+}
+
+.fc-profile-chip--acc {
+  background: #e8f0fa;
+  color: #2c5f8a;
+}
+
+/* ── INSIGHTS ────────────────────────────────────────────────────── */
+.fc-profile-insights-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fc-profile-insight-card {
+  background: var(--fc-bg);
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.fc-profile-insight-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.fc-profile-insight-row:last-child {
+  margin-bottom: 0;
+}
+
+.fc-profile-insight-icon {
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.fc-profile-insight-label {
+  font-size: 0.72rem;
+  color: var(--fc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.fc-profile-insight-val {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+
+.fc-profile-insight-sub {
+  font-weight: 400;
+  color: var(--fc-muted);
+}
+
+/* ── CHAR GRIDS ──────────────────────────────────────────────────── */
+.fc-profile-char-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fc-profile-char-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--fc-wrong-light);
+  border: 1px solid #f5c6c2;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 44px;
+}
+
+.fc-profile-char-item--known {
+  background: var(--fc-success-light);
+  border-color: #a8e6c5;
+}
+
+.fc-profile-char {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.3rem;
+  line-height: 1.2;
+  color: var(--fc-text);
+}
+
+.fc-profile-char-acc {
+  font-size: 0.62rem;
+  color: var(--fc-red);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+/* ── FOOTER / ACTIONS ────────────────────────────────────────────── */
+.fc-profile-footer {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+.fc-profile-signout-btn {
+  background: transparent;
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 0.85rem;
+  color: var(--fc-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.fc-profile-signout-btn:hover {
+  background: var(--fc-red-light);
+  border-color: var(--fc-red);
+  color: var(--fc-red);
+}
+
+/* ── NOT AUTHENTICATED ───────────────────────────────────────────── */
+.fc-profile-noauth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.fc-profile-noauth-char {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 4rem;
+  color: var(--fc-red);
+  opacity: 0.6;
+}
+
+.fc-profile-noauth-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+
+.fc-profile-noauth-sub {
+  font-size: 0.9rem;
+  color: var(--fc-muted);
+  max-width: 340px;
+}
+
+/* ── LOADING STATE ───────────────────────────────────────────────── */
+.fc-profile-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  color: var(--fc-muted);
+  font-size: 0.9rem;
+}
+
+/* ── NAV HEADER (sign in/out + profile) ─────────────────────────── */
+.fc-nav-btns {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 100;
+}
+
+.fc-profile-nav-btn {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  color: var(--fc-text);
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.fc-profile-nav-btn:hover {
+  background: var(--fc-bg);
+  border-color: var(--fc-muted);
+}
+
+@media (max-width: 560px) {
+  .fc-profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 20px;
+  }
+
+  .fc-profile-section {
+    padding: 20px;
+  }
+
+  .fc-profile-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fc-profile-wordset-row {
+    grid-template-columns: 70px 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .fc-profile-wordset-chips {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
   }
 }
