@@ -2227,3 +2227,427 @@ body {
     justify-content: flex-start;
   }
 }
+
+/* ── UPLOAD PANEL ──────────────────────────────────────────────── */
+.fc-upload-panel {
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 16px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fc-upload-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--fc-text);
+}
+
+.fc-upload-hint {
+  font-size: 0.82rem;
+  color: var(--fc-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.fc-upload-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fc-light);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fc-upload-file-input {
+  font-size: 0.82rem;
+  color: var(--fc-text);
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.fc-upload-file-input:hover {
+  border-color: var(--fc-muted);
+}
+
+.fc-upload-file-input::file-selector-button {
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 5px;
+  color: var(--fc-muted);
+  padding: 3px 10px;
+  cursor: pointer;
+  margin-right: 10px;
+  font-size: 0.78rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.fc-upload-generate-btn,
+.fc-upload-save-btn {
+  padding: 11px 20px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  color: #fff;
+}
+
+.fc-upload-generate-btn {
+  background: var(--fc-blue);
+}
+
+.fc-upload-save-btn {
+  background: var(--fc-success);
+}
+
+.fc-upload-generate-btn:disabled,
+.fc-upload-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.fc-upload-generate-btn:not(:disabled):hover,
+.fc-upload-save-btn:not(:disabled):hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+.fc-upload-error {
+  font-size: 0.8rem;
+  color: var(--fc-red);
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--fc-red-light);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 8px;
+}
+
+.fc-upload-preview-header {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  padding-bottom: 6px;
+  border-bottom: 1.5px solid var(--fc-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fc-upload-preview-list {
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1.5px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 6px;
+  background: var(--fc-bg);
+}
+
+.fc-upload-preview-row {
+  display: grid;
+  grid-template-columns: 60px 110px 1fr;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-size: 0.8rem;
+}
+
+.fc-upload-preview-row:hover {
+  background: var(--fc-surface);
+}
+
+.fc-upload-preview-char {
+  font-weight: 700;
+  color: var(--fc-text);
+}
+
+.fc-upload-preview-pinyin {
+  color: var(--fc-muted);
+}
+
+.fc-upload-preview-english {
+  color: var(--fc-text);
+}
+
+.fc-upload-name-input {
+  font-size: 0.88rem;
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--fc-text);
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fc-upload-name-input:focus {
+  border-color: var(--fc-red);
+}
+
+/* ── CUSTOM SETS MODAL ─────────────────────────────────────────── */
+.fc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.fc-modal {
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--fc-shadow-lg);
+  overflow: hidden;
+}
+
+.fc-modal-header {
+  display: flex;
+  align-items: center;
+  padding: 18px 22px;
+  border-bottom: 1.5px solid var(--fc-border);
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.fc-modal-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--fc-text);
+  flex: 1;
+}
+
+.fc-modal-back {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 0;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.fc-modal-back:hover {
+  color: var(--fc-red);
+}
+
+.fc-modal-close {
+  font-size: 0.9rem;
+  color: var(--fc-light);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  line-height: 1;
+}
+
+.fc-modal-close:hover {
+  background: var(--fc-red-light);
+  color: var(--fc-red);
+}
+
+.fc-modal-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+.fc-modal-empty {
+  font-size: 0.88rem;
+  color: var(--fc-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 12px 0;
+  margin: 0;
+}
+
+.fc-modal-set-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fc-modal-set-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--fc-border);
+  background: var(--fc-surface);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.fc-modal-set-item:hover {
+  border-color: var(--fc-red);
+  box-shadow: var(--fc-shadow);
+}
+
+.fc-modal-set-item.selected {
+  border-color: var(--fc-red);
+  background: var(--fc-red-light);
+}
+
+.fc-modal-set-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fc-modal-set-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--fc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fc-modal-set-meta {
+  font-size: 0.75rem;
+  color: var(--fc-muted);
+}
+
+.fc-modal-set-delete {
+  font-size: 0.72rem;
+  padding: 3px 7px;
+  border-radius: 5px;
+  border: none;
+  background: transparent;
+  color: var(--fc-light);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.fc-modal-set-delete:hover {
+  background: var(--fc-red-light);
+  color: var(--fc-red);
+}
+
+.fc-modal-create-btn {
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: 1.5px dashed var(--fc-border);
+  background: var(--fc-surface);
+  color: var(--fc-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  width: 100%;
+}
+
+.fc-modal-create-btn:hover {
+  border-color: var(--fc-red);
+  color: var(--fc-red);
+}
+
+.fc-modal-mode-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--fc-bg);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.fc-modal-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--fc-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.fc-modal-tab.active {
+  background: var(--fc-surface);
+  color: var(--fc-text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.fc-upload-paste-input {
+  font-size: 0.85rem;
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--fc-text);
+  outline: none;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+
+.fc-upload-paste-input:focus {
+  border-color: var(--fc-red);
+}
+
+.fc-upload-paste-count {
+  font-size: 0.72rem;
+  color: var(--fc-light);
+  text-align: right;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.fc-modal-redo {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  background: none;
+  border: 1px solid var(--fc-border);
+  border-radius: 5px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.fc-modal-redo:hover {
+  color: var(--fc-red);
+  border-color: var(--fc-red);
+}

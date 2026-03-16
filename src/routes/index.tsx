@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Volume2 } from 'lucide-react'
 import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
 import type { Word } from '../data/vocabulary'
@@ -28,11 +28,21 @@ interface LastSession {
   wordSetKey: string
   hskLevels: Set<number>
   units: Set<number>
+  customSetId?: string
   settings: Settings
   soundSettings?: SoundSettings
   toneSessionSize?: 10 | 20 | 30
   vocab: Word[]
   desc: string
+}
+
+interface CustomWordSet {
+  id: string
+  name: string
+  words: Word[]
+  wordCount: number
+  sourceFileName: string | null | undefined
+  createdAt: Date
 }
 
 // ── PROGRESS / MASTERY ────────────────────────────────────────────
@@ -604,8 +614,8 @@ function AuthGate() {
 
 function wordSetDetailOf(session: LastSession | null): string {
   if (!session) return ''
-  if (session.wordSetKey === 'hsk')
-    return [...session.hskLevels].sort().join(',')
+  if (session.wordSetKey === 'hsk') return [...session.hskLevels].sort().join(',')
+  if (session.wordSetKey === 'custom') return session.customSetId ?? ''
   return [...session.units].sort((a, b) => a - b).join(',')
 }
 
@@ -618,6 +628,10 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   // Load per-user progress (only when signed in)
   const progressQuery = useQuery({
     ...trpc.progress.getProgress.queryOptions(),
+    enabled: isSignedIn,
+  })
+  const customWordSetsQuery = useQuery({
+    ...trpc.wordsets.list.queryOptions(),
     enabled: isSignedIn,
   })
   const batchRecordCardsMutation = useMutation(trpc.progress.batchRecordCards.mutationOptions())
@@ -653,34 +667,40 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     const db = progressQuery.data?.lastSession
     if (!db || lastSession) return
     if (!db.wordSetDetail) return  // no valid data yet
-    const detail = db.wordSetDetail
-      .split(',')
-      .map(Number)
-      .filter(Boolean)
+
     let vocab: Word[] = []
+    let hskLevels = new Set<number>()
+    let units = new Set<number>()
+    let customSetId: string | undefined
+
     if (db.wordSetKey === 'hsk') {
+      const detail = db.wordSetDetail.split(',').map(Number).filter(Boolean)
       if (detail.includes(1)) vocab = vocab.concat(hsk1Words)
       if (detail.includes(2)) vocab = vocab.concat(hsk2Words)
+      hskLevels = new Set(detail)
     } else if (db.wordSetKey === 'lang1511') {
+      const detail = db.wordSetDetail.split(',').map(Number).filter(Boolean)
       const unitSet = new Set(detail)
-      vocab = lang1511Units
-        .filter((u) => unitSet.has(u.unit))
-        .flatMap((u) => u.words)
+      vocab = lang1511Units.filter((u) => unitSet.has(u.unit)).flatMap((u) => u.words)
+      units = new Set(detail)
+    } else if (db.wordSetKey === 'custom') {
+      if (!customWordSetsQuery.data) return // wait for custom sets to load
+      const customSet = customWordSetsQuery.data.find((s) => s.id === db.wordSetDetail)
+      if (!customSet) return
+      vocab = customSet.words as Word[]
+      customSetId = customSet.id
     }
+
     if (vocab.length === 0) return
     const size = ([10, 20, 30] as const).includes(db.sessionSize as 10 | 20 | 30)
       ? (db.sessionSize as 10 | 20 | 30)
       : 20
-    const hskLevels = new Set<number>(
-      db.wordSetKey === 'hsk' ? detail : [],
-    )
-    const units = new Set<number>(
-      db.wordSetKey === 'lang1511' ? detail : [],
-    )
     const desc =
       db.wordSetKey === 'hsk'
         ? `HSK ${[...hskLevels].sort().join(' + ')} · ${vocab.length} words`
-        : `LANG 1511 · Units ${[...units].sort((a, b) => a - b).join(', ')}`
+        : db.wordSetKey === 'custom'
+          ? `${customWordSetsQuery.data?.find((s) => s.id === customSetId)?.name ?? 'Custom'} · ${vocab.length} words`
+          : `LANG 1511 · Units ${[...units].sort((a, b) => a - b).join(', ')}`
     const modeStr = db.mode
     let soundSettings: SoundSettings | undefined
     let toneSessionSize: 10 | 20 | 30 | undefined
@@ -709,13 +729,14 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       wordSetKey: db.wordSetKey,
       hskLevels,
       units,
+      customSetId,
       settings: reconstructedSettings,
       soundSettings,
       toneSessionSize,
       vocab,
       desc,
     })
-  }, [progressQuery.data]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [progressQuery.data, customWordSetsQuery.data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Settings + mode
   const [settings, setSettings] = useState<Settings>({
@@ -1131,6 +1152,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
         allTimeStats={allTimeStats}
         settings={settings}
         cardProgress={progressQuery.data?.cards}
+        customWordSets={customWordSetsQuery.data ?? []}
+        isSignedIn={isSignedIn}
         onContinue={(v, mode, s, session) => {
           setVocab(v)
           setSessionMode(mode)
@@ -2443,6 +2466,8 @@ function WordSetPage({
   allTimeStats,
   settings: initialSettings,
   cardProgress,
+  customWordSets,
+  isSignedIn,
   onContinue,
   onStartSoundOnly,
   onStartToneQuiz,
@@ -2452,6 +2477,8 @@ function WordSetPage({
   allTimeStats: AllTimeStats
   settings: Settings
   cardProgress?: ProgressCard[]
+  customWordSets: CustomWordSet[]
+  isSignedIn: boolean
   onContinue: (
     vocab: Word[],
     mode: 1 | 2 | 3,
@@ -2470,6 +2497,22 @@ function WordSetPage({
   ) => void
   onSignIn?: () => void
 }) {
+  const trpc = useTRPC()
+  const queryClient = useQueryClient()
+  const generateMutation = useMutation(trpc.wordsets.generate.mutationOptions())
+  const saveMutation = useMutation(trpc.wordsets.save.mutationOptions())
+  const deleteMutation = useMutation(trpc.wordsets.delete.mutationOptions())
+
+  // Modal state
+  const [showCustomModal, setShowCustomModal] = useState(false)
+  // null = list view; 'upload' | 'paste' = create view
+  const [createMode, setCreateMode] = useState<'upload' | 'paste' | null>(null)
+  // Create form state
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [pasteText, setPasteText] = useState('')
+  const [uploadName, setUploadName] = useState('')
+  const [previewWords, setPreviewWords] = useState<Word[] | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [selectedWordSet, setSelectedWordSet] = useState<string | null>(null)
   const [selectedUnits, setSelectedUnits] = useState<Set<number>>(new Set())
   const [selectedHSKLevels, setSelectedHSKLevels] = useState<Set<number>>(
@@ -2503,8 +2546,12 @@ function WordSetPage({
       return lang1511Units.flatMap((u) => u.words)
     }
     if (selectedWordSet === 'last' && lastSession) return lastSession.vocab
+    if (selectedWordSet?.startsWith('custom:')) {
+      const id = selectedWordSet.slice(7)
+      return customWordSets.find((s) => s.id === id)?.words ?? null
+    }
     return null
-  }, [selectedWordSet, selectedHSKLevels, selectedUnits, lastSession])
+  }, [selectedWordSet, selectedHSKLevels, selectedUnits, lastSession, customWordSets])
 
   // Drag-select state
   const mouseIsDownRef = useRef(false)
@@ -2572,8 +2619,41 @@ function WordSetPage({
         .filter((u) => selectedUnits.has(u.unit))
         .flatMap((u) => u.words)
     }
+    if (selectedWordSet?.startsWith('custom:')) {
+      const id = selectedWordSet.slice(7)
+      const words = customWordSets.find((s) => s.id === id)?.words
+      if (!words || words.length === 0) {
+        alert('Word set not found.')
+        return null
+      }
+      return words
+    }
     alert('Please select a word set.')
     return null
+  }
+
+  function buildSessionDesc(v: Word[]): string {
+    if (selectedWordSet === 'hsk')
+      return `HSK ${[...selectedHSKLevels].sort().join(' + ')} · ${v.length} words`
+    if (selectedWordSet?.startsWith('custom:')) {
+      const id = selectedWordSet.slice(7)
+      const name = customWordSets.find((s) => s.id === id)?.name ?? 'Custom'
+      return `${name} · ${v.length} words`
+    }
+    return `LANG 1511 · Units ${[...selectedUnits].sort((a, b) => a - b).join(', ')}`
+  }
+
+  function buildSessionBase(v: Word[]): LastSession {
+    const isCustom = selectedWordSet?.startsWith('custom:')
+    return {
+      wordSetKey: isCustom ? 'custom' : (selectedWordSet ?? ''),
+      hskLevels: new Set(selectedHSKLevels),
+      units: new Set(selectedUnits),
+      customSetId: isCustom ? selectedWordSet!.slice(7) : undefined,
+      settings: { ...settings },
+      vocab: v,
+      desc: buildSessionDesc(v),
+    }
   }
 
   function handleStartSoundOnly() {
@@ -2585,36 +2665,14 @@ function WordSetPage({
       sessionSize: settings.sessionSize,
       stageCount: settings.defaultMode >= 2 ? 2 : 1,
     }
-    const session: LastSession = {
-      wordSetKey: selectedWordSet ?? '',
-      hskLevels: new Set(selectedHSKLevels),
-      units: new Set(selectedUnits),
-      settings: { ...settings },
-      soundSettings: ss,
-      vocab: v,
-      desc:
-        selectedWordSet === 'hsk'
-          ? `HSK ${[...selectedHSKLevels].sort().join(' + ')} · ${v.length} words`
-          : `LANG 1511 · Units ${[...selectedUnits].sort((a, b) => a - b).join(', ')}`,
-    }
+    const session: LastSession = { ...buildSessionBase(v), soundSettings: ss }
     onStartSoundOnly(v, ss, session)
   }
 
   function handleStartToneQuiz() {
     const v = buildSelectedVocab()
     if (!v) return
-    const session: LastSession = {
-      wordSetKey: selectedWordSet ?? '',
-      hskLevels: new Set(selectedHSKLevels),
-      units: new Set(selectedUnits),
-      settings: { ...settings },
-      toneSessionSize: settings.sessionSize,
-      vocab: v,
-      desc:
-        selectedWordSet === 'hsk'
-          ? `HSK ${[...selectedHSKLevels].sort().join(' + ')} · ${v.length} words`
-          : `LANG 1511 · Units ${[...selectedUnits].sort((a, b) => a - b).join(', ')}`,
-    }
+    const session: LastSession = { ...buildSessionBase(v), toneSessionSize: settings.sessionSize }
     onStartToneQuiz(v, settings.sessionSize, session)
   }
 
@@ -2641,20 +2699,76 @@ function WordSetPage({
     const vocab = buildSelectedVocab()
     if (!vocab) return
 
-    const session: LastSession = {
-      wordSetKey: selectedWordSet ?? '',
-      hskLevels: new Set(selectedHSKLevels),
-      units: new Set(selectedUnits),
-      settings: { ...settings },
-      vocab,
-      desc:
-        selectedWordSet === 'hsk'
-          ? `HSK ${[...selectedHSKLevels].sort().join(' + ')} · ${vocab.length} words`
-          : `LANG 1511 · Units ${[...selectedUnits].sort((a, b) => a - b).join(', ')}`,
-    }
+    const session = buildSessionBase(vocab)
 
     onContinue(vocab, settings.defaultMode, settings, session)
   }
+
+  async function handleGenerate() {
+    setUploadError(null)
+    setPreviewWords(null)
+    try {
+      let result: { words: Word[] }
+      if (createMode === 'paste') {
+        if (!pasteText.trim()) return
+        result = await generateMutation.mutateAsync({ pasteText }) as { words: Word[] }
+      } else {
+        if (!uploadFile) return
+        const buffer = await uploadFile.arrayBuffer()
+        const bytes = new Uint8Array(buffer)
+        let binary = ''
+        const chunkSize = 8192
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+        }
+        const base64 = btoa(binary)
+        result = await generateMutation.mutateAsync({
+          fileName: uploadFile.name,
+          fileBase64: base64,
+        }) as { words: Word[] }
+      }
+      setPreviewWords(result.words)
+      if (!uploadName) {
+        setUploadName(
+          createMode === 'paste' ? 'My Word Set' : (uploadFile?.name.replace(/\.[^.]+$/, '') ?? 'My Word Set')
+        )
+      }
+    } catch (e: unknown) {
+      setUploadError(e instanceof Error ? e.message : 'Generation failed.')
+    }
+  }
+
+  async function handleSaveWordSet() {
+    if (!previewWords || !uploadName.trim()) return
+    setUploadError(null)
+    try {
+      const { id } = await saveMutation.mutateAsync({
+        name: uploadName.trim(),
+        words: previewWords,
+        sourceFileName: createMode === 'upload' ? uploadFile?.name : undefined,
+      }) as { id: string }
+      await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
+      // Auto-select the newly saved set and close modal
+      setSelectedWordSet(`custom:${id}`)
+      setShowCustomModal(false)
+      setCreateMode(null)
+      setUploadFile(null)
+      setPasteText('')
+      setUploadName('')
+      setPreviewWords(null)
+    } catch (e: unknown) {
+      setUploadError(e instanceof Error ? e.message : 'Save failed.')
+    }
+  }
+
+  async function handleDeleteCustomSet(id: string, e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!confirm('Delete this word set?')) return
+    await deleteMutation.mutateAsync({ id })
+    await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
+    if (selectedWordSet === `custom:${id}`) setSelectedWordSet(null)
+  }
+
 
   return (
     <div className="fc-app">
@@ -2741,7 +2855,27 @@ function WordSetPage({
                 <span className="fc-ws-desc">Continue where you left off</span>
               </button>
             )}
-          </div>
+
+            {isSignedIn && (
+              <button
+                className={`fc-ws-btn${selectedWordSet?.startsWith('custom:') ? ' selected' : ''}`}
+                onClick={() => setShowCustomModal(true)}
+              >
+                <span className="fc-ws-char">自定</span>
+                <span className="fc-ws-label">My Word Sets</span>
+                <span className="fc-ws-count">
+                  {customWordSets.length === 0
+                    ? 'No sets yet'
+                    : `${customWordSets.length} set${customWordSets.length !== 1 ? 's' : ''}`}
+                </span>
+                <span className="fc-ws-desc">
+                  {selectedWordSet?.startsWith('custom:')
+                    ? customWordSets.find((s) => s.id === selectedWordSet.slice(7))?.name ?? 'Custom set selected'
+                    : 'Upload a document or paste text'}
+                </span>
+              </button>
+            )}
+          </div>{/* end fc-ws-list */}
           </div>{/* end fc-ws-left */}
 
           {/* Right: scrollable content area + pinned start button */}
@@ -2755,7 +2889,7 @@ function WordSetPage({
                 )}
 
                 {/* Session Settings */}
-                {selectedWordSet !== 'last' && (
+                {selectedWordSet !== 'last' && !selectedWordSet.startsWith('custom') && (
                   <div className="fc-settings-wrap">
                     {/* HSK level picker */}
                     {selectedWordSet === 'hsk' && (
@@ -3045,6 +3179,220 @@ function WordSetPage({
           </div>
         </div>
       </div>
+
+      {/* ── CUSTOM WORD SETS MODAL ────────────────────────────────── */}
+      {showCustomModal && (
+        <div
+          className="fc-modal-overlay"
+          onClick={() => {
+            setShowCustomModal(false)
+            setCreateMode(null)
+            setPreviewWords(null)
+            setUploadError(null)
+          }}
+        >
+          <div className="fc-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="fc-modal-header">
+              {createMode !== null && (
+                <button
+                  className="fc-modal-back"
+                  onClick={() => {
+                    setCreateMode(null)
+                    setPreviewWords(null)
+                    setUploadError(null)
+                    setUploadFile(null)
+                    setPasteText('')
+                    setUploadName('')
+                  }}
+                >
+                  ← Back
+                </button>
+              )}
+              <span className="fc-modal-title">
+                {createMode !== null ? 'Create Word Set' : 'My Word Sets'}
+              </span>
+              <button
+                className="fc-modal-close"
+                onClick={() => {
+                  setShowCustomModal(false)
+                  setCreateMode(null)
+                  setPreviewWords(null)
+                  setUploadError(null)
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* LIST VIEW */}
+            {createMode === null && (
+              <div className="fc-modal-body">
+                {customWordSets.length === 0 ? (
+                  <p className="fc-modal-empty">No word sets yet. Create one below.</p>
+                ) : (
+                  <div className="fc-modal-set-list">
+                    {customWordSets.map((cs) => (
+                      <button
+                        key={cs.id}
+                        className={`fc-modal-set-item${selectedWordSet === `custom:${cs.id}` ? ' selected' : ''}`}
+                        onClick={() => {
+                          setSelectedWordSet(`custom:${cs.id}`)
+                          setShowCustomModal(false)
+                          setCreateMode(null)
+                        }}
+                      >
+                        <div className="fc-modal-set-info">
+                          <span className="fc-modal-set-name">{cs.name}</span>
+                          <span className="fc-modal-set-meta">{cs.wordCount} words</span>
+                        </div>
+                        <button
+                          className="fc-modal-set-delete"
+                          onClick={(e) => void handleDeleteCustomSet(cs.id, e)}
+                          title="Delete"
+                        >
+                          ✕
+                        </button>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button
+                  className="fc-modal-create-btn"
+                  onClick={() => setCreateMode('upload')}
+                >
+                  + Create New Word Set
+                </button>
+              </div>
+            )}
+
+            {/* CREATE VIEW */}
+            {createMode !== null && (
+              <div className="fc-modal-body">
+                {/* Input mode toggle */}
+                <div className="fc-modal-mode-tabs">
+                  <button
+                    className={`fc-modal-tab${createMode === 'upload' ? ' active' : ''}`}
+                    onClick={() => {
+                      setCreateMode('upload')
+                      setPreviewWords(null)
+                      setUploadError(null)
+                    }}
+                  >
+                    Upload Document
+                  </button>
+                  <button
+                    className={`fc-modal-tab${createMode === 'paste' ? ' active' : ''}`}
+                    onClick={() => {
+                      setCreateMode('paste')
+                      setPreviewWords(null)
+                      setUploadError(null)
+                    }}
+                  >
+                    Paste Text
+                  </button>
+                </div>
+
+                {/* Upload input */}
+                {createMode === 'upload' && !previewWords && (
+                  <label className="fc-upload-label">
+                    Document (.txt, .pdf, .docx)
+                    <input
+                      type="file"
+                      accept=".txt,.pdf,.docx"
+                      className="fc-upload-file-input"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] ?? null
+                        setUploadFile(f)
+                        setPreviewWords(null)
+                        setUploadError(null)
+                        if (f && !uploadName) setUploadName(f.name.replace(/\.[^.]+$/, ''))
+                      }}
+                    />
+                  </label>
+                )}
+
+                {/* Paste input */}
+                {createMode === 'paste' && !previewWords && (
+                  <label className="fc-upload-label">
+                    Paste your text
+                    <textarea
+                      className="fc-upload-paste-input"
+                      placeholder="Paste Chinese text, a vocabulary list, lesson notes, etc."
+                      value={pasteText}
+                      onChange={(e) => setPasteText(e.target.value)}
+                      rows={7}
+                      maxLength={20000}
+                    />
+                    <span className="fc-upload-paste-count">{pasteText.length} / 20,000 chars</span>
+                  </label>
+                )}
+
+                {/* Extract button */}
+                {!previewWords && (
+                  <button
+                    className="fc-upload-generate-btn"
+                    disabled={
+                      generateMutation.isPending ||
+                      (createMode === 'upload' ? !uploadFile : !pasteText.trim())
+                    }
+                    onClick={() => void handleGenerate()}
+                  >
+                    {generateMutation.isPending ? 'Extracting vocabulary…' : 'Extract Vocabulary →'}
+                  </button>
+                )}
+
+                {uploadError && <p className="fc-upload-error">{uploadError}</p>}
+
+                {/* Preview + save */}
+                {previewWords && (
+                  <>
+                    <div className="fc-upload-preview-header">
+                      <span>{previewWords.length} words extracted</span>
+                      <button
+                        className="fc-modal-redo"
+                        onClick={() => {
+                          setPreviewWords(null)
+                          setUploadError(null)
+                        }}
+                      >
+                        Try again
+                      </button>
+                    </div>
+                    <div className="fc-upload-preview-list">
+                      {previewWords.map((w, i) => (
+                        <div key={i} className="fc-upload-preview-row">
+                          <span className="fc-upload-preview-char">{w.char}</span>
+                          <span className="fc-upload-preview-pinyin">{w.pinyin}</span>
+                          <span className="fc-upload-preview-english">{w.english}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <label className="fc-upload-label">
+                      Name this word set
+                      <input
+                        type="text"
+                        className="fc-upload-name-input"
+                        placeholder="e.g. Chapter 3 vocabulary"
+                        value={uploadName}
+                        onChange={(e) => setUploadName(e.target.value)}
+                        maxLength={100}
+                      />
+                    </label>
+                    <button
+                      className="fc-upload-save-btn"
+                      disabled={!uploadName.trim() || saveMutation.isPending}
+                      onClick={() => void handleSaveWordSet()}
+                    >
+                      {saveMutation.isPending ? 'Saving…' : 'Save & Start Studying →'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

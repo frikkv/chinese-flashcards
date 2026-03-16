@@ -168,6 +168,25 @@ export const distractorSets = pgTable(
   (table) => [index('distractor_sets_vocabKey_idx').on(table.vocabKey)],
 )
 
+// ── CUSTOM WORD SETS ──────────────────────────────────────────────
+// User-uploaded word sets generated from documents via AI.
+export const customWordSets = pgTable(
+  'custom_word_sets',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    // JSON array of { char, pinyin, english }
+    wordsJson: text('words_json').notNull(),
+    wordCount: integer('word_count').notNull(),
+    sourceFileName: text('source_file_name'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('custom_word_sets_userId_idx').on(table.userId)],
+)
+
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),
