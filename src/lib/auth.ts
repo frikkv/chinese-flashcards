@@ -8,6 +8,12 @@ const trustedOrigins = process.env.BETTER_AUTH_URL
   : []
 
 export const auth = betterAuth({
+  // baseURL is required on the server so Better Auth can construct absolute
+  // URLs for internal operations (e.g. new URL('/api/auth/get-session')).
+  // Without it, Node.js throws "TypeError: Invalid URL" on every tRPC request
+  // that calls auth.api.getSession(). BETTER_AUTH_URL must be set in the
+  // deployment environment (e.g. https://your-app.vercel.app).
+  baseURL: process.env.BETTER_AUTH_URL,
   database: drizzleAdapter(db, {
     provider: 'pg',
     usePlural: true,
