@@ -1,5 +1,3 @@
-import mammoth from 'mammoth'
-
 // Hard cap on characters sent to the AI. At ~4 chars/token this is ~1000 tokens
 // of input — predictable cost regardless of document size.
 const MAX_AI_INPUT_CHARS = 4000
@@ -24,6 +22,7 @@ async function extractRawText(fileName: string, buffer: Buffer): Promise<string>
   }
 
   if (ext === 'docx') {
+    const { default: mammoth } = await import('mammoth')
     const result = await mammoth.extractRawText({ buffer })
     return result.value
   }
