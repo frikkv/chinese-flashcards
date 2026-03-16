@@ -8,8 +8,7 @@
   padding: 0;
 }
 
-html,
-body {
+html {
   height: 100%;
 }
 
@@ -19,7 +18,7 @@ body {
   color: #1a1814;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,14 +41,18 @@ body {
   --fc-wrong-light: #fef0ef;
   --fc-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
   --fc-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+  /* top bar height = button (top:16px + ~33px height) + breathing room */
+  --fc-header-h: 52px;
 
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 68px 32px 80px;
-  gap: 36px;
+  padding: calc(var(--fc-header-h) + 16px) 32px 48px;
+  gap: 28px;
   position: relative;
+  overflow-x: hidden;
 }
 
 /* ── TYPOGRAPHY ── */
@@ -72,6 +75,7 @@ body {
 /* ── WORD SET PAGE ── */
 .fc-wordset-container {
   flex: 1;
+  min-height: 0;
   width: 100%;
   max-width: 960px;
   display: flex;
@@ -447,9 +451,10 @@ body {
 .fc-study-workspace {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   width: 100%;
   max-width: 1000px;
+  min-height: 0;
 }
 
 /*
@@ -461,16 +466,17 @@ body {
 .fc-study-body {
   display: grid;
   grid-template-columns: 560px 1fr;
-  row-gap: 20px;
+  row-gap: 16px;
   column-gap: 28px;
   width: 100%;
+  min-height: 0;
 }
 
 /* Explicit grid placement so auto-placement doesn't scramble the order */
 .fc-study-body > .fc-stage-dots   { grid-column: 1; grid-row: 1; min-height: 9px; justify-content: center; }
 .fc-study-body > .fc-card-answers { grid-column: 1; grid-row: 2; }
 .fc-study-body > .fc-study-next-area { grid-column: 1; grid-row: 3; }
-.fc-study-body > .fc-study-right  { grid-column: 2; grid-row: 2 / 4; display: flex; flex-direction: column; overflow: hidden; }
+.fc-study-body > .fc-study-right  { grid-column: 2; grid-row: 2 / 4; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
 
 /* Card + answer wrapper — flex column, defines the shared row height */
 .fc-card-answers {
@@ -797,8 +803,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  min-height: 56px;
-  margin-top: -12px;
+  min-height: 52px;
 }
 
 /* ── NEXT BUTTON ── */
@@ -1667,16 +1672,16 @@ body {
 
 /* Desktop: lock card + answer heights so both columns stay the same size */
 @media (min-width: 901px) {
-  /* Fixed card height — content scales inside, never pushes the card taller */
+  /* Minimum card height keeps the grid row stable; content clips rather than reflowing */
   .fc-card-face {
-    height: 340px;
-    min-height: unset;
+    min-height: 320px;
     overflow: hidden;
+    contain: layout;
   }
 
   /* Reserve consistent space for the answer area regardless of which mode is active */
   .fc-answer-area {
-    min-height: 144px;
+    min-height: 136px;
   }
 }
 
@@ -1691,13 +1696,13 @@ body {
   .fc-study-body > .fc-stage-dots   { grid-column: 1; grid-row: 1; }
   .fc-study-body > .fc-card-answers { grid-column: 1; grid-row: 2; }
   .fc-study-body > .fc-study-next-area { grid-column: 1; grid-row: 3; }
-  .fc-study-body > .fc-study-right  { grid-column: 1; grid-row: 4; min-height: 440px; }
+  .fc-study-body > .fc-study-right  { grid-column: 1; grid-row: 4; min-height: 360px; }
 }
 
 @media (max-width: 560px) {
   .fc-app {
-    padding: 56px 16px 60px;
-    gap: 24px;
+    padding: calc(var(--fc-header-h) + 8px) 16px 32px;
+    gap: 20px;
   }
   .fc-choices {
     grid-template-columns: 1fr;
