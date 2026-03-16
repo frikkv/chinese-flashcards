@@ -2377,16 +2377,22 @@ function WordSetPage({
   const [toneQuizOpen, setToneQuizOpen] = useState(false)
 
   const dashVocab = useMemo(() => {
-    if (selectedWordSet === 'hsk' && selectedHSKLevels.size > 0) {
-      let v: Word[] = []
-      if (selectedHSKLevels.has(1)) v = v.concat(hsk1Words)
-      if (selectedHSKLevels.has(2)) v = v.concat(hsk2Words)
-      return v
+    if (selectedWordSet === 'hsk') {
+      if (selectedHSKLevels.size > 0) {
+        let v: Word[] = []
+        if (selectedHSKLevels.has(1)) v = v.concat(hsk1Words)
+        if (selectedHSKLevels.has(2)) v = v.concat(hsk2Words)
+        return v
+      }
+      return [...hsk1Words, ...hsk2Words]
     }
-    if (selectedWordSet === 'lang1511' && selectedUnits.size > 0) {
-      return lang1511Units
-        .filter((u) => selectedUnits.has(u.unit))
-        .flatMap((u) => u.words)
+    if (selectedWordSet === 'lang1511') {
+      if (selectedUnits.size > 0) {
+        return lang1511Units
+          .filter((u) => selectedUnits.has(u.unit))
+          .flatMap((u) => u.words)
+      }
+      return lang1511Units.flatMap((u) => u.words)
     }
     if (selectedWordSet === 'last' && lastSession) return lastSession.vocab
     return null
@@ -2566,353 +2572,370 @@ function WordSetPage({
         )}
       </div>
       <div className="fc-wordset-container">
-        <h1 className="fc-hero-title">学中文</h1>
-        <p className="fc-hero-sub">Choose a word set to study.</p>
-
-        {allTimeStats.sessions > 0 && (
-          <div className="fc-stats-bar fc-stats-bar--compact">
-            <div className="fc-stat">
-              <div className="fc-stat-num">{allTimeStats.studied}</div>
-              <div className="fc-stat-label">Words Studied</div>
+        <div className="fc-ws-layout">
+          {/* Left: brand + stats + word set buttons */}
+          <div className="fc-ws-left">
+            <div className="fc-ws-brand">
+              <div className="fc-ws-brand-title">学中文</div>
+              <div className="fc-ws-brand-sub">Choose a word set to study.</div>
             </div>
-            <div className="fc-stat">
-              <div className="fc-stat-num">{allTimeStats.correct}</div>
-              <div className="fc-stat-label">Correct</div>
-            </div>
-            <div className="fc-stat">
-              <div className="fc-stat-num">{allTimeStats.sessions}</div>
-              <div className="fc-stat-label">Sessions</div>
-            </div>
-          </div>
-        )}
-
-        {/* Word set buttons */}
-        <div className="fc-ws-grid">
-          <button
-            className={`fc-ws-btn${selectedWordSet === 'hsk' ? ' selected' : ''}`}
-            onClick={() =>
-              setSelectedWordSet(selectedWordSet === 'hsk' ? null : 'hsk')
-            }
-          >
-            <span className="fc-ws-char">汉语</span>
-            <span className="fc-ws-label">HSK</span>
-            <span className="fc-ws-count">2 levels · 300 words</span>
-            <span className="fc-ws-desc">Official HSK vocabulary</span>
-          </button>
-          <button
-            className={`fc-ws-btn${selectedWordSet === 'lang1511' ? ' selected' : ''}`}
-            onClick={() =>
-              setSelectedWordSet(
-                selectedWordSet === 'lang1511' ? null : 'lang1511',
-              )
-            }
-          >
-            <span className="fc-ws-char">课程</span>
-            <span className="fc-ws-label">LANG 1511</span>
-            <span className="fc-ws-count">10 units · 123 words</span>
-            <span className="fc-ws-desc">University course vocabulary</span>
-          </button>
-          {lastSession && (
+            {allTimeStats.sessions > 0 && (
+              <div className="fc-stats-bar fc-stats-bar--compact">
+                <div className="fc-stat">
+                  <div className="fc-stat-num">{allTimeStats.studied}</div>
+                  <div className="fc-stat-label">Words Studied</div>
+                </div>
+                <div className="fc-stat">
+                  <div className="fc-stat-num">{allTimeStats.correct}</div>
+                  <div className="fc-stat-label">Correct</div>
+                </div>
+                <div className="fc-stat">
+                  <div className="fc-stat-num">{allTimeStats.sessions}</div>
+                  <div className="fc-stat-label">Sessions</div>
+                </div>
+              </div>
+            )}
+          <div className="fc-ws-list">
             <button
-              className={`fc-ws-btn${selectedWordSet === 'last' ? ' selected' : ''}`}
+              className={`fc-ws-btn${selectedWordSet === 'hsk' ? ' selected' : ''}`}
               onClick={() =>
-                setSelectedWordSet(selectedWordSet === 'last' ? null : 'last')
+                setSelectedWordSet(selectedWordSet === 'hsk' ? null : 'hsk')
               }
             >
-              <span className="fc-ws-char">上次</span>
-              <span className="fc-ws-label">Last Session</span>
-              <span className="fc-ws-count">{lastSession.desc}</span>
-              <span className="fc-ws-desc">Continue where you left off</span>
+              <span className="fc-ws-char">汉语</span>
+              <span className="fc-ws-label">HSK</span>
+              <span className="fc-ws-count">2 levels · 300 words</span>
+              <span className="fc-ws-desc">Official HSK vocabulary</span>
             </button>
-          )}
-        </div>
-
-        {/* Progress dashboard for selected word set */}
-        {dashVocab && cardProgress && (
-          <WordSetDashboard vocab={dashVocab} cardProgress={cardProgress} />
-        )}
-
-        {/* Session Settings */}
-        {selectedWordSet && selectedWordSet !== 'last' && (
-          <div className="fc-settings-wrap">
-            {/* HSK level picker */}
-            {selectedWordSet === 'hsk' && (
-              <div className="fc-settings-section">
-                <div className="fc-settings-label">HSK Level</div>
-                <div className="fc-picker-grid">
-                  {[1, 2].map((level, idx) => (
-                    <button
-                      key={level}
-                      className={`fc-unit-btn${selectedHSKLevels.has(level) ? ' selected' : ''}`}
-                      onMouseDown={() => {
-                        mouseIsDownRef.current = true
-                        isDraggingRef.current = false
-                        dragAnchorIdxRef.current = idx
-                        dragTypeRef.current = 'hsk'
-                        dragActionRef.current = selectedHSKLevels.has(level)
-                          ? 'deselect'
-                          : 'select'
-                        preDragHSKRef.current = new Set(selectedHSKLevels)
-                      }}
-                      onMouseEnter={() => {
-                        if (
-                          !mouseIsDownRef.current ||
-                          dragTypeRef.current !== 'hsk' ||
-                          dragAnchorIdxRef.current === null
-                        )
-                          return
-                        isDraggingRef.current = true
-                        const hskLevels = [1, 2]
-                        const [lo, hi] = [
-                          Math.min(dragAnchorIdxRef.current, idx),
-                          Math.max(dragAnchorIdxRef.current, idx),
-                        ]
-                        const next = new Set(preDragHSKRef.current)
-                        hskLevels.slice(lo, hi + 1).forEach((l) => {
-                          if (dragActionRef.current === 'select') next.add(l)
-                          else next.delete(l)
-                        })
-                        setSelectedHSKLevels(next)
-                      }}
-                    >
-                      HSK {level}{' '}
-                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                        (150)
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* LANG 1511 unit picker */}
-            {selectedWordSet === 'lang1511' && (
-              <div className="fc-settings-section">
-                <div className="fc-settings-label">Units</div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <button
-                    className="fc-util-btn"
-                    onClick={() =>
-                      setSelectedUnits(new Set(lang1511Units.map((u) => u.unit)))
-                    }
-                  >
-                    Select all
-                  </button>
-                  <button
-                    className="fc-util-btn"
-                    onClick={() => setSelectedUnits(new Set())}
-                  >
-                    Clear
-                  </button>
-                </div>
-                <div className="fc-picker-grid fc-picker-grid--units">
-                  {lang1511Units.map((u, idx) => (
-                    <button
-                      key={u.unit}
-                      className={`fc-unit-btn${selectedUnits.has(u.unit) ? ' selected' : ''}`}
-                      onMouseDown={() => {
-                        mouseIsDownRef.current = true
-                        isDraggingRef.current = false
-                        dragAnchorIdxRef.current = idx
-                        dragTypeRef.current = 'unit'
-                        dragActionRef.current = selectedUnits.has(u.unit)
-                          ? 'deselect'
-                          : 'select'
-                        preDragUnitsRef.current = new Set(selectedUnits)
-                      }}
-                      onMouseEnter={() => {
-                        if (
-                          !mouseIsDownRef.current ||
-                          dragTypeRef.current !== 'unit' ||
-                          dragAnchorIdxRef.current === null
-                        )
-                          return
-                        isDraggingRef.current = true
-                        const [lo, hi] = [
-                          Math.min(dragAnchorIdxRef.current, idx),
-                          Math.max(dragAnchorIdxRef.current, idx),
-                        ]
-                        const next = new Set(preDragUnitsRef.current)
-                        lang1511Units.slice(lo, hi + 1).forEach((unit) => {
-                          if (dragActionRef.current === 'select')
-                            next.add(unit.unit)
-                          else next.delete(unit.unit)
-                        })
-                        setSelectedUnits(next)
-                      }}
-                    >
-                      Unit {u.unit}{' '}
-                      <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                        ({u.words.length})
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(selectedWordSet === 'hsk' || selectedWordSet === 'lang1511') && (
-              <div className="fc-settings-divider" />
-            )}
-            <div
-              className="fc-settings-section"
-              style={toneQuizOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
+            <button
+              className={`fc-ws-btn${selectedWordSet === 'lang1511' ? ' selected' : ''}`}
+              onClick={() =>
+                setSelectedWordSet(
+                  selectedWordSet === 'lang1511' ? null : 'lang1511',
+                )
+              }
             >
-              <div className="fc-settings-label">Study Mode</div>
-              <div className="fc-settings-options">
-                {([1, 2, 3] as const).map((m) => (
-                  <button
-                    key={m}
-                    className={`fc-setting-opt${settings.defaultMode === m ? ' selected' : ''}`}
-                    disabled={soundOnlyOpen && m === 3}
-                    style={soundOnlyOpen && m === 3 ? { opacity: 0.35 } : undefined}
-                    onClick={() =>
-                      setSettings((s) => ({ ...s, defaultMode: m }))
-                    }
-                  >
-                    {m} Card{m > 1 ? 's' : ''}
-                  </button>
-                ))}
-              </div>
-              <p className="fc-settings-mode-hint">
-                {settings.defaultMode === 1 &&
-                  'See character + pinyin, guess the English meaning.'}
-                {settings.defaultMode === 2 &&
-                  'Guess pinyin from character, then guess English.'}
-                {settings.defaultMode === 3 &&
-                  'Full cycle: character → pinyin → English → recall character.'}
-              </p>
-            </div>
-            <div className="fc-settings-section">
-              <div className="fc-settings-label">Answer Style</div>
-              <div className="fc-settings-options">
-                {(
-                  [
-                    ['multiple-choice', 'Multiple Choice'],
-                    ['type', 'Type Answer'],
-                  ] as const
-                ).map(([val, label]) => (
-                  <button
-                    key={val}
-                    className={`fc-setting-opt${settings.answerStyle === val ? ' selected' : ''}`}
-                    onClick={() =>
-                      setSettings((s) => ({ ...s, answerStyle: val }))
-                    }
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="fc-settings-section">
-              <div className="fc-settings-label">Cards per Session</div>
-              <div className="fc-settings-options">
-                {(
-                  [
-                    [10, '10'],
-                    [20, '20'],
-                    [30, 'All'],
-                  ] as const
-                ).map(([val, label]) => (
-                  <button
-                    key={val}
-                    className={`fc-setting-opt${settings.sessionSize === val ? ' selected' : ''}`}
-                    onClick={() =>
-                      setSettings((s) => ({ ...s, sessionSize: val }))
-                    }
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div
-              className="fc-settings-section"
-              style={toneQuizOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
-            >
-              <div className="fc-settings-label">Sound Only Mode</div>
-              <div className="fc-settings-options">
-                <button
-                  className={`fc-setting-opt${!soundOnlyOpen ? ' selected' : ''}`}
-                  onClick={() => setSoundOnlyOpen(false)}
-                >
-                  Off
-                </button>
-                {(
-                  [
-                    ['char', 'Characters'],
-                    ['pinyin', 'Pinyin'],
-                    ['both', 'Char + Pinyin'],
-                  ] as const
-                ).map(([val, label]) => (
-                  <button
-                    key={val}
-                    className={`fc-setting-opt${soundOnlyOpen && soundSettings.answerFormat === val ? ' selected' : ''}`}
-                    onClick={() => {
-                      setSoundOnlyOpen(true)
-                      setToneQuizOpen(false)
-                      setSoundSettings((s) => ({ ...s, answerFormat: val }))
-                      if (settings.defaultMode === 3)
-                        setSettings((s) => ({ ...s, defaultMode: 1 }))
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div
-              className="fc-settings-section"
-              style={soundOnlyOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
-            >
-              <div className="fc-settings-label">Tone Quiz Mode</div>
-              <div className="fc-settings-options">
-                <button
-                  className={`fc-setting-opt${!toneQuizOpen ? ' selected' : ''}`}
-                  onClick={() => setToneQuizOpen(false)}
-                >
-                  Off
-                </button>
-                <button
-                  className={`fc-setting-opt${toneQuizOpen ? ' selected' : ''}`}
-                  onClick={() => {
-                    setToneQuizOpen(true)
-                    setSoundOnlyOpen(false)
-                  }}
-                >
-                  On
-                </button>
-              </div>
-              {toneQuizOpen && (
-                <p className="fc-settings-mode-hint">
-                  See pinyin without tones + English, pick the correct tones.
-                </p>
-              )}
-            </div>
+              <span className="fc-ws-char">课程</span>
+              <span className="fc-ws-label">LANG 1511</span>
+              <span className="fc-ws-count">10 units · 123 words</span>
+              <span className="fc-ws-desc">University course vocabulary</span>
+            </button>
+            {lastSession && (
+              <button
+                className={`fc-ws-btn${selectedWordSet === 'last' ? ' selected' : ''}`}
+                onClick={() =>
+                  setSelectedWordSet(selectedWordSet === 'last' ? null : 'last')
+                }
+              >
+                <span className="fc-ws-char">上次</span>
+                <span className="fc-ws-label">Last Session</span>
+                <span className="fc-ws-count">{lastSession.desc}</span>
+                <span className="fc-ws-desc">Continue where you left off</span>
+              </button>
+            )}
           </div>
-        )}
+          </div>{/* end fc-ws-left */}
 
-        <button
-          className="fc-start-btn"
-          onClick={
-            soundOnlyOpen
-              ? handleStartSoundOnly
-              : toneQuizOpen
-                ? handleStartToneQuiz
-                : handleGoNext
-          }
-        >
-          {soundOnlyOpen ||
-          (selectedWordSet === 'last' && lastSession?.soundSettings)
-            ? 'Start Sound Only →'
-            : toneQuizOpen ||
-                (selectedWordSet === 'last' &&
-                  lastSession?.toneSessionSize !== undefined)
-              ? 'Start Tone Quiz →'
-              : selectedWordSet === 'last'
-                ? 'Start →'
-                : 'Start Studying →'}
-        </button>
+          {/* Right: scrollable content area + pinned start button */}
+          <div className="fc-ws-right">
+            <div className="fc-ws-right-scroll">
+            {selectedWordSet ? (
+              <>
+                {/* Progress dashboard — always at top, updates with selection */}
+                {dashVocab && cardProgress && (
+                  <WordSetDashboard vocab={dashVocab} cardProgress={cardProgress} />
+                )}
+
+                {/* Session Settings */}
+                {selectedWordSet !== 'last' && (
+                  <div className="fc-settings-wrap">
+                    {/* HSK level picker */}
+                    {selectedWordSet === 'hsk' && (
+                      <div className="fc-settings-section">
+                        <div className="fc-settings-label">HSK Level</div>
+                        <div className="fc-picker-grid">
+                          {[1, 2].map((level, idx) => (
+                            <button
+                              key={level}
+                              className={`fc-unit-btn${selectedHSKLevels.has(level) ? ' selected' : ''}`}
+                              onMouseDown={() => {
+                                mouseIsDownRef.current = true
+                                isDraggingRef.current = false
+                                dragAnchorIdxRef.current = idx
+                                dragTypeRef.current = 'hsk'
+                                dragActionRef.current = selectedHSKLevels.has(level)
+                                  ? 'deselect'
+                                  : 'select'
+                                preDragHSKRef.current = new Set(selectedHSKLevels)
+                              }}
+                              onMouseEnter={() => {
+                                if (
+                                  !mouseIsDownRef.current ||
+                                  dragTypeRef.current !== 'hsk' ||
+                                  dragAnchorIdxRef.current === null
+                                )
+                                  return
+                                isDraggingRef.current = true
+                                const hskLevels = [1, 2]
+                                const [lo, hi] = [
+                                  Math.min(dragAnchorIdxRef.current, idx),
+                                  Math.max(dragAnchorIdxRef.current, idx),
+                                ]
+                                const next = new Set(preDragHSKRef.current)
+                                hskLevels.slice(lo, hi + 1).forEach((l) => {
+                                  if (dragActionRef.current === 'select') next.add(l)
+                                  else next.delete(l)
+                                })
+                                setSelectedHSKLevels(next)
+                              }}
+                            >
+                              HSK {level}{' '}
+                              <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                                (150)
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* LANG 1511 unit picker */}
+                    {selectedWordSet === 'lang1511' && (
+                      <div className="fc-settings-section">
+                        <div className="fc-settings-label">Units</div>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                          <button
+                            className="fc-util-btn"
+                            onClick={() =>
+                              setSelectedUnits(new Set(lang1511Units.map((u) => u.unit)))
+                            }
+                          >
+                            Select all
+                          </button>
+                          <button
+                            className="fc-util-btn"
+                            onClick={() => setSelectedUnits(new Set())}
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        <div className="fc-picker-grid fc-picker-grid--units">
+                          {lang1511Units.map((u, idx) => (
+                            <button
+                              key={u.unit}
+                              className={`fc-unit-btn${selectedUnits.has(u.unit) ? ' selected' : ''}`}
+                              onMouseDown={() => {
+                                mouseIsDownRef.current = true
+                                isDraggingRef.current = false
+                                dragAnchorIdxRef.current = idx
+                                dragTypeRef.current = 'unit'
+                                dragActionRef.current = selectedUnits.has(u.unit)
+                                  ? 'deselect'
+                                  : 'select'
+                                preDragUnitsRef.current = new Set(selectedUnits)
+                              }}
+                              onMouseEnter={() => {
+                                if (
+                                  !mouseIsDownRef.current ||
+                                  dragTypeRef.current !== 'unit' ||
+                                  dragAnchorIdxRef.current === null
+                                )
+                                  return
+                                isDraggingRef.current = true
+                                const [lo, hi] = [
+                                  Math.min(dragAnchorIdxRef.current, idx),
+                                  Math.max(dragAnchorIdxRef.current, idx),
+                                ]
+                                const next = new Set(preDragUnitsRef.current)
+                                lang1511Units.slice(lo, hi + 1).forEach((unit) => {
+                                  if (dragActionRef.current === 'select')
+                                    next.add(unit.unit)
+                                  else next.delete(unit.unit)
+                                })
+                                setSelectedUnits(next)
+                              }}
+                            >
+                              Unit {u.unit}{' '}
+                              <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                                ({u.words.length})
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(selectedWordSet === 'hsk' || selectedWordSet === 'lang1511') && (
+                      <div className="fc-settings-divider" />
+                    )}
+                    <div
+                      className="fc-settings-section"
+                      style={toneQuizOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
+                    >
+                      <div className="fc-settings-label">Study Mode</div>
+                      <div className="fc-settings-options">
+                        {([1, 2, 3] as const).map((m) => (
+                          <button
+                            key={m}
+                            className={`fc-setting-opt${settings.defaultMode === m ? ' selected' : ''}`}
+                            disabled={soundOnlyOpen && m === 3}
+                            style={soundOnlyOpen && m === 3 ? { opacity: 0.35 } : undefined}
+                            onClick={() =>
+                              setSettings((s) => ({ ...s, defaultMode: m }))
+                            }
+                          >
+                            {m} Card{m > 1 ? 's' : ''}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="fc-settings-mode-hint">
+                        {settings.defaultMode === 1 &&
+                          'See character + pinyin, guess the English meaning.'}
+                        {settings.defaultMode === 2 &&
+                          'Guess pinyin from character, then guess English.'}
+                        {settings.defaultMode === 3 &&
+                          'Full cycle: character → pinyin → English → recall character.'}
+                      </p>
+                    </div>
+                    <div className="fc-settings-section">
+                      <div className="fc-settings-label">Answer Style</div>
+                      <div className="fc-settings-options">
+                        {(
+                          [
+                            ['multiple-choice', 'Multiple Choice'],
+                            ['type', 'Type Answer'],
+                          ] as const
+                        ).map(([val, label]) => (
+                          <button
+                            key={val}
+                            className={`fc-setting-opt${settings.answerStyle === val ? ' selected' : ''}`}
+                            onClick={() =>
+                              setSettings((s) => ({ ...s, answerStyle: val }))
+                            }
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="fc-settings-section">
+                      <div className="fc-settings-label">Cards per Session</div>
+                      <div className="fc-settings-options">
+                        {(
+                          [
+                            [10, '10'],
+                            [20, '20'],
+                            [30, 'All'],
+                          ] as const
+                        ).map(([val, label]) => (
+                          <button
+                            key={val}
+                            className={`fc-setting-opt${settings.sessionSize === val ? ' selected' : ''}`}
+                            onClick={() =>
+                              setSettings((s) => ({ ...s, sessionSize: val }))
+                            }
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div
+                      className="fc-settings-section"
+                      style={toneQuizOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
+                    >
+                      <div className="fc-settings-label">Sound Only Mode</div>
+                      <div className="fc-settings-options">
+                        <button
+                          className={`fc-setting-opt${!soundOnlyOpen ? ' selected' : ''}`}
+                          onClick={() => setSoundOnlyOpen(false)}
+                        >
+                          Off
+                        </button>
+                        {(
+                          [
+                            ['char', 'Characters'],
+                            ['pinyin', 'Pinyin'],
+                            ['both', 'Char + Pinyin'],
+                          ] as const
+                        ).map(([val, label]) => (
+                          <button
+                            key={val}
+                            className={`fc-setting-opt${soundOnlyOpen && soundSettings.answerFormat === val ? ' selected' : ''}`}
+                            onClick={() => {
+                              setSoundOnlyOpen(true)
+                              setToneQuizOpen(false)
+                              setSoundSettings((s) => ({ ...s, answerFormat: val }))
+                              if (settings.defaultMode === 3)
+                                setSettings((s) => ({ ...s, defaultMode: 1 }))
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div
+                      className="fc-settings-section"
+                      style={soundOnlyOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
+                    >
+                      <div className="fc-settings-label">Tone Quiz Mode</div>
+                      <div className="fc-settings-options">
+                        <button
+                          className={`fc-setting-opt${!toneQuizOpen ? ' selected' : ''}`}
+                          onClick={() => setToneQuizOpen(false)}
+                        >
+                          Off
+                        </button>
+                        <button
+                          className={`fc-setting-opt${toneQuizOpen ? ' selected' : ''}`}
+                          onClick={() => {
+                            setToneQuizOpen(true)
+                            setSoundOnlyOpen(false)
+                          }}
+                        >
+                          On
+                        </button>
+                      </div>
+                      {toneQuizOpen && (
+                        <p className="fc-settings-mode-hint">
+                          See pinyin without tones + English, pick the correct tones.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="fc-ws-right-empty">
+                ← Select a word set to get started
+              </div>
+            )}
+
+            <button
+              className="fc-start-btn"
+              onClick={
+                soundOnlyOpen
+                  ? handleStartSoundOnly
+                  : toneQuizOpen
+                    ? handleStartToneQuiz
+                    : handleGoNext
+              }
+            >
+              {soundOnlyOpen ||
+              (selectedWordSet === 'last' && lastSession?.soundSettings)
+                ? 'Start Sound Only →'
+                : toneQuizOpen ||
+                    (selectedWordSet === 'last' &&
+                      lastSession?.toneSessionSize !== undefined)
+                  ? 'Start Tone Quiz →'
+                  : selectedWordSet === 'last'
+                    ? 'Start →'
+                    : 'Start Studying →'}
+            </button>
+            </div>{/* end fc-ws-right-scroll */}
+          </div>
+        </div>
       </div>
     </div>
   )

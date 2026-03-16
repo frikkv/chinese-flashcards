@@ -47,7 +47,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 52px 32px 80px;
+  padding: 68px 32px 80px;
   gap: 36px;
   position: relative;
 }
@@ -71,17 +71,142 @@ body {
 
 /* ── WORD SET PAGE ── */
 .fc-wordset-container {
+  flex: 1;
   width: 100%;
-  max-width: 800px;
+  max-width: 960px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  overflow: hidden;
+  margin: 0;
+}
+
+/* ── TWO-COLUMN WORD SET LAYOUT ── */
+.fc-ws-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Left column: brand + stats + word set buttons */
+.fc-ws-left {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Left column brand (compact title) */
+.fc-ws-brand {
+  padding-bottom: 4px;
+}
+.fc-ws-brand-title {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 2.2rem;
+  color: var(--fc-red);
+  line-height: 1;
+  margin-bottom: 5px;
+}
+.fc-ws-brand-sub {
+  font-size: 0.88rem;
+  color: var(--fc-muted);
+  font-style: italic;
+}
+
+/* Stats bar inside left column: compact horizontal row */
+.fc-ws-left .fc-stats-bar {
   gap: 0;
-  margin: auto 0;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 0;
 }
-.fc-wordset-container .fc-hero-sub {
-  margin-bottom: 20px;
+.fc-ws-left .fc-stat-num {
+  font-size: 1rem;
 }
+.fc-ws-left .fc-stat-label {
+  font-size: 0.7rem;
+}
+
+/* Word set buttons stacked vertically */
+.fc-ws-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fc-ws-list .fc-ws-btn {
+  padding: 16px 18px;
+}
+
+.fc-ws-list .fc-ws-char {
+  font-size: 2rem;
+  margin-bottom: 6px;
+}
+
+/* Right column: scrollable content + pinned start button */
+.fc-ws-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Scrollable area (dashboard + settings) */
+.fc-ws-right-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 2px; /* prevent scrollbar from clipping border */
+}
+
+.fc-ws-right .fc-settings-wrap {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.fc-ws-right .fc-start-btn {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Placeholder shown before any word set is selected */
+.fc-ws-right-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--fc-border);
+  border-radius: 16px;
+  color: var(--fc-light);
+  font-size: 0.9rem;
+  font-style: italic;
+  text-align: center;
+}
+
+@media (max-width: 680px) {
+  .fc-ws-layout {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .fc-ws-left {
+    overflow-y: visible;
+  }
+  .fc-ws-right {
+    overflow: visible;
+  }
+  .fc-ws-right-scroll {
+    overflow-y: visible;
+  }
+}
+
+/* Legacy grid (unused but kept for safety) */
 .fc-ws-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -152,10 +277,10 @@ body {
 .fc-unit-btn {
   background: var(--fc-surface);
   border: 1.5px solid var(--fc-border);
-  border-radius: 10px;
-  padding: 12px 20px;
+  border-radius: 8px;
+  padding: 8px 14px;
   font-family: 'Lora', serif;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   color: var(--fc-muted);
   cursor: pointer;
   transition:
@@ -184,45 +309,45 @@ body {
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
   border-radius: 16px;
-  padding: 24px 28px;
+  padding: 18px 22px;
 }
 .fc-settings-section {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .fc-settings-wrap .fc-settings-section:last-child {
   margin-bottom: 0;
 }
 .fc-settings-label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--fc-light);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .fc-settings-options {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 .fc-settings-divider {
   height: 1px;
   background: var(--fc-border);
-  margin: 4px 0 20px;
+  margin: 2px 0 14px;
 }
 .fc-settings-mode-hint {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--fc-muted);
   font-style: italic;
-  margin-top: 10px;
-  line-height: 1.5;
+  margin-top: 6px;
+  line-height: 1.4;
 }
 .fc-setting-opt {
   background: var(--fc-surface);
   border: 1.5px solid var(--fc-border);
-  border-radius: 10px;
-  padding: 11px 22px;
+  border-radius: 8px;
+  padding: 8px 16px;
   font-family: 'Lora', serif;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   color: var(--fc-muted);
   cursor: pointer;
   transition:
@@ -358,24 +483,27 @@ body {
 /* ── STUDY PAGE ── */
 .fc-back-btn {
   position: fixed;
-  top: 28px;
-  left: 28px;
+  top: 16px;
+  left: 24px;
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
-  border-radius: 10px;
-  padding: 9px 18px;
+  border-radius: 8px;
+  padding: 7px 14px;
   font-family: 'Lora', serif;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--fc-muted);
   cursor: pointer;
   z-index: 50;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   transition:
     border-color 0.2s,
-    color 0.2s;
+    color 0.2s,
+    background 0.15s;
 }
 .fc-back-btn:hover {
   border-color: var(--fc-muted);
   color: var(--fc-text);
+  background: var(--fc-bg);
 }
 .fc-study-header {
   width: 100%;
@@ -760,13 +888,29 @@ body {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.15s,
+    box-shadow 0.2s;
   border: 1.5px solid var(--fc-border);
   background: var(--fc-surface);
   color: var(--fc-text);
 }
 .fc-results-btn:hover {
-  border-color: var(--fc-text);
+  border-color: var(--fc-muted);
+  transform: translateY(-1px);
+  box-shadow: var(--fc-shadow);
+}
+.fc-results-btn--primary {
+  background: var(--fc-red);
+  border-color: var(--fc-red);
+  color: white;
+}
+.fc-results-btn--primary:hover {
+  background: var(--fc-red-dark);
+  border-color: var(--fc-red-dark);
+  box-shadow: var(--fc-shadow-lg);
 }
 
 /* ── SOUND ONLY ── */
@@ -951,24 +1095,27 @@ body {
   color: var(--fc-muted);
 }
 .fc-signout-btn {
-  position: absolute;
-  top: 20px;
-  right: 24px;
-  background: none;
-  border: 1.5px solid var(--fc-border);
-  border-radius: 10px;
-  padding: 7px 16px;
-  font-family: 'Lora', serif;
-  font-size: 0.82rem;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.8rem;
   color: var(--fc-muted);
   cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
   transition:
-    border-color 0.2s,
-    color 0.2s;
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 .fc-signout-btn:hover {
-  border-color: var(--fc-text);
-  color: var(--fc-text);
+  background: var(--fc-red-light);
+  border-color: var(--fc-red);
+  color: var(--fc-red);
 }
 
 /* ── CHAT PANEL ── */
@@ -1549,7 +1696,7 @@ body {
 
 @media (max-width: 560px) {
   .fc-app {
-    padding: 32px 16px 60px;
+    padding: 56px 16px 60px;
     gap: 24px;
   }
   .fc-choices {
@@ -1977,6 +2124,17 @@ body {
 .fc-profile-nav-btn:hover {
   background: var(--fc-bg);
   border-color: var(--fc-muted);
+}
+
+@media (max-width: 480px) {
+  .fc-nav-btns {
+    gap: 6px;
+  }
+  .fc-profile-nav-btn,
+  .fc-signout-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
 }
 
 @media (max-width: 560px) {
