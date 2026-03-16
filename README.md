@@ -37,7 +37,7 @@ A full-stack web app for studying Mandarin Chinese vocabulary. Covers HSK 1, HSK
 
 ```bash
 pnpm install
-pnpm dev          # starts on http://localhost:3000
+pnpm dev          # starts on local dev server
 ```
 
 Requires a `.env.local` with the following variables:
