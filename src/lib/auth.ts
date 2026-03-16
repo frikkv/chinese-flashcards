@@ -14,6 +14,9 @@ export const auth = betterAuth({
   // that calls auth.api.getSession(). BETTER_AUTH_URL must be set in the
   // deployment environment (e.g. https://your-app.vercel.app).
   baseURL: process.env.BETTER_AUTH_URL,
+  // BETTER_AUTH_SECRET must be set in production env vars.
+  // Without it, Better Auth throws "You are using the default secret" in prod.
+  secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: 'pg',
     usePlural: true,
