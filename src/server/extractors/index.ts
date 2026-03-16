@@ -1,4 +1,3 @@
-import { PDFParse } from 'pdf-parse'
 import mammoth from 'mammoth'
 
 // Hard cap on characters sent to the AI. At ~4 chars/token this is ~1000 tokens
@@ -16,6 +15,9 @@ async function extractRawText(fileName: string, buffer: Buffer): Promise<string>
   }
 
   if (ext === 'pdf') {
+    // Dynamic import so pdfjs-dist (which references browser-only DOMMatrix)
+    // is only loaded on demand and not at module initialisation time.
+    const { PDFParse } = await import('pdf-parse')
     const parser = new PDFParse({ data: buffer })
     const result = await parser.getText()
     return result.text
