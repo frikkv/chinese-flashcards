@@ -1,5 +1,10 @@
 {
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install",
-  "framework": null
+  "outputDirectory": "dist/client",
+  "framework": null,
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/api/(.*)", "dest": "/api/server" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
