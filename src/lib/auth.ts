@@ -21,6 +21,15 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     },
   },
+  session: {
+    // Cache session data in a signed cookie for up to 5 minutes so
+    // auth.api.getSession() can validate without a DB round-trip on
+    // every tRPC request.
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 5, // 5 minutes
+    },
+  },
   trustedOrigins,
   plugins: [tanstackStartCookies()],
 })

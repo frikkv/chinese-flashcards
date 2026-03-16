@@ -572,7 +572,9 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     ...trpc.progress.getProgress.queryOptions(),
     enabled: isSignedIn,
   })
-  const recordCard = useMutation(trpc.progress.recordCard.mutationOptions())
+  const batchRecordCardsMutation = useMutation(trpc.progress.batchRecordCards.mutationOptions())
+  const cardResultsRef = useRef<{ cardId: string; correct: boolean }[]>([])
+  const sessionSavedRef = useRef(false)
   const saveLastSessionMutation = useMutation(
     trpc.progress.saveLastSession.mutationOptions(),
   )
@@ -759,6 +761,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
   // Kick off a distractor prefetch for a word so it's ready before doRenderCard runs
   function prefetchDistractors(word: Word) {
+    // Skip if already prefetching this word
+    if (prefetchPromiseRef.current?.vocabKey === word.char) return
     const promise = prefetchDistractorsMutation
       .mutateAsync({
         vocabKey: word.char,
@@ -874,6 +878,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setAllTimeStats((prev) => ({ ...prev, sessions: prev.sessions + 1 }))
     sessionModeRef.current = mode
     settingsRef.current = s
+    cardResultsRef.current = []
+    sessionSavedRef.current = false
 
     // Prefetch distractors for the first card so it's ready immediately
     if (s.answerStyle === 'multiple-choice') {
@@ -908,7 +914,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setNextBtnVisible(true)
     if (isSignedIn) {
       const word = queueRef.current[qIdx]?.word
-      if (word) recordCard.mutate({ cardId: word.char, correct })
+      if (word) cardResultsRef.current.push({ cardId: word.char, correct })
     }
   }
 
@@ -936,7 +942,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setNextBtnVisible(true)
     if (isSignedIn) {
       const word = queueRef.current[qIdx]?.word
-      if (word) recordCard.mutate({ cardId: word.char, correct: isCorrect })
+      if (word) cardResultsRef.current.push({ cardId: word.char, correct: isCorrect })
     }
   }
 
@@ -957,7 +963,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setNextBtnVisible(true)
     if (isSignedIn) {
       const word = queueRef.current[qIdx]?.word
-      if (word) recordCard.mutate({ cardId: word.char, correct: isCorrect })
+      if (word) cardResultsRef.current.push({ cardId: word.char, correct: isCorrect })
     }
   }
 
@@ -968,9 +974,15 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
     if (nextIdx >= currentQ.length) {
       setPage('results')
-      // Refetch progress so ResultsPage shows up-to-date mastery
-      if (isSignedIn) void progressQuery.refetch()
-      if (isSignedIn) {
+      // Guard against double-fire (rapid Enter/click before React re-renders)
+      if (isSignedIn && !sessionSavedRef.current) {
+        sessionSavedRef.current = true
+        // Refetch progress so ResultsPage shows up-to-date mastery
+        void progressQuery.refetch()
+        // Flush batched per-card results in a single call
+        const results = cardResultsRef.current
+        cardResultsRef.current = []
+        if (results.length > 0) batchRecordCardsMutation.mutate(results)
         saveSessionMutation.mutate({
           wordSetKey: lastSession?.wordSetKey ?? 'unknown',
           wordSetDetail: wordSetDetailOf(lastSession),

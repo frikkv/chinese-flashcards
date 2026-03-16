@@ -81,15 +81,18 @@ export const chatRouter = createTRPCRouter({
       }
 
       // Call GPT-4o-mini
-      const completion = await getOpenAI().chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...input.messages.map((m) => ({ role: m.role, content: m.content })),
-        ],
-        temperature: 0.7,
-        max_tokens: 600,
-      })
+      const completion = await getOpenAI().chat.completions.create(
+        {
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...input.messages.map((m) => ({ role: m.role, content: m.content })),
+          ],
+          temperature: 0.7,
+          max_tokens: 600,
+        },
+        { signal: AbortSignal.timeout(15_000) },
+      )
 
       const assistantContent =
         completion.choices[0]?.message?.content?.trim() ??
@@ -134,19 +137,22 @@ export const chatRouter = createTRPCRouter({
         })
       }
 
-      const completion = await getOpenAI().chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content:
-              'Translate the given text to Mandarin Chinese. Respond ONLY with a JSON object: {"char":"...","pinyin":"..."}. No explanation, no markdown, no other text.',
-          },
-          { role: 'user', content: input.text },
-        ],
-        max_tokens: 150,
-        temperature: 0.2,
-      })
+      const completion = await getOpenAI().chat.completions.create(
+        {
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Translate the given text to Mandarin Chinese. Respond ONLY with a JSON object: {"char":"...","pinyin":"..."}. No explanation, no markdown, no other text.',
+            },
+            { role: 'user', content: input.text },
+          ],
+          max_tokens: 150,
+          temperature: 0.2,
+        },
+        { signal: AbortSignal.timeout(10_000) },
+      )
 
       const raw = completion.choices[0]?.message?.content?.trim() ?? ''
       try {

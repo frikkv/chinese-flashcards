@@ -101,10 +101,12 @@ export const progressRouter = createTRPCRouter({
         })
     }),
 
+  // Deprecated: use batchRecordCards instead (kept for compatibility)
   recordCard: protectedProcedure
     .input(z.object({ cardId: z.string(), correct: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
+      const now = new Date()
       await db
         .insert(flashcardProgress)
         .values({
@@ -112,17 +114,47 @@ export const progressRouter = createTRPCRouter({
           cardId: input.cardId,
           timesCorrect: input.correct ? 1 : 0,
           timesAttempted: 1,
-          lastSeenAt: new Date(),
-          createdAt: new Date(),
+          lastSeenAt: now,
+          createdAt: now,
         })
         .onConflictDoUpdate({
           target: [flashcardProgress.userId, flashcardProgress.cardId],
           set: {
             timesCorrect: sql`${flashcardProgress.timesCorrect} + ${input.correct ? 1 : 0}`,
             timesAttempted: sql`${flashcardProgress.timesAttempted} + 1`,
-            lastSeenAt: new Date(),
+            lastSeenAt: now,
           },
         })
+    }),
+
+  // Batch version: saves all card results for a session in one call
+  batchRecordCards: protectedProcedure
+    .input(
+      z.array(z.object({ cardId: z.string(), correct: z.boolean() })).min(1).max(100),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+      const now = new Date()
+      for (const { cardId, correct } of input) {
+        await db
+          .insert(flashcardProgress)
+          .values({
+            userId,
+            cardId,
+            timesCorrect: correct ? 1 : 0,
+            timesAttempted: 1,
+            lastSeenAt: now,
+            createdAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [flashcardProgress.userId, flashcardProgress.cardId],
+            set: {
+              timesCorrect: sql`${flashcardProgress.timesCorrect} + ${correct ? 1 : 0}`,
+              timesAttempted: sql`${flashcardProgress.timesAttempted} + 1`,
+              lastSeenAt: now,
+            },
+          })
+      }
     }),
 
   saveSession: protectedProcedure
