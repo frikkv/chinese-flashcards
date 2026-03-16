@@ -112,23 +112,65 @@ export const wordsetsRouter = createTRPCRouter({
       return { id }
     }),
 
-  // List user's saved custom word sets
+  // List user's saved custom word sets (favorites first, then newest)
   list: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
     const rows = await db
       .select()
       .from(customWordSets)
       .where(eq(customWordSets.userId, userId))
-      .orderBy(desc(customWordSets.createdAt))
+      .orderBy(desc(customWordSets.isFavorited), desc(customWordSets.createdAt))
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
       words: JSON.parse(row.wordsJson) as { char: string; pinyin: string; english: string }[],
       wordCount: row.wordCount,
       sourceFileName: row.sourceFileName,
+      isFavorited: row.isFavorited,
       createdAt: row.createdAt,
     }))
   }),
+
+  // Merge additional words into an existing word set (deduplicates by char)
+  update: protectedProcedure
+    .input(z.object({
+      id: z.string(),
+      additionalWords: z.array(WordSchema).min(1).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+      const [existing] = await db
+        .select()
+        .from(customWordSets)
+        .where(and(eq(customWordSets.id, input.id), eq(customWordSets.userId, userId)))
+      if (!existing) throw new TRPCError({ code: 'NOT_FOUND' })
+      const existingWords = JSON.parse(existing.wordsJson) as { char: string; pinyin: string; english: string }[]
+      const existingChars = new Set(existingWords.map((w) => w.char))
+      const merged = [...existingWords, ...input.additionalWords.filter((w) => !existingChars.has(w.char))]
+      await db
+        .update(customWordSets)
+        .set({ wordsJson: JSON.stringify(merged), wordCount: merged.length })
+        .where(and(eq(customWordSets.id, input.id), eq(customWordSets.userId, userId)))
+      return { wordCount: merged.length }
+    }),
+
+  // Toggle favorite status for a word set
+  toggleFavorite: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id
+      const [existing] = await db
+        .select()
+        .from(customWordSets)
+        .where(and(eq(customWordSets.id, input.id), eq(customWordSets.userId, userId)))
+      if (!existing) throw new TRPCError({ code: 'NOT_FOUND' })
+      const next = !existing.isFavorited
+      await db
+        .update(customWordSets)
+        .set({ isFavorited: next })
+        .where(and(eq(customWordSets.id, input.id), eq(customWordSets.userId, userId)))
+      return { isFavorited: next }
+    }),
 
   // Delete a custom word set (only the owner can delete)
   delete: protectedProcedure

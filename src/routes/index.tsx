@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Volume2 } from 'lucide-react'
+import { Volume2, User } from 'lucide-react'
 import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
 import type { Word } from '../data/vocabulary'
 import { authClient } from '#/lib/auth-client'
@@ -42,6 +42,7 @@ interface CustomWordSet {
   words: Word[]
   wordCount: number
   sourceFileName: string | null | undefined
+  isFavorited: boolean
   createdAt: Date
 }
 
@@ -649,8 +650,10 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   const prefetchDistractorsMutation = useMutation(
     trpc.distractors.getDistractors.mutationOptions(),
   )
-  // Stores an in-flight or completed prefetch so doRenderCard can consume it instantly
-  const prefetchPromiseRef = useRef<{ vocabKey: string; promise: Promise<string[]> } | null>(null)
+  // vocabKey → resolved distractors (persists for the active session)
+  const distractorCacheRef = useRef<Map<string, string[]>>(new Map())
+  // vocabKey → in-flight promise (avoids duplicate requests)
+  const distractorPendingRef = useRef<Map<string, Promise<string[]>>>(new Map())
   const currentDistractorFetchRef = useRef<string | null>(null)
   const answeredRef = useRef(false)
   const showSelfRateRef = useRef(false)
@@ -834,22 +837,29 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     if (!data || !vars) return
     if (vars.vocabKey !== currentDistractorFetchRef.current) return
     if (answeredRef.current) return
+    distractorCacheRef.current.set(vars.vocabKey, data.distractors)
     setAnswerChoices(shuffle([vars.correctAnswer, ...data.distractors]))
   }, [fetchDistractorsMutation.data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Kick off a distractor prefetch for a word so it's ready before doRenderCard runs
   function prefetchDistractors(word: Word) {
-    // Skip if already prefetching this word
-    if (prefetchPromiseRef.current?.vocabKey === word.char) return
+    const key = word.char
+    // Already resolved — nothing to do
+    if (distractorCacheRef.current.has(key)) return
+    // Already in flight — nothing to do
+    if (distractorPendingRef.current.has(key)) return
     const promise = prefetchDistractorsMutation
-      .mutateAsync({
-        vocabKey: word.char,
-        char: word.char,
-        pinyin: word.pinyin,
-        correctAnswer: word.english,
+      .mutateAsync({ vocabKey: key, char: word.char, pinyin: word.pinyin, correctAnswer: word.english })
+      .then((r) => {
+        distractorCacheRef.current.set(key, r.distractors)
+        distractorPendingRef.current.delete(key)
+        return r.distractors
       })
-      .then((r) => r.distractors)
-    prefetchPromiseRef.current = { vocabKey: word.char, promise }
+      .catch(() => {
+        distractorPendingRef.current.delete(key)
+        return [] as string[]
+      })
+    distractorPendingRef.current.set(key, promise)
   }
 
   function doRenderCard(idx: number, currentFlipped: boolean, q: QueueItem[]) {
@@ -894,34 +904,29 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
         if (target === 'english') {
           setAnswerChoices([])
           currentDistractorFetchRef.current = word.char
-          const prefetch = prefetchPromiseRef.current
-          if (prefetch?.vocabKey === word.char) {
-            // Consume the prefetch promise — may already be resolved (instant) or still in flight
-            prefetchPromiseRef.current = null
-            prefetch.promise
-              .then((distractors) => {
-                if (currentDistractorFetchRef.current === word.char && !answeredRef.current) {
+          const key = word.char
+
+          // 1. Already in cache — instant
+          const cached = distractorCacheRef.current.get(key)
+          if (cached) {
+            setAnswerChoices(shuffle([word.english, ...cached]))
+            currentDistractorFetchRef.current = null
+          } else {
+            // 2. Prefetch already in flight — wait for it
+            const pending = distractorPendingRef.current.get(key)
+            if (pending) {
+              pending.then((distractors) => {
+                if (currentDistractorFetchRef.current === key && !answeredRef.current) {
                   setAnswerChoices(shuffle([word.english, ...distractors]))
                   currentDistractorFetchRef.current = null
                 }
+              }).catch(() => {
+                fetchDistractorsMutation.mutate({ vocabKey: key, char: word.char, pinyin: word.pinyin, correctAnswer: word.english })
               })
-              .catch(() => {
-                // Prefetch failed — fall back to normal fetch
-                fetchDistractorsMutation.mutate({
-                  vocabKey: word.char,
-                  char: word.char,
-                  pinyin: word.pinyin,
-                  correctAnswer: word.english,
-                })
-              })
-          } else {
-            // No prefetch available (first card or pinyin card before this)
-            fetchDistractorsMutation.mutate({
-              vocabKey: word.char,
-              char: word.char,
-              pinyin: word.pinyin,
-              correctAnswer: word.english,
-            })
+            } else {
+              // 3. Nothing available — fire a fresh fetch
+              fetchDistractorsMutation.mutate({ vocabKey: key, char: word.char, pinyin: word.pinyin, correctAnswer: word.english })
+            }
           }
         } else {
           // Pinyin targets have no AI fetch — set choices immediately
@@ -958,13 +963,16 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     settingsRef.current = s
     cardResultsRef.current = []
     sessionSavedRef.current = false
+    distractorCacheRef.current = new Map()
+    distractorPendingRef.current = new Map()
 
-    // Prefetch distractors for the first card so it's ready immediately
+    // Prefetch distractors for the first 3 cards so they're ready immediately
     if (s.answerStyle === 'multiple-choice') {
-      const first = q[0]
-      if (first && first.stage !== 3) {
-        const target = mode === 1 || first.stage === 2 ? 'english' : 'pinyin'
-        if (target === 'english') prefetchDistractors(first.word)
+      for (let i = 0; i < Math.min(3, q.length); i++) {
+        const item = q[i]
+        if (!item || item.stage === 3) continue
+        const target = mode === 1 || item.stage === 2 ? 'english' : 'pinyin'
+        if (target === 'english') prefetchDistractors(item.word)
       }
     }
 
@@ -1089,12 +1097,16 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       setFaceB(nextQContent)
     }
 
-    // Prefetch distractors for next card NOW — the 560ms flip gives them time to load
+    // Prefetch distractors for the next 2 cards — cache deduplicates repeat words
     const mode = sessionModeRef.current
     const s = settingsRef.current
-    if (s.answerStyle === 'multiple-choice' && nextItem.stage !== 3) {
-      const target = mode === 1 || nextItem.stage === 2 ? 'english' : 'pinyin'
-      if (target === 'english') prefetchDistractors(nextItem.word)
+    if (s.answerStyle === 'multiple-choice') {
+      for (let ahead = 0; ahead <= 1; ahead++) {
+        const futureItem = currentQ[nextIdx + ahead]
+        if (!futureItem || futureItem.stage === 3) continue
+        const target = mode === 1 || futureItem.stage === 2 ? 'english' : 'pinyin'
+        if (target === 'english') prefetchDistractors(futureItem.word)
+      }
     }
 
     setAnswerChoices([])
@@ -2461,6 +2473,61 @@ function WordSetDashboard({
 }
 
 // ── WORD SET PAGE ─────────────────────────────────────────────────
+// ── INLINE LEADERBOARD SIDEBAR ────────────────────────────────────
+function InlineLeaderboard() {
+  const trpc = useTRPC()
+  const lbQuery = useQuery({
+    ...trpc.social.getWeeklyLeaderboard.queryOptions(),
+    staleTime: 60_000,
+  })
+
+  const entries = lbQuery.data?.entries ?? []
+  const hasFriends = lbQuery.data?.hasFriends ?? false
+
+  return (
+    <div className="fc-ws-lb">
+      <div className="fc-ws-lb-header">
+        <span className="fc-ws-lb-title">This Week</span>
+        <Link to="/leaderboard" className="fc-ws-lb-fulllink">Full view →</Link>
+      </div>
+
+      {lbQuery.isPending && (
+        <div className="fc-ws-lb-loading">
+          <div className="fc-auth-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
+        </div>
+      )}
+
+      {!lbQuery.isPending && !hasFriends && (
+        <div className="fc-ws-lb-empty">
+          <Link to="/friends" className="fc-ws-lb-add-link">Add friends to compete →</Link>
+        </div>
+      )}
+
+      {!lbQuery.isPending && hasFriends && entries.every((e) => e.xp === 0) && (
+        <div className="fc-ws-lb-empty">No activity yet this week.</div>
+      )}
+
+      {!lbQuery.isPending && entries.map((entry) => (
+        <div
+          key={entry.userId}
+          className={`fc-ws-lb-row${entry.isMe ? ' fc-ws-lb-row--me' : ''}`}
+        >
+          <span className="fc-ws-lb-rank">
+            {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`}
+          </span>
+          <span className="fc-ws-lb-name">
+            {entry.displayName}
+            {entry.isMe && <span className="fc-ws-lb-you">you</span>}
+          </span>
+          <span className={`fc-ws-lb-xp${entry.xp === 0 ? ' fc-ws-lb-xp--zero' : ''}`}>
+            {entry.xp > 0 ? `${entry.xp} XP` : '—'}
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function WordSetPage({
   lastSession,
   allTimeStats,
@@ -2501,18 +2568,25 @@ function WordSetPage({
   const queryClient = useQueryClient()
   const generateMutation = useMutation(trpc.wordsets.generate.mutationOptions())
   const saveMutation = useMutation(trpc.wordsets.save.mutationOptions())
+  const updateMutation = useMutation(trpc.wordsets.update.mutationOptions())
   const deleteMutation = useMutation(trpc.wordsets.delete.mutationOptions())
+  const toggleFavoriteMutation = useMutation(trpc.wordsets.toggleFavorite.mutationOptions())
 
   // Modal state
   const [showCustomModal, setShowCustomModal] = useState(false)
-  // null = list view; 'upload' | 'paste' = create view
+  // null = list view; 'upload' | 'paste' = create/edit view
   const [createMode, setCreateMode] = useState<'upload' | 'paste' | null>(null)
-  // Create form state
-  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  // Create/edit form state
+  const [uploadFiles, setUploadFiles] = useState<File[]>([])
+  const [isDragOver, setIsDragOver] = useState(false)
   const [pasteText, setPasteText] = useState('')
   const [uploadName, setUploadName] = useState('')
   const [previewWords, setPreviewWords] = useState<Word[] | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  // Which word set is highlighted inside the modal (for the shared action bar)
+  const [selectedModalSetId, setSelectedModalSetId] = useState<string | null>(null)
+  // Set ID being edited (add more words); null = create new
+  const [editTargetSetId, setEditTargetSetId] = useState<string | null>(null)
   const [selectedWordSet, setSelectedWordSet] = useState<string | null>(null)
   const [selectedUnits, setSelectedUnits] = useState<Set<number>>(new Set())
   const [selectedHSKLevels, setSelectedHSKLevels] = useState<Set<number>>(
@@ -2708,30 +2782,40 @@ function WordSetPage({
     setUploadError(null)
     setPreviewWords(null)
     try {
-      let result: { words: Word[] }
+      let allWords: Word[] = []
       if (createMode === 'paste') {
         if (!pasteText.trim()) return
-        result = await generateMutation.mutateAsync({ pasteText }) as { words: Word[] }
+        const result = await generateMutation.mutateAsync({ pasteText }) as { words: Word[] }
+        allWords = result.words
       } else {
-        if (!uploadFile) return
-        const buffer = await uploadFile.arrayBuffer()
-        const bytes = new Uint8Array(buffer)
-        let binary = ''
-        const chunkSize = 8192
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-          binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+        if (uploadFiles.length === 0) return
+        for (const file of uploadFiles) {
+          const buffer = await file.arrayBuffer()
+          const bytes = new Uint8Array(buffer)
+          let binary = ''
+          const chunkSize = 8192
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+          }
+          const base64 = btoa(binary)
+          const result = await generateMutation.mutateAsync({
+            fileName: file.name,
+            fileBase64: base64,
+          }) as { words: Word[] }
+          // Merge, deduplicating by char
+          const seen = new Set(allWords.map((w) => w.char))
+          allWords = [...allWords, ...result.words.filter((w) => !seen.has(w.char))]
         }
-        const base64 = btoa(binary)
-        result = await generateMutation.mutateAsync({
-          fileName: uploadFile.name,
-          fileBase64: base64,
-        }) as { words: Word[] }
       }
-      setPreviewWords(result.words)
+      setPreviewWords(allWords)
       if (!uploadName) {
-        setUploadName(
-          createMode === 'paste' ? 'My Word Set' : (uploadFile?.name.replace(/\.[^.]+$/, '') ?? 'My Word Set')
-        )
+        if (createMode === 'paste') {
+          setUploadName('My Word Set')
+        } else if (uploadFiles.length === 1) {
+          setUploadName(uploadFiles[0]!.name.replace(/\.[^.]+$/, ''))
+        } else {
+          setUploadName('Combined Word Set')
+        }
       }
     } catch (e: unknown) {
       setUploadError(e instanceof Error ? e.message : 'Generation failed.')
@@ -2742,31 +2826,56 @@ function WordSetPage({
     if (!previewWords || !uploadName.trim()) return
     setUploadError(null)
     try {
-      const { id } = await saveMutation.mutateAsync({
-        name: uploadName.trim(),
-        words: previewWords,
-        sourceFileName: createMode === 'upload' ? uploadFile?.name : undefined,
-      }) as { id: string }
-      await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
-      // Auto-select the newly saved set and close modal
-      setSelectedWordSet(`custom:${id}`)
-      setShowCustomModal(false)
-      setCreateMode(null)
-      setUploadFile(null)
-      setPasteText('')
-      setUploadName('')
-      setPreviewWords(null)
+      if (editTargetSetId) {
+        // Edit mode: merge new words into existing set
+        await updateMutation.mutateAsync({ id: editTargetSetId, additionalWords: previewWords })
+        await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
+        setCreateMode(null)
+        setUploadFiles([])
+        setPasteText('')
+        setUploadName('')
+        setPreviewWords(null)
+        setEditTargetSetId(null)
+      } else {
+        const { id } = await saveMutation.mutateAsync({
+          name: uploadName.trim(),
+          words: previewWords,
+          sourceFileName: createMode === 'upload' ? uploadFiles[0]?.name : undefined,
+        }) as { id: string }
+        await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
+        setSelectedWordSet(`custom:${id}`)
+        setShowCustomModal(false)
+        setCreateMode(null)
+        setUploadFiles([])
+        setPasteText('')
+        setUploadName('')
+        setPreviewWords(null)
+      }
     } catch (e: unknown) {
       setUploadError(e instanceof Error ? e.message : 'Save failed.')
     }
   }
 
-  async function handleDeleteCustomSet(id: string, e: React.MouseEvent) {
-    e.stopPropagation()
+  async function handleDeleteCustomSet(id: string) {
     if (!confirm('Delete this word set?')) return
     await deleteMutation.mutateAsync({ id })
     await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
     if (selectedWordSet === `custom:${id}`) setSelectedWordSet(null)
+    if (selectedModalSetId === id) setSelectedModalSetId(null)
+  }
+
+  async function handleToggleFavorite(id: string) {
+    await toggleFavoriteMutation.mutateAsync({ id })
+    await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
+  }
+
+  function handleEditSet(id: string) {
+    const set = customWordSets.find((s) => s.id === id)
+    setEditTargetSetId(id)
+    setUploadName(set?.name ?? '')
+    setCreateMode('upload')
+    setPreviewWords(null)
+    setUploadError(null)
   }
 
 
@@ -2778,22 +2887,13 @@ function WordSetPage({
             Sign in
           </button>
         ) : (
-          <>
-            <Link to="/profile" className="fc-profile-nav-btn">
-              Profile
-            </Link>
-            <button
-              className="fc-signout-btn"
-              onClick={() =>
-                authClient.signOut({ fetchOptions: { onSuccess: () => window.location.reload() } })
-              }
-            >
-              Sign out
-            </button>
-          </>
+          <Link to="/profile" className="fc-profile-icon-btn" aria-label="Profile">
+            <User size={18} strokeWidth={1.8} />
+          </Link>
         )}
       </div>
       <div className="fc-wordset-container">
+        <div className="fc-ws-outer-row">
         <div className="fc-ws-layout">
           {/* Left: brand + stats + word set buttons */}
           <div className="fc-ws-left">
@@ -3177,7 +3277,11 @@ function WordSetPage({
             </button>
             </div>{/* end fc-ws-right-scroll */}
           </div>
-        </div>
+        </div>{/* end fc-ws-layout */}
+
+        {/* Leaderboard sidebar — visible on large screens only, sibling to layout */}
+        {isSignedIn && <InlineLeaderboard />}
+        </div>{/* end fc-ws-outer-row */}
       </div>
 
       {/* ── CUSTOM WORD SETS MODAL ────────────────────────────────── */}
@@ -3189,6 +3293,9 @@ function WordSetPage({
             setCreateMode(null)
             setPreviewWords(null)
             setUploadError(null)
+            setEditTargetSetId(null)
+            setUploadFiles([])
+            setSelectedModalSetId(null)
           }}
         >
           <div className="fc-modal" onClick={(e) => e.stopPropagation()}>
@@ -3201,16 +3308,20 @@ function WordSetPage({
                     setCreateMode(null)
                     setPreviewWords(null)
                     setUploadError(null)
-                    setUploadFile(null)
+                    setUploadFiles([])
                     setPasteText('')
                     setUploadName('')
+                    setEditTargetSetId(null)
+                    setSelectedModalSetId(null)
                   }}
                 >
                   ← Back
                 </button>
               )}
               <span className="fc-modal-title">
-                {createMode !== null ? 'Create Word Set' : 'My Word Sets'}
+                {createMode !== null
+                  ? editTargetSetId ? 'Add More Words' : 'Create Word Set'
+                  : 'My Word Sets'}
               </span>
               <button
                 className="fc-modal-close"
@@ -3219,54 +3330,86 @@ function WordSetPage({
                   setCreateMode(null)
                   setPreviewWords(null)
                   setUploadError(null)
+                  setEditTargetSetId(null)
+                  setUploadFiles([])
+                  setSelectedModalSetId(null)
                 }}
               >
                 ✕
               </button>
             </div>
 
-            {/* LIST VIEW */}
+            {/* LIST VIEW — scrollable cards, shared action bar, footer */}
             {createMode === null && (
-              <div className="fc-modal-body">
-                {customWordSets.length === 0 ? (
-                  <p className="fc-modal-empty">No word sets yet. Create one below.</p>
-                ) : (
-                  <div className="fc-modal-set-list">
-                    {customWordSets.map((cs) => (
-                      <button
-                        key={cs.id}
-                        className={`fc-modal-set-item${selectedWordSet === `custom:${cs.id}` ? ' selected' : ''}`}
-                        onClick={() => {
-                          setSelectedWordSet(`custom:${cs.id}`)
-                          setShowCustomModal(false)
-                          setCreateMode(null)
-                        }}
-                      >
-                        <div className="fc-modal-set-info">
-                          <span className="fc-modal-set-name">{cs.name}</span>
-                          <span className="fc-modal-set-meta">{cs.wordCount} words</span>
-                        </div>
+              <>
+                <div className="fc-modal-scroll-body">
+                  {customWordSets.length === 0 ? (
+                    <p className="fc-modal-empty">No word sets yet. Create one below.</p>
+                  ) : (
+                    <div className="fc-modal-set-list">
+                      {customWordSets.map((cs) => (
                         <button
-                          className="fc-modal-set-delete"
-                          onClick={(e) => void handleDeleteCustomSet(cs.id, e)}
-                          title="Delete"
+                          key={cs.id}
+                          className={`fc-modal-set-row${selectedModalSetId === cs.id ? ' selected' : ''}`}
+                          onClick={() => setSelectedModalSetId(selectedModalSetId === cs.id ? null : cs.id)}
                         >
-                          ✕
+                          <span className="fc-modal-set-name">
+                            {cs.isFavorited && <span className="fc-modal-set-star">★ </span>}
+                            {cs.name}
+                          </span>
+                          <span className="fc-modal-set-meta">{cs.wordCount} words</span>
                         </button>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button
-                  className="fc-modal-create-btn"
-                  onClick={() => setCreateMode('upload')}
-                >
-                  + Create New Word Set
-                </button>
-              </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom toolbar — 5 buttons always visible, right-aligned */}
+                <div className="fc-modal-toolbar">
+                  <button
+                    className="fc-modal-action-study"
+                    disabled={!selectedModalSetId}
+                    onClick={() => {
+                      if (!selectedModalSetId) return
+                      setSelectedWordSet(`custom:${selectedModalSetId}`)
+                      setShowCustomModal(false)
+                      setSelectedModalSetId(null)
+                    }}
+                  >
+                    Study
+                  </button>
+                  <button
+                    className="fc-modal-action-edit"
+                    disabled={!selectedModalSetId}
+                    onClick={() => { if (selectedModalSetId) handleEditSet(selectedModalSetId) }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className={`fc-modal-action-fav${customWordSets.find((cs) => cs.id === selectedModalSetId)?.isFavorited ? ' active' : ''}`}
+                    disabled={!selectedModalSetId}
+                    onClick={() => { if (selectedModalSetId) void handleToggleFavorite(selectedModalSetId) }}
+                  >
+                    {customWordSets.find((cs) => cs.id === selectedModalSetId)?.isFavorited ? 'Unfavorite' : 'Favorite'}
+                  </button>
+                  <button
+                    className="fc-modal-action-delete"
+                    disabled={!selectedModalSetId}
+                    onClick={() => { if (selectedModalSetId) void handleDeleteCustomSet(selectedModalSetId) }}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    className="fc-modal-action-new"
+                    onClick={() => { setCreateMode('upload'); setSelectedModalSetId(null) }}
+                  >
+                    New+
+                  </button>
+                </div>
+              </>
             )}
 
-            {/* CREATE VIEW */}
+            {/* CREATE / EDIT VIEW */}
             {createMode !== null && (
               <div className="fc-modal-body">
                 {/* Input mode toggle */}
@@ -3293,23 +3436,55 @@ function WordSetPage({
                   </button>
                 </div>
 
-                {/* Upload input */}
+                {/* Upload / drag-and-drop input */}
                 {createMode === 'upload' && !previewWords && (
-                  <label className="fc-upload-label">
-                    Document (.txt, .pdf, .docx)
-                    <input
-                      type="file"
-                      accept=".txt,.pdf,.docx"
-                      className="fc-upload-file-input"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] ?? null
-                        setUploadFile(f)
+                  <div
+                    className={`fc-upload-dropzone${isDragOver ? ' drag-over' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+                    onDragLeave={() => setIsDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setIsDragOver(false)
+                      const files = Array.from(e.dataTransfer.files).filter((f) =>
+                        /\.(txt|pdf|docx)$/i.test(f.name),
+                      )
+                      if (files.length > 0) {
+                        setUploadFiles(files)
                         setPreviewWords(null)
                         setUploadError(null)
-                        if (f && !uploadName) setUploadName(f.name.replace(/\.[^.]+$/, ''))
-                      }}
-                    />
-                  </label>
+                        if (!uploadName && files.length === 1)
+                          setUploadName(files[0]!.name.replace(/\.[^.]+$/, ''))
+                      }
+                    }}
+                  >
+                    <label className="fc-upload-label">
+                      <span className="fc-upload-drop-hint">
+                        {isDragOver ? 'Drop files here' : 'Click to browse or drag & drop'}
+                      </span>
+                      <span className="fc-upload-file-types">.txt · .pdf · .docx — multiple files OK</span>
+                      <input
+                        type="file"
+                        accept=".txt,.pdf,.docx"
+                        multiple
+                        className="fc-upload-file-input"
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files ?? [])
+                          setUploadFiles(files)
+                          setPreviewWords(null)
+                          setUploadError(null)
+                          if (files.length === 1 && !uploadName)
+                            setUploadName(files[0]!.name.replace(/\.[^.]+$/, ''))
+                        }}
+                      />
+                    </label>
+                    {uploadFiles.length > 0 && (
+                      <div className="fc-upload-file-list">
+                        {uploadFiles.map((f, i) => (
+                          <span key={i} className="fc-upload-file-chip">{f.name}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* Paste input */}
@@ -3334,7 +3509,7 @@ function WordSetPage({
                     className="fc-upload-generate-btn"
                     disabled={
                       generateMutation.isPending ||
-                      (createMode === 'upload' ? !uploadFile : !pasteText.trim())
+                      (createMode === 'upload' ? uploadFiles.length === 0 : !pasteText.trim())
                     }
                     onClick={() => void handleGenerate()}
                   >
@@ -3368,23 +3543,33 @@ function WordSetPage({
                         </div>
                       ))}
                     </div>
-                    <label className="fc-upload-label">
-                      Name this word set
-                      <input
-                        type="text"
-                        className="fc-upload-name-input"
-                        placeholder="e.g. Chapter 3 vocabulary"
-                        value={uploadName}
-                        onChange={(e) => setUploadName(e.target.value)}
-                        maxLength={100}
-                      />
-                    </label>
+                    {!editTargetSetId && (
+                      <label className="fc-upload-label">
+                        Name this word set
+                        <input
+                          type="text"
+                          className="fc-upload-name-input"
+                          placeholder="e.g. Chapter 3 vocabulary"
+                          value={uploadName}
+                          onChange={(e) => setUploadName(e.target.value)}
+                          maxLength={100}
+                        />
+                      </label>
+                    )}
                     <button
                       className="fc-upload-save-btn"
-                      disabled={!uploadName.trim() || saveMutation.isPending}
+                      disabled={
+                        (!editTargetSetId && !uploadName.trim()) ||
+                        saveMutation.isPending ||
+                        updateMutation.isPending
+                      }
                       onClick={() => void handleSaveWordSet()}
                     >
-                      {saveMutation.isPending ? 'Saving…' : 'Save & Start Studying →'}
+                      {saveMutation.isPending || updateMutation.isPending
+                        ? 'Saving…'
+                        : editTargetSetId
+                          ? 'Add Words to Set →'
+                          : 'Save & Start Studying →'}
                     </button>
                   </>
                 )}

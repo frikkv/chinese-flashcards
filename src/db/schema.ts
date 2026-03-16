@@ -7,6 +7,7 @@ import {
   index,
   integer,
   primaryKey,
+  unique,
 } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
@@ -135,7 +136,10 @@ export const studySessions = pgTable(
     totalCount: integer('total_count').notNull(),
     completedAt: timestamp('completed_at').defaultNow().notNull(),
   },
-  (table) => [index('study_sessions_userId_idx').on(table.userId)],
+  (table) => [
+    index('study_sessions_userId_idx').on(table.userId),
+    index('study_sessions_userId_completedAt_idx').on(table.userId, table.completedAt),
+  ],
 )
 
 // ── CHAT MESSAGES ─────────────────────────────────────────────────
@@ -182,9 +186,48 @@ export const customWordSets = pgTable(
     wordsJson: text('words_json').notNull(),
     wordCount: integer('word_count').notNull(),
     sourceFileName: text('source_file_name'),
+    isFavorited: boolean('is_favorited').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [index('custom_word_sets_userId_idx').on(table.userId)],
+)
+
+// ── USER PROFILES ─────────────────────────────────────────────────
+// Public-facing profile. Lazily created on first social interaction.
+export const userProfiles = pgTable(
+  'user_profiles',
+  {
+    userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+    username: text('username').notNull().unique(),
+    displayName: text('display_name').notNull(),
+    bio: text('bio'),
+    // false until the user explicitly picks a username (triggers first-login setup)
+    usernameConfirmed: boolean('username_confirmed').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+  },
+  (table) => [index('user_profiles_username_idx').on(table.username)],
+)
+
+// ── FRIENDSHIPS ───────────────────────────────────────────────────
+// Single row per (sender, receiver) pair. Status tracks the lifecycle.
+export const friendships = pgTable(
+  'friendships',
+  {
+    id: text('id').primaryKey(),
+    senderId: text('sender_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    receiverId: text('receiver_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    // pending → accepted | declined | canceled
+    status: text('status').notNull().$type<'pending' | 'accepted' | 'declined' | 'canceled'>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+  },
+  (table) => [
+    index('friendships_sender_idx').on(table.senderId),
+    index('friendships_receiver_idx').on(table.receiverId),
+    // A user can only have one relationship row per (sender, receiver) direction.
+    unique('friendships_unique_pair').on(table.senderId, table.receiverId),
+  ],
 )
 
 export const usersRelations = relations(users, ({ many }) => ({

@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useRef } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
 import type { Word } from '../data/vocabulary'
+import { computeXP, getLevelInfo } from '#/lib/levels'
+import { Pencil } from 'lucide-react'
+import { FriendsModal } from '#/components/FriendsModal'
 
 export const Route = createFileRoute('/profile')({ component: ProfilePage })
 
@@ -127,11 +131,49 @@ function WordSetRow({ name, stats }: { name: string; stats: MasteryStats }) {
 function ProfilePage() {
   const { data: session, isPending } = authClient.useSession()
   const trpc = useTRPC()
+  const qc = useQueryClient()
 
   const profileQuery = useQuery({
     ...trpc.progress.getProfileStats.queryOptions(),
     enabled: !!session?.user,
   })
+
+  const myProfileQuery = useQuery({
+    ...trpc.social.getMyProfile.queryOptions(),
+    enabled: !!session?.user,
+  })
+
+  const [editingUsername, setEditingUsername] = useState(false)
+  const [usernameInput, setUsernameInput] = useState('')
+  const [usernameError, setUsernameError] = useState('')
+  const [showFriendsModal, setShowFriendsModal] = useState(false)
+  const usernameInputRef = useRef<HTMLInputElement>(null)
+
+  const confirmUsername = useMutation(
+    trpc.social.confirmUsername.mutationOptions({
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: trpc.social.getMyProfile.queryKey() })
+        setEditingUsername(false)
+        setUsernameError('')
+      },
+      onError: (e) => setUsernameError(e.message),
+    }),
+  )
+
+  function startEditUsername() {
+    setUsernameInput(myProfileQuery.data?.username ?? '')
+    setUsernameError('')
+    setEditingUsername(true)
+    setTimeout(() => usernameInputRef.current?.focus(), 0)
+  }
+
+  function submitUsername(e: React.FormEvent) {
+    e.preventDefault()
+    const v = usernameInput.trim().toLowerCase()
+    if (v.length < 2) { setUsernameError('At least 2 characters required.'); return }
+    if (!/^[a-z0-9_]+$/.test(v)) { setUsernameError('Only lowercase letters, numbers, and underscores.'); return }
+    confirmUsername.mutate({ username: v })
+  }
 
   if (isPending) {
     return (
@@ -246,6 +288,9 @@ function ProfilePage() {
       ? Math.round((stats.totalCorrect / stats.totalReviews) * 100)
       : null
 
+  const allTimeXP = stats ? computeXP(stats.totalCorrect, stats.totalSessions) : null
+  const levelInfo = allTimeXP !== null ? getLevelInfo(allTimeXP) : null
+
   const isLoading = profileQuery.isPending
 
   return (
@@ -263,8 +308,63 @@ function ProfilePage() {
             {(user.name?.charAt(0) ?? user.email?.charAt(0) ?? '?').toUpperCase()}
           </div>
           <div className="fc-profile-header-info">
-            {user.name && <div className="fc-profile-name">{user.name}</div>}
+            <div className="fc-profile-name-row">
+              {user.name && <div className="fc-profile-name">{user.name}</div>}
+              {levelInfo && (
+                <span className={`fc-level-badge fc-level-badge--tier${Math.ceil(levelInfo.level / 2)}`}>
+                  Lv.{levelInfo.level} · {levelInfo.title}
+                </span>
+              )}
+            </div>
             <div className="fc-profile-email">{user.email}</div>
+            {levelInfo && !isLoading && (
+              <div className="fc-level-progress-row">
+                <div className="fc-level-progress-track">
+                  <div
+                    className="fc-level-progress-fill"
+                    style={{ width: `${Math.round(levelInfo.progress * 100)}%` }}
+                  />
+                </div>
+                <span className="fc-level-progress-label">
+                  {levelInfo.isMaxLevel
+                    ? `${levelInfo.xp.toLocaleString()} XP · Max level`
+                    : `${levelInfo.xpIntoLevel.toLocaleString()} / ${(levelInfo.xpIntoLevel + (levelInfo.xpToNext ?? 0)).toLocaleString()} XP · ${levelInfo.xpToNext?.toLocaleString()} to Lv.${levelInfo.level + 1}`}
+                </span>
+              </div>
+            )}
+            {myProfileQuery.data && (
+              <div className="fc-profile-username-row">
+                {editingUsername ? (
+                  <form className="fc-profile-username-edit-form" onSubmit={submitUsername}>
+                    <span className="fc-profile-username-at">@</span>
+                    <input
+                      ref={usernameInputRef}
+                      className="fc-profile-username-input"
+                      value={usernameInput}
+                      maxLength={30}
+                      onChange={(e) => {
+                        setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+                        setUsernameError('')
+                      }}
+                    />
+                    <button className="fc-profile-username-save" type="submit" disabled={confirmUsername.isPending}>
+                      {confirmUsername.isPending ? '…' : 'Save'}
+                    </button>
+                    <button className="fc-profile-username-cancel" type="button" onClick={() => setEditingUsername(false)}>
+                      Cancel
+                    </button>
+                    {usernameError && <span className="fc-profile-username-err">{usernameError}</span>}
+                  </form>
+                ) : (
+                  <>
+                    <span className="fc-profile-username">@{myProfileQuery.data.username}</span>
+                    <button className="fc-profile-username-change-btn" onClick={startEditUsername} aria-label="Edit username">
+                      <Pencil size={12} strokeWidth={2} />
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             <div className="fc-profile-meta">
               <span>{providerLabel}</span>
               {user.createdAt && (
@@ -273,6 +373,26 @@ function ProfilePage() {
                   <span>Joined {formatDate(user.createdAt)}</span>
                 </>
               )}
+              <span className="fc-profile-dot">·</span>
+              {myProfileQuery.data && (
+                <>
+                  <button className="fc-profile-friend-count-btn" onClick={() => setShowFriendsModal(true)}>
+                    {myProfileQuery.data.friendCount} {myProfileQuery.data.friendCount === 1 ? 'friend' : 'friends'}
+                  </button>
+                  <span className="fc-profile-dot">·</span>
+                  <Link to="/u/$username" params={{ username: myProfileQuery.data.username }} style={{ color: 'var(--fc-blue)', textDecoration: 'none' }}>
+                    Public profile
+                  </Link>
+                  <span className="fc-profile-dot">·</span>
+                </>
+              )}
+              <Link to="/friends" style={{ color: 'var(--fc-blue)', textDecoration: 'none' }}>
+                Friends
+              </Link>
+              <span className="fc-profile-dot">·</span>
+              <Link to="/leaderboard" style={{ color: 'var(--fc-blue)', textDecoration: 'none' }}>
+                Leaderboard
+              </Link>
             </div>
           </div>
         </div>
@@ -452,6 +572,14 @@ function ProfilePage() {
         </div>
 
       </div>
+
+      {showFriendsModal && myProfileQuery.data && (
+        <FriendsModal
+          userId={myProfileQuery.data.userId}
+          displayName={user.name ?? myProfileQuery.data.username}
+          onClose={() => setShowFriendsModal(false)}
+        />
+      )}
     </div>
   )
 }
