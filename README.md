@@ -1,242 +1,58 @@
-Welcome to your new TanStack Start app!
+# 汉字 · Hànzì — Chinese Flashcards
 
-# Getting Started
+A full-stack web app for studying Mandarin Chinese vocabulary. Covers HSK 1, HSK 2, and LANG 1511 word sets with multiple study modes, AI-powered answer checking, and per-user progress tracking.
 
-To run this application:
+## Features
 
-```bash
-npm install
-npm run dev
-```
+- **Flashcard study** — character + pinyin → English, with multiple-choice or free-type answers
+- **Two-step mode** — character → pinyin first, then pinyin → English
+- **Full recall mode** — self-rate correct/wrong
+- **Sound Only mode** — hear the audio, guess the character or pinyin
+- **Tone Quiz** — see the character, pick the correct tone
+- **AI chat tutor** — inline GPT-4o-mini chat panel for questions about any card
+- **Pronunciation box** — type Chinese, pinyin, or English to hear it spoken (OpenAI TTS with Web Speech API fallback)
+- **Progress tracking** — per-card mastery stats, study streaks, and session history for signed-in users
+- **Google OAuth + email/password login** via Better Auth
 
-# Building For Production
+## Tech Stack
 
-To build this application for production:
+| Layer | Technology |
+|---|---|
+| Framework | [TanStack Start](https://tanstack.com/start) (full-stack React, SSR) |
+| Routing | [TanStack Router](https://tanstack.com/router) (file-based) |
+| API | [tRPC](https://trpc.io) (type-safe, batched) |
+| Data fetching | [TanStack Query](https://tanstack.com/query) |
+| Database | PostgreSQL + [Drizzle ORM](https://orm.drizzle.team) |
+| Auth | [Better Auth](https://www.better-auth.com) (Google OAuth + email/password) |
+| AI | [OpenAI](https://platform.openai.com) GPT-4o-mini (chat, distractors, translation) + TTS |
+| Deployment | [Netlify](https://netlify.com) (static client + Netlify Functions for SSR) |
 
-```bash
-npm run build
-```
+## Word Sets
 
-## Testing
+- **HSK 1** — 150 words (beginner)
+- **HSK 2** — 150 words (elementary)
+- **LANG 1511** — University of Auckland introductory Mandarin units 1–14
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
-
-```bash
-npm run test
-```
-
-## Styling
-
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `npm install @tailwindcss/vite tailwindcss -D`
-
-## Linting & Formatting
-
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
+## Running Locally
 
 ```bash
-npm run lint
-npm run format
-npm run check
+pnpm install
+pnpm dev          # starts on http://localhost:3000
 ```
 
-## Setting up Better Auth
+Requires a `.env.local` with:
 
-1. Generate and set the `BETTER_AUTH_SECRET` environment variable in your `.env.local`:
-
-   ```bash
-   npx -y @better-auth/cli secret
-   ```
-
-2. Visit the [Better Auth documentation](https://www.better-auth.com) to unlock the full potential of authentication in your app.
-
-### Adding a Database (Optional)
-
-Better Auth can work in stateless mode, but to persist user data, add a database:
-
-```typescript
-// src/lib/auth.ts
-import { betterAuth } from 'better-auth'
-import { Pool } from 'pg'
-
-export const auth = betterAuth({
-  database: new Pool({
-    connectionString: process.env.DATABASE_URL,
-  }),
-  // ... rest of config
-})
 ```
-
-Then run migrations:
+DATABASE_URL=
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+OPENAI_API_KEY=
+```
 
 ```bash
-npx -y @better-auth/cli migrate
+pnpm db:push      # push schema to DB
+pnpm db:gen-distractors  # pre-generate AI wrong-answer choices
+pnpm audio:generate      # pre-generate TTS audio files
 ```
-
-## Shadcn
-
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
-
-```bash
-pnpm dlx shadcn@latest add button
-```
-
-## Routing
-
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
-
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from '@tanstack/react-router'
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
