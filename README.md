@@ -40,16 +40,16 @@ pnpm install
 pnpm dev          # starts on http://localhost:3000
 ```
 
-Requires a `.env.local` with:
+Requires a `.env.local` with the following variables:
 
-```
-DATABASE_URL=
-BETTER_AUTH_SECRET=
-BETTER_AUTH_URL=http://localhost:3000
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-OPENAI_API_KEY=
-```
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `BETTER_AUTH_SECRET` | Random secret for Better Auth |
+| `BETTER_AUTH_URL` | `http://localhost:3000` locally, your Netlify URL in production |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `OPENAI_API_KEY` | OpenAI API key |
 
 ```bash
 pnpm db:push      # push schema to DB
