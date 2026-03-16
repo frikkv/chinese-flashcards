@@ -232,9 +232,57 @@ function buildQueue(vocab: Word[], mode: 1 | 2 | 3, size: number): QueueItem[] {
     vocab.length,
   )
   const words = shuffle(vocab).slice(0, count)
-  const stages: (1 | 2 | 3)[] =
-    mode === 1 ? [1] : mode === 2 ? [1, 2] : [1, 2, 3]
-  return words.flatMap((w) => stages.map((s) => ({ word: w, stage: s })))
+
+  if (mode !== 3) {
+    const stages = (mode === 1 ? [1] : [1, 2]) as (1 | 2 | 3)[]
+    return words.flatMap((w) => stages.map((s) => ({ word: w, stage: s })))
+  }
+
+  // Mode 3: interleave Anki recall cards (stage 3) between study pairs (stage 1+2).
+  // Rules:
+  //   - Recall for word X only appears after X's pair (1+2) has been seen
+  //   - Recall never immediately follows X's own pair
+  //   - At least one full pair separates any two recalls
+  const studiedSet = new Set<Word>()
+  const pendingRecalls: QueueItem[] = shuffle(words).map((w) => ({
+    word: w,
+    stage: 3 as const,
+  }))
+
+  const result: QueueItem[] = []
+  let pairsSinceLastRecall = 0
+
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]
+    result.push({ word: w, stage: 1 })
+    result.push({ word: w, stage: 2 })
+    studiedSet.add(w)
+    pairsSinceLastRecall++
+
+    // Find an eligible recall: studied already, not the word we just finished
+    const eligibleIdx = pendingRecalls.findIndex(
+      (r) => studiedSet.has(r.word) && r.word !== w,
+    )
+
+    if (eligibleIdx !== -1) {
+      // Force insert if we have more recalls than remaining pair slots
+      const remainingPairs = words.length - i - 1
+      const forceInsert = pendingRecalls.length > remainingPairs + 1
+      // Probability rises the longer we go without a recall
+      const insertProb = 0.5 + Math.min((pairsSinceLastRecall - 1) * 0.15, 0.35)
+
+      if (forceInsert || Math.random() < insertProb) {
+        const [recall] = pendingRecalls.splice(eligibleIdx, 1)
+        result.push(recall)
+        pairsSinceLastRecall = 0
+      }
+    }
+  }
+
+  // Any recalls that couldn't be placed earlier (e.g. the last word's own recall)
+  result.push(...pendingRecalls)
+
+  return result
 }
 
 function getQuestionContent(
@@ -591,6 +639,9 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   const prefetchPromiseRef = useRef<{ vocabKey: string; promise: Promise<string[]> } | null>(null)
   const currentDistractorFetchRef = useRef<string | null>(null)
   const answeredRef = useRef(false)
+  const showSelfRateRef = useRef(false)
+  const cardModeRef = useRef<'mc' | 'type' | 'selfrate'>('mc')
+  const handleAnkiRateRef = useRef<(correct: boolean) => void>(() => {})
 
   const [page, setPage] = useState<Page>('wordset')
 
@@ -748,6 +799,12 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   useEffect(() => {
     answeredRef.current = answered
   }, [answered])
+  useEffect(() => {
+    showSelfRateRef.current = showSelfRate
+  }, [showSelfRate])
+  useEffect(() => {
+    cardModeRef.current = cardMode
+  }, [cardMode])
 
   // Upgrade to AI distractors when they arrive (if same card, not yet answered)
   useEffect(() => {
@@ -901,7 +958,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setShowSelfRate(true)
   }
 
-  function handleSelfRate(correct: boolean) {
+  function handleAnkiRate(correct: boolean) {
+    if (answeredRef.current) return
     setTotalAttempts((p) => p + 1)
     if (correct) {
       setScore((p) => p + 1)
@@ -911,11 +969,12 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     }
     setAllTimeStats((p) => ({ ...p, studied: p.studied + 1 }))
     setAnswered(true)
-    setNextBtnVisible(true)
     if (isSignedIn) {
       const word = queueRef.current[qIdx]?.word
       if (word) cardResultsRef.current.push({ cardId: word.char, correct })
     }
+    // Anki-style: rating immediately advances to the next card
+    handleNextRef.current()
   }
 
   function handleChoiceAnswer(chosen: string) {
@@ -1030,17 +1089,35 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     }, 560)
   }
 
-  // Keep handleNextRef current
+  // Keep action refs current
   handleNextRef.current = handleNext
+  handleAnkiRateRef.current = handleAnkiRate
 
   // Keyboard listener
   useEffect(() => {
     if (page !== 'study') return
     const handler = (e: KeyboardEvent) => {
-      if (e.key !== 'Enter') return
       const tag = (document.activeElement as HTMLElement)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (nextBtnVisibleRef.current) handleNextRef.current()
+
+      // Space reveals the card in selfrate mode
+      if (e.key === ' ' && cardModeRef.current === 'selfrate' && !showSelfRateRef.current && !answeredRef.current) {
+        e.preventDefault()
+        handleReveal()
+        return
+      }
+
+      // 1=Again 2=Hard 3=Good 4=Easy
+      if (['1', '2', '3', '4'].includes(e.key) && cardModeRef.current === 'selfrate' && showSelfRateRef.current && !answeredRef.current) {
+        e.preventDefault()
+        handleAnkiRateRef.current(e.key === '3' || e.key === '4')
+        return
+      }
+
+      // Enter advances to next card in mc/type modes
+      if (e.key === 'Enter' && nextBtnVisibleRef.current) {
+        handleNextRef.current()
+      }
     }
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
@@ -1236,28 +1313,47 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
               {cardMode === 'selfrate' && (
                 <>
                   {!showSelfRate ? (
-                    <button className="fc-flip-btn" onClick={handleReveal}>
-                      Reveal Character
-                    </button>
+                    <div style={{ textAlign: 'center' }}>
+                      <button className="fc-flip-btn" onClick={handleReveal}>
+                        Reveal
+                      </button>
+                      <div className="fc-flip-hint">press Space</div>
+                    </div>
                   ) : (
                     <div>
-                      <p className="fc-self-rate-label">Did you remember it?</p>
-                      <div className="fc-choices" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                      <p className="fc-self-rate-label">How well did you know it?</p>
+                      <div className="fc-anki-rating">
                         <button
-                          className={`fc-choice-btn${answered ? ' correct' : ''}`}
+                          className="fc-anki-btn fc-anki-again"
                           disabled={answered}
-                          onClick={() => handleSelfRate(true)}
-                          style={{ textAlign: 'center' }}
+                          onClick={() => handleAnkiRate(false)}
                         >
-                          ✓ Yes
+                          <span className="fc-anki-key">1</span>
+                          Again
                         </button>
                         <button
-                          className={`fc-choice-btn${answered ? ' wrong' : ''}`}
+                          className="fc-anki-btn fc-anki-hard"
                           disabled={answered}
-                          onClick={() => handleSelfRate(false)}
-                          style={{ textAlign: 'center' }}
+                          onClick={() => handleAnkiRate(false)}
                         >
-                          ✗ No
+                          <span className="fc-anki-key">2</span>
+                          Hard
+                        </button>
+                        <button
+                          className="fc-anki-btn fc-anki-good"
+                          disabled={answered}
+                          onClick={() => handleAnkiRate(true)}
+                        >
+                          <span className="fc-anki-key">3</span>
+                          Good
+                        </button>
+                        <button
+                          className="fc-anki-btn fc-anki-easy"
+                          disabled={answered}
+                          onClick={() => handleAnkiRate(true)}
+                        >
+                          <span className="fc-anki-key">4</span>
+                          Easy
                         </button>
                       </div>
                     </div>

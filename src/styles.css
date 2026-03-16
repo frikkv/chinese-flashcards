@@ -796,6 +796,65 @@ body {
   color: var(--fc-red);
 }
 
+/* ── ANKI RATING BUTTONS ── */
+.fc-anki-rating {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.fc-anki-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border-radius: 14px;
+  border: 1.5px solid transparent;
+  font-family: 'Lora', serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.fc-anki-btn:hover:not(:disabled) {
+  filter: brightness(0.92);
+  transform: translateY(-1px);
+}
+.fc-anki-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+.fc-anki-btn:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.fc-anki-key {
+  font-size: 0.7rem;
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  opacity: 0.65;
+  letter-spacing: 0.02em;
+}
+.fc-anki-again {
+  background: #fdecea;
+  color: #c0392b;
+  border-color: #f5b7b1;
+}
+.fc-anki-hard {
+  background: #fef6e4;
+  color: #b7770d;
+  border-color: #f9d18c;
+}
+.fc-anki-good {
+  background: #edfbf3;
+  color: #27ae60;
+  border-color: #a9dfbf;
+}
+.fc-anki-easy {
+  background: #eaf4fb;
+  color: #2874a6;
+  border-color: #aed6f1;
+}
+
 /* ── NEXT BUTTON AREA ── */
 /* Always reserves space so the layout doesn't jump when the button appears */
 .fc-study-next-area {
