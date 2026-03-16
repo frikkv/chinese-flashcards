@@ -46,7 +46,7 @@ Requires a `.env.local` with the following variables:
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `BETTER_AUTH_SECRET` | Random secret for Better Auth |
-| `BETTER_AUTH_URL` | `http://localhost:3000` locally, your Netlify URL in production |
+| `BETTER_AUTH_URL` | Your app's base URL (local dev URL or Netlify deploy URL) |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
 | `OPENAI_API_KEY` | OpenAI API key |
