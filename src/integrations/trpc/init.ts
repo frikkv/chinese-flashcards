@@ -3,33 +3,7 @@ import superjson from 'superjson'
 import { auth } from '#/lib/auth'
 
 export async function createContext({ request }: { request: Request }) {
-  const t0 = Date.now()
-  console.log('[trpc] createContext: start')
-
-  // Race auth.api.getSession against an 8-second timeout.
-  // If the DB is unreachable (malformed URL, Supabase pooler down, etc.)
-  // we resolve to null (unauthenticated) rather than hanging the function.
-  const timeoutPromise = new Promise<null>((resolve) =>
-    setTimeout(() => {
-      console.error(`[trpc] createContext: getSession timed out after 8s — returning null session`)
-      resolve(null)
-    }, 8000),
-  )
-
-  const session = await Promise.race([
-    auth.api
-      .getSession({ headers: request.headers })
-      .then((s) => {
-        console.log(`[trpc] createContext: getSession ok in ${Date.now() - t0}ms, user=${s?.user?.id ?? 'none'}`)
-        return s
-      })
-      .catch((e: unknown) => {
-        console.error(`[trpc] createContext: getSession threw in ${Date.now() - t0}ms:`, e)
-        return null
-      }),
-    timeoutPromise,
-  ])
-
+  const session = await auth.api.getSession({ headers: request.headers }).catch(() => null)
   return { session }
 }
 
