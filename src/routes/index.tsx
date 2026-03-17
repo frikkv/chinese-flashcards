@@ -30,7 +30,37 @@ const SessionCompleteScreen = lazy(() =>
 )
 import { Skeleton } from '#/components/Skeleton'
 
-export const Route = createFileRoute('/')({ component: AuthGate })
+export const Route = createFileRoute('/')({
+  component: AuthGate,
+  loader: async ({ context: { queryClient, trpc } }) => {
+    // Prefetch all auth-gated homepage queries in parallel, at route load time.
+    //
+    // SSR path: the server has the session cookie, so queries succeed and their
+    // results are dehydrated into the HTML payload. The client hydrates with a
+    // fully-populated QueryClient — no loading states at all on first paint.
+    //
+    // Client navigation path: queries are in-flight before the React auth hook
+    // resolves, so useQuery picks up cached results the moment isSignedIn
+    // becomes true instead of waiting an extra round-trip.
+    //
+    // retry:false — skip the retry budget on 401s for unauthenticated users
+    // so the one wasted request resolves immediately and doesn't add latency.
+    await Promise.all([
+      queryClient.prefetchQuery({
+        ...trpc.progress.getProgress.queryOptions(),
+        retry: false,
+      }),
+      queryClient.prefetchQuery({
+        ...trpc.wordsets.list.queryOptions(),
+        retry: false,
+      }),
+      queryClient.prefetchQuery({
+        ...trpc.social.getWeeklyLeaderboard.queryOptions(),
+        retry: false,
+      }),
+    ])
+  },
+})
 
 // ── TYPES ────────────────────────────────────────────────────────
 type Page = 'wordset' | 'study' | 'results' | 'sound' | 'tone'
