@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
+import { Skeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/leaderboard')({
   component: LeaderboardPage,
@@ -165,19 +166,20 @@ function LeaderboardPage() {
       <div className="fc-lb-container">
         {/* Back nav */}
         <Link
-          to="/friends"
+          to="/profile"
           className="fc-back-btn"
           style={{ textDecoration: 'none' }}
         >
-          ← Friends
+          ← Profile
         </Link>
 
         {/* Header */}
         <div className="fc-lb-header">
           <h1 className="fc-lb-title">Weekly Leaderboard</h1>
-          {weekRange && (
-            <div className="fc-lb-subtitle">This Week · {weekRange}</div>
-          )}
+            {/* always rendered so header height is stable while data loads */}
+          <div className="fc-lb-subtitle" style={{ minHeight: '1.4em' }}>
+            {weekRange ? `This Week · ${weekRange}` : ''}
+          </div>
         </div>
 
         {/* XP explanation */}
@@ -185,10 +187,25 @@ function LeaderboardPage() {
           XP = correct answers + 5 per completed session
         </div>
 
-        {/* Loading */}
+        {/* Loading — skeleton rows match final leaderboard layout */}
         {lbQuery.isPending && (
-          <div className="fc-lb-loading">
-            <div className="fc-auth-spinner" />
+          <div className="fc-lb-list">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="fc-lb-row">
+                <div className="fc-lb-row-rank">
+                  <Skeleton width={28} height={28} circle />
+                </div>
+                <Skeleton width={36} height={36} circle />
+                <div className="fc-lb-row-identity">
+                  <Skeleton height={13} width="58%" />
+                  <Skeleton height={10} width="32%" style={{ marginTop: 5 }} />
+                </div>
+                <div className="fc-lb-row-stats">
+                  <Skeleton height={16} width={56} style={{ marginLeft: 'auto' }} />
+                  <Skeleton height={10} width={72} style={{ marginTop: 5, marginLeft: 'auto' }} />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
+import { Skeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/friends')({ component: FriendsPage })
 
@@ -304,7 +305,8 @@ function FriendsPage() {
         )}
 
         {/* ── Friends list ───────────────────────────────────── */}
-        <div className="fc-social-section">
+        {/* min-height while loading so page doesn't jump when list appears */}
+        <div className="fc-social-section" style={friendsQuery.isPending ? { minHeight: 120 } : undefined}>
           <div className="fc-social-section-title">
             Friends
             {friends.length > 0 && (
@@ -314,7 +316,18 @@ function FriendsPage() {
             )}
           </div>
           {friendsQuery.isPending && (
-            <div className="fc-social-hint">Loading…</div>
+            <>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="fc-social-user-row">
+                  <Skeleton width={36} height={36} circle />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <Skeleton height={13} width="42%" />
+                    <Skeleton height={11} width="26%" />
+                  </div>
+                  <Skeleton height={30} width={68} style={{ borderRadius: 8 }} />
+                </div>
+              ))}
+            </>
           )}
           {!friendsQuery.isPending && friends.length === 0 && (
             <div className="fc-social-hint">

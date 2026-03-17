@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Volume2, User, Undo2, X } from 'lucide-react'
 import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
@@ -11,13 +11,29 @@ import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { speakHanzi } from '#/lib/tts'
 import { type CardContent, charFontStyle, CardFace } from '#/components/flashcard/CardFace'
-import { type ProgressCard, WordSetDashboard } from '#/components/flashcard/WordSetDashboard'
-import { ResultsPage } from '#/components/flashcard/ResultsPage'
+import type { ProgressCard } from '#/components/flashcard/WordSetDashboard'
 import { StudyHeader } from '#/components/flashcard/StudyHeader'
 import { NextButton } from '#/components/flashcard/NextButton'
 import { StageDots } from '#/components/flashcard/StageDots'
-import { SessionCompleteScreen } from '#/components/flashcard/SessionCompleteScreen'
 import { AnswerChoices } from '#/components/flashcard/AnswerChoices'
+
+// Lazy-loaded: not needed for the word-set selection screen (first paint)
+const WordSetDashboard = lazy(() =>
+  import('#/components/flashcard/WordSetDashboard').then((m) => ({
+    default: m.WordSetDashboard,
+  })),
+)
+const ResultsPage = lazy(() =>
+  import('#/components/flashcard/ResultsPage').then((m) => ({
+    default: m.ResultsPage,
+  })),
+)
+const SessionCompleteScreen = lazy(() =>
+  import('#/components/flashcard/SessionCompleteScreen').then((m) => ({
+    default: m.SessionCompleteScreen,
+  })),
+)
+import { Skeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/')({ component: AuthGate })
 
@@ -1153,6 +1169,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
         cardProgress={progressQuery.data?.cards}
         customWordSets={customWordSetsQuery.data ?? []}
         isSignedIn={isSignedIn}
+        progressPending={progressQuery.isPending}
         onContinue={(v, mode, s, session) => {
           setVocab(v)
           setSessionMode(mode)
@@ -1262,17 +1279,19 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0
     const words = queue.filter((q) => q.stage === 1).length
     return (
-      <ResultsPage
-        correct={score}
-        wrong={wrongCount}
-        pct={pct}
-        words={words}
-        vocab={vocab}
-        cardProgress={progressQuery.data?.cards}
-        streak={progressQuery.data?.streak}
-        onStudyAgain={() => handleStartStudy(vocab, sessionMode, settings)}
-        onHome={() => setPage('wordset')}
-      />
+      <Suspense fallback={<div className="fc-app" />}>
+        <ResultsPage
+          correct={score}
+          wrong={wrongCount}
+          pct={pct}
+          words={words}
+          vocab={vocab}
+          cardProgress={progressQuery.data?.cards}
+          streak={progressQuery.data?.streak}
+          onStudyAgain={() => handleStartStudy(vocab, sessionMode, settings)}
+          onHome={() => setPage('wordset')}
+        />
+      </Suspense>
     )
   }
 
@@ -1587,29 +1606,31 @@ function ChatPanel({
             </div>
           ))
         )}
-        {/* Suggestions always visible at the bottom, updating with each new card */}
-        {!isLoading && (
-          <div className="fc-chat-suggestions">
-            {suggestions.map((s) => (
-              <button
-                key={s}
-                className="fc-chat-suggest-btn"
-                onClick={() => sendMessage(s)}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-        {isLoading && (
-          <div className="fc-chat-msg assistant">
-            <div className="fc-chat-bubble fc-chat-typing">
-              <span />
-              <span />
-              <span />
+        {/* Suggestions / typing indicator — fixed-height container prevents shift */}
+        <div className="fc-chat-bottom">
+          {!isLoading && (
+            <div className="fc-chat-suggestions">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  className="fc-chat-suggest-btn"
+                  onClick={() => sendMessage(s)}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
-          </div>
-        )}
+          )}
+          {isLoading && (
+            <div className="fc-chat-msg assistant">
+              <div className="fc-chat-bubble fc-chat-typing">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+          )}
+        </div>
         <div ref={messagesEndRef} />
       </div>
 
@@ -1928,13 +1949,15 @@ function SoundOnlyPage({
 
   if (done) {
     return (
-      <SessionCompleteScreen
-        score={score}
-        totalAttempts={totalAttempts}
-        queueLength={queue.length}
-        onStudyAgain={startSession}
-        onBack={onBack}
-      />
+      <Suspense fallback={<div className="fc-app" />}>
+        <SessionCompleteScreen
+          score={score}
+          totalAttempts={totalAttempts}
+          queueLength={queue.length}
+          onStudyAgain={startSession}
+          onBack={onBack}
+        />
+      </Suspense>
     )
   }
 
@@ -2249,13 +2272,15 @@ function ToneQuizPage({
 
   if (done) {
     return (
-      <SessionCompleteScreen
-        score={score}
-        totalAttempts={totalAttempts}
-        queueLength={queue.length}
-        onStudyAgain={startSession}
-        onBack={onBack}
-      />
+      <Suspense fallback={<div className="fc-app" />}>
+        <SessionCompleteScreen
+          score={score}
+          totalAttempts={totalAttempts}
+          queueLength={queue.length}
+          onStudyAgain={startSession}
+          onBack={onBack}
+        />
+      </Suspense>
     )
   }
 
@@ -2422,6 +2447,7 @@ function WordSetPage({
   cardProgress,
   customWordSets,
   isSignedIn,
+  progressPending,
   onContinue,
   onStartSoundOnly,
   onStartToneQuiz,
@@ -2433,6 +2459,7 @@ function WordSetPage({
   cardProgress?: ProgressCard[]
   customWordSets: CustomWordSet[]
   isSignedIn: boolean
+  progressPending: boolean
   onContinue: (
     vocab: Word[],
     mode: 1 | 2 | 3,
@@ -3025,7 +3052,18 @@ function WordSetPage({
                     </span>
                   </button>
                 )}
-                {lastSession && lastSession.dialect === dialectTab && (
+                {isSignedIn && progressPending ? (
+                  <div
+                    className="fc-ws-btn"
+                    aria-hidden="true"
+                    style={{ pointerEvents: 'none', cursor: 'default' }}
+                  >
+                    <Skeleton width={36} height={36} style={{ borderRadius: 6 }} />
+                    <Skeleton height={14} width="48%" style={{ marginTop: 4 }} />
+                    <Skeleton height={11} width="68%" style={{ marginTop: 4 }} />
+                    <Skeleton height={10} width="82%" style={{ marginTop: 4 }} />
+                  </div>
+                ) : lastSession && lastSession.dialect === dialectTab ? (
                   <button
                     className={`fc-ws-btn${selectedWordSet === 'last' ? ' selected' : ''}`}
                     onClick={() =>
@@ -3041,7 +3079,7 @@ function WordSetPage({
                       Continue where you left off
                     </span>
                   </button>
-                )}
+                ) : null}
 
                 {isSignedIn && (
                   <button
@@ -3076,10 +3114,12 @@ function WordSetPage({
                   <>
                     {/* Progress dashboard — always at top, updates with selection */}
                     {dashVocab && cardProgress && (
-                      <WordSetDashboard
-                        vocab={dashVocab}
-                        cardProgress={cardProgress}
-                      />
+                      <Suspense fallback={null}>
+                        <WordSetDashboard
+                          vocab={dashVocab}
+                          cardProgress={cardProgress}
+                        />
+                      </Suspense>
                     )}
 
                     {/* Session Settings */}

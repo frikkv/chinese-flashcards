@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState, useRef } from 'react'
+import { useState, useRef, lazy, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
@@ -7,7 +7,10 @@ import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
 import type { Word } from '../data/vocabulary'
 import { computeXP, getLevelInfo } from '#/lib/levels'
 import { Pencil } from 'lucide-react'
-import { FriendsModal } from '#/components/FriendsModal'
+const FriendsModal = lazy(() =>
+  import('#/components/FriendsModal').then((m) => ({ default: m.FriendsModal })),
+)
+import { Skeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/profile')({ component: ProfilePage })
 
@@ -381,16 +384,18 @@ function ProfilePage() {
           <div className="fc-profile-header-info">
             <div className="fc-profile-name-row">
               {user.name && <div className="fc-profile-name">{user.name}</div>}
-              {levelInfo && (
+              {levelInfo ? (
                 <span
                   className={`fc-level-badge fc-level-badge--tier${Math.ceil(levelInfo.level / 2)}`}
                 >
                   Lv.{levelInfo.level} · {levelInfo.title}
                 </span>
+              ) : (
+                <Skeleton width={86} height={22} style={{ borderRadius: 999 }} />
               )}
             </div>
             <div className="fc-profile-email">{user.email}</div>
-            {levelInfo && !isLoading && (
+            {levelInfo && !isLoading ? (
               <div className="fc-level-progress-row">
                 <div className="fc-level-progress-track">
                   <div
@@ -406,8 +411,17 @@ function ProfilePage() {
                     : `${levelInfo.xpIntoLevel.toLocaleString()} / ${(levelInfo.xpIntoLevel + (levelInfo.xpToNext ?? 0)).toLocaleString()} XP · ${levelInfo.xpToNext?.toLocaleString()} to Lv.${levelInfo.level + 1}`}
                 </span>
               </div>
+            ) : (
+              <div className="fc-level-progress-row" aria-hidden="true">
+                <Skeleton width={120} height={7} style={{ borderRadius: 99 }} />
+                <Skeleton height={13} width={150} />
+              </div>
             )}
-            {myProfileQuery.data && (
+            {myProfileQuery.isPending ? (
+              <div className="fc-profile-username-row" aria-hidden="true">
+                <Skeleton width={128} height={16} style={{ borderRadius: 4 }} />
+              </div>
+            ) : myProfileQuery.data ? (
               <div className="fc-profile-username-row">
                 {editingUsername ? (
                   <form
@@ -464,7 +478,7 @@ function ProfilePage() {
                   </>
                 )}
               </div>
-            )}
+            ) : null}
             <div className="fc-profile-meta">
               <span>{providerLabel}</span>
               {user.createdAt && (
@@ -514,9 +528,20 @@ function ProfilePage() {
         </div>
 
         {isLoading ? (
-          <div className="fc-profile-loading">
-            <div className="fc-auth-spinner" />
-            <span>Loading your stats…</span>
+          /* Skeleton Learning Statistics section — matches real layout so page doesn't shift */
+          <div className="fc-profile-section">
+            <div className="fc-profile-section-title">
+              <Skeleton width={140} height={10} />
+            </div>
+            <div className="fc-profile-stat-grid">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className={`fc-profile-stat${i === 4 ? ' fc-profile-stat--wide' : ''}`}>
+                  <Skeleton height={28} width="52%" />
+                  <Skeleton height={10} width="72%" style={{ marginTop: 7 }} />
+                  <Skeleton height={9} width="48%" style={{ marginTop: 2 }} />
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <>
@@ -754,11 +779,13 @@ function ProfilePage() {
       </div>
 
       {showFriendsModal && myProfileQuery.data && (
-        <FriendsModal
-          userId={myProfileQuery.data.userId}
-          displayName={user.name ?? myProfileQuery.data.username}
-          onClose={() => setShowFriendsModal(false)}
-        />
+        <Suspense fallback={null}>
+          <FriendsModal
+            userId={myProfileQuery.data.userId}
+            displayName={user.name ?? myProfileQuery.data.username}
+            onClose={() => setShowFriendsModal(false)}
+          />
+        </Suspense>
       )}
     </div>
   )

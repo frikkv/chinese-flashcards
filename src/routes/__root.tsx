@@ -4,13 +4,15 @@ import {
   Scripts,
   createRootRouteWithContext,
 } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
-import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
+
+// Devtools are dev-only — lazy-load so they stay out of the production bundle
+const DevToolsPanel = import.meta.env.DEV
+  ? lazy(() => import('#/components/DevToolsPanel'))
+  : null
 import appCss from '../styles.css?url'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/react'
@@ -34,17 +36,24 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       { title: '汉字 · Hànzì — Chinese Flashcards' },
     ],
     links: [
-      { rel: 'stylesheet', href: appCss },
+      // Establish connections to Google Fonts CDN as early as possible
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+      { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
+      // Preload the font CSS so the browser fetches it at high priority;
+      // when the render-blocking stylesheet link below resolves, it reuses
+      // the already-in-flight/cached response — effectively hiding the RTT.
       {
-        rel: 'preconnect',
-        href: 'https://fonts.gstatic.com',
-        crossOrigin: 'anonymous',
+        rel: 'preload',
+        as: 'style',
+        href: 'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+SC:wght@400;500;700&display=optional',
       },
+      // display=optional: fonts are used only when already cached — no swap
+      // period means zero font-caused layout shift on any visit.
       {
         rel: 'stylesheet',
         href: 'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+SC:wght@400;500;700&display=optional',
       },
+      { rel: 'stylesheet', href: appCss },
     ],
   }),
   component: RootLayout,
@@ -172,17 +181,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           {children}
           <Analytics />
           <SpeedInsights />
-          {import.meta.env.DEV && (
-            <TanStackDevtools
-              config={{ position: 'bottom-right' }}
-              plugins={[
-                {
-                  name: 'Tanstack Router',
-                  render: <TanStackRouterDevtoolsPanel />,
-                },
-                TanStackQueryDevtools,
-              ]}
-            />
+          {DevToolsPanel && (
+            <Suspense fallback={null}>
+              <DevToolsPanel />
+            </Suspense>
           )}
         </TanStackQueryProvider>
         <Scripts />
