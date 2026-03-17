@@ -15,6 +15,7 @@ function PublicProfilePage() {
   const qc = useQueryClient()
 
   const profileQuery = useQuery(trpc.social.getProfile.queryOptions({ username }))
+  const [showFriendsModal, setShowFriendsModal] = useState(false)
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: trpc.social.getProfile.queryKey({ username }) })
@@ -122,8 +123,6 @@ function PublicProfilePage() {
       </button>
     )
   }
-
-  const [showFriendsModal, setShowFriendsModal] = useState(false)
 
   const { stats } = profile
   const accuracy = stats.accuracy !== null ? `${stats.accuracy}%` : '—'

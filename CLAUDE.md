@@ -35,16 +35,26 @@ pnpm dlx shadcn@latest add <component>
 ### Key paths
 
 - `src/routes/` — File-based routing; `__root.tsx` is the root layout, `index.tsx` is the entire flashcard app, `api.trpc.$.tsx` is the tRPC handler
-- `src/integrations/trpc/router.ts` — Root tRPC router; imports `chat`, `distractors`, `progress` sub-routers
+- `src/routes/profile.tsx` — Logged-in user's own profile (edit display name, username, bio; view stats and level)
+- `src/routes/u/$username.tsx` — Public profile page for any user (stats, friend button, friends modal)
+- `src/routes/friends.tsx` — Friends management (search users, incoming/outgoing requests, friends list)
+- `src/routes/leaderboard.tsx` — Weekly XP leaderboard for the user + their friends
+- `src/integrations/trpc/router.ts` — Root tRPC router; imports `chat`, `distractors`, `progress`, `wordsets`, `social` sub-routers
 - `src/integrations/trpc/chat.ts` — AI chat (`sendMessage`) and translation (`translateToZh`) procedures
 - `src/integrations/trpc/distractors.ts` — Fetches/generates wrong-answer choices (DB-cached, AI-generated via GPT-4o-mini)
 - `src/integrations/trpc/progress.ts` — Saves session results and per-card history for logged-in users
+- `src/integrations/trpc/social.ts` — Social features: profiles, friend requests, leaderboard, user search
+- `src/integrations/trpc/wordsets.ts` — Custom word sets: AI extraction from uploaded files/text, save/list/update/delete/favorite
 - `src/integrations/tanstack-query/root-provider.tsx` — QueryClient + tRPC provider wiring
-- `src/db/schema.ts` — Drizzle schema (auth tables + `distractorSets`, `cardProgress`, `userSessions`, `chatMessages`, `userLastSession`)
+- `src/db/schema.ts` — Drizzle schema (auth tables + `distractorSets`, `flashcardProgress`, `studySessions`, `chatMessages`, `userLastSession`, `customWordSets`, `userProfiles`, `friendships`)
 - `src/lib/auth.ts` — Better Auth server config (no `baseURL`; uses `BETTER_AUTH_URL` for `trustedOrigins`)
 - `src/lib/auth-client.ts` — Better Auth client config (no `baseURL`; uses relative paths)
+- `src/lib/levels.ts` — XP formula (`computeXP`) and level ladder (`getLevelInfo`): 7 levels from Beginner → Legend
 - `src/data/vocabulary.ts` — All flashcard data (HSK 1, HSK 2, LANG 1511 units)
 - `src/server/ai/generateDistractors.ts` — GPT-4o-mini logic for generating wrong answer choices
+- `src/server/ai/generateWordSet.ts` — GPT-4o-mini logic for extracting Chinese vocab from arbitrary text
+- `src/server/extractors/index.ts` — File-to-text extraction (PDF, DOCX, plain text) for custom word set uploads
+- `src/components/FriendsModal.tsx` — Modal showing a user's accepted friends list (used on public profiles)
 - `public/audio/` — Pre-generated MP3s for every vocab word (percent-encoded filenames, e.g. `%E4%BD%A0.mp3`)
 - `scripts/generate-audio.ts` — Script that generates the MP3s via OpenAI TTS (`tts-1`, `shimmer` voice)
 - `netlify/functions/server.mjs` — Thin Netlify Function wrapper that forwards requests to the TanStack Start server
@@ -61,7 +71,7 @@ On Netlify: `/api/*` requests are routed to `netlify/functions/server.mjs` which
 
 `src/routes/index.tsx` is a large single-file app with five `Page` states:
 
-- `wordset` — word set selection (HSK 1/2, LANG 1511 units)
+- `wordset` — word set selection (HSK 1/2, LANG 1511 units, custom word sets)
 - `study` — standard flashcard study session
 - `sound` — Sound Only mode (audio → guess char/pinyin, optionally 2-stage)
 - `tone` — Tone Quiz mode (character → guess correct tone)
@@ -98,6 +108,19 @@ Inline `ChatPanel` component rendered in the right column of every study page. U
 Below the chat panel in every study mode. Users type Chinese, pinyin, or English:
 - Chinese text → plays directly (free, no limit)
 - English/other → calls `chat.translateToZh` to get characters + pinyin, then plays (limited to 5 translations per page load)
+
+### Custom word sets
+
+Logged-in users can upload documents (PDF, DOCX, plain text) or paste text; the server extracts text and calls GPT-4o-mini to produce `{ char, pinyin, english }` word arrays. Results are previewed before saving. Saved sets appear in the word set selector alongside HSK/LANG sets. Supports merge (add words to existing set), favorite toggle, and delete. Rate-limited to 5 AI generations per 10 minutes per user.
+
+### Social features
+
+- **User profiles** — lazily created on first social interaction; `usernameConfirmed` flag triggers a first-login username picker
+- **Public profiles** — `/u/:username` shows stats, level badge, friend count, and friend action buttons
+- **Friends** — `/friends` page for searching users, managing incoming/outgoing requests, and viewing friends list
+- **Leaderboard** — `/leaderboard` shows weekly XP rankings for the user + all accepted friends; resets Monday 00:00 UTC
+- **XP formula** — `correctAnswers + completedSessions × 5`; all-time XP drives the level system (7 levels: Beginner → Legend)
+- **Friend requests** — auto-accept if a reverse pending request already exists (mutual interest)
 
 ### Auth
 
