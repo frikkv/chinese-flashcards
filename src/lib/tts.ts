@@ -1,7 +1,10 @@
+import type { Dialect } from './dialect'
+
 let _currentAudio: HTMLAudioElement | null = null
 
 // Fallback: Web Speech API for any word without a cached MP3
 let _zhVoice: SpeechSynthesisVoice | null = null
+let _zhHKVoice: SpeechSynthesisVoice | null = null
 
 function loadZhVoice() {
   const voices = window.speechSynthesis.getVoices()
@@ -10,6 +13,11 @@ function loadZhVoice() {
     voices.find((v) => v.lang === 'zh-TW') ??
     voices.find((v) => v.lang.startsWith('zh')) ??
     null
+  _zhHKVoice =
+    voices.find((v) => v.lang === 'zh-HK') ??
+    voices.find((v) => v.lang === 'yue-HK') ??
+    voices.find((v) => v.lang === 'yue') ??
+    _zhVoice
 }
 
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -17,7 +25,7 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   loadZhVoice()
 }
 
-function speakFallback(hanzi: string) {
+function speakFallback(hanzi: string, locale: 'zh-CN' | 'zh-HK' = 'zh-CN') {
   if (!('speechSynthesis' in window)) return
   window.speechSynthesis.cancel()
   setTimeout(() => {
@@ -27,14 +35,15 @@ function speakFallback(hanzi: string) {
         ? chars.join('\u2009') + '\u2009，。'
         : hanzi + '，。'
     const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'zh-CN'
+    utterance.lang = locale
     utterance.rate = 0.65
-    if (_zhVoice) utterance.voice = _zhVoice
+    const voice = locale === 'zh-HK' ? _zhHKVoice : _zhVoice
+    if (voice) utterance.voice = voice
     window.speechSynthesis.speak(utterance)
   }, 80)
 }
 
-export function speakHanzi(hanzi: string) {
+export function speakHanzi(hanzi: string, dialect: Dialect = 'mandarin') {
   if (!hanzi) return
 
   // Stop any currently playing audio
@@ -44,6 +53,12 @@ export function speakHanzi(hanzi: string) {
     _currentAudio = null
   }
   window.speechSynthesis?.cancel()
+
+  // Cantonese: skip MP3 lookup, go straight to Web Speech API with zh-HK
+  if (dialect === 'cantonese') {
+    speakFallback(hanzi, 'zh-HK')
+    return
+  }
 
   const src = '/audio/' + encodeURIComponent(hanzi) + '.mp3'
   const audio = new Audio(src)

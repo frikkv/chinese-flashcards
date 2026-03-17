@@ -59,7 +59,9 @@ function UsernameSetupModal({ onDone }: { onDone: () => void }) {
   const [error, setError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => { inputRef.current?.focus() }, [])
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
 
   const confirm = useMutation(
     trpc.social.confirmUsername.mutationOptions({
@@ -74,8 +76,14 @@ function UsernameSetupModal({ onDone }: { onDone: () => void }) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const v = value.trim().toLowerCase()
-    if (v.length < 2) { setError('At least 2 characters required.'); return }
-    if (!USERNAME_RE.test(v)) { setError('Only lowercase letters, numbers, and underscores.'); return }
+    if (v.length < 2) {
+      setError('At least 2 characters required.')
+      return
+    }
+    if (!USERNAME_RE.test(v)) {
+      setError('Only lowercase letters, numbers, and underscores.')
+      return
+    }
     setError('')
     confirm.mutate({ username: v })
   }
@@ -86,7 +94,8 @@ function UsernameSetupModal({ onDone }: { onDone: () => void }) {
         <div className="fc-username-gate-char">你好</div>
         <h2 className="fc-username-gate-title">Choose your username</h2>
         <p className="fc-username-gate-sub">
-          Pick a unique username so friends can find you. You can change it later.
+          Pick a unique username so friends can find you. You can change it
+          later.
         </p>
         <form className="fc-username-gate-form" onSubmit={handleSubmit}>
           <div className="fc-username-gate-input-wrap">
@@ -99,7 +108,9 @@ function UsernameSetupModal({ onDone }: { onDone: () => void }) {
               value={value}
               maxLength={30}
               onChange={(e) => {
-                setValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+                setValue(
+                  e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''),
+                )
                 setError('')
               }}
             />
@@ -140,7 +151,9 @@ function RootLayout() {
   return (
     <>
       <Outlet />
-      {needsUsername && <UsernameSetupModal onDone={() => setDismissed(true)} />}
+      {needsUsername && (
+        <UsernameSetupModal onDone={() => setDismissed(true)} />
+      )}
     </>
   )
 }
@@ -159,7 +172,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             <TanStackDevtools
               config={{ position: 'bottom-right' }}
               plugins={[
-                { name: 'Tanstack Router', render: <TanStackRouterDevtoolsPanel /> },
+                {
+                  name: 'Tanstack Router',
+                  render: <TanStackRouterDevtoolsPanel />,
+                },
                 TanStackQueryDevtools,
               ]}
             />

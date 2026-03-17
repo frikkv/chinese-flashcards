@@ -32,8 +32,12 @@ function FriendsPage() {
   })
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: trpc.social.listIncomingRequests.queryKey() })
-    qc.invalidateQueries({ queryKey: trpc.social.listOutgoingRequests.queryKey() })
+    qc.invalidateQueries({
+      queryKey: trpc.social.listIncomingRequests.queryKey(),
+    })
+    qc.invalidateQueries({
+      queryKey: trpc.social.listOutgoingRequests.queryKey(),
+    })
     qc.invalidateQueries({ queryKey: trpc.social.listFriends.queryKey() })
   }
 
@@ -70,7 +74,11 @@ function FriendsPage() {
           <p className="fc-profile-noauth-sub">
             Add friends to compare weekly progress and build a leaderboard.
           </p>
-          <Link to="/" className="fc-start-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
+          <Link
+            to="/"
+            className="fc-start-btn"
+            style={{ display: 'inline-block', textDecoration: 'none' }}
+          >
             ← Back to flashcards
           </Link>
         </div>
@@ -93,8 +101,11 @@ function FriendsPage() {
   return (
     <div className="fc-app">
       <div className="fc-social-container">
-
-        <Link to="/profile" className="fc-back-btn" style={{ textDecoration: 'none' }}>
+        <Link
+          to="/profile"
+          className="fc-back-btn"
+          style={{ textDecoration: 'none' }}
+        >
           ← Profile
         </Link>
 
@@ -116,38 +127,60 @@ function FriendsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <button className="fc-social-search-btn" type="submit" disabled={!searchQuery.trim()}>
+            <button
+              className="fc-social-search-btn"
+              type="submit"
+              disabled={!searchQuery.trim()}
+            >
               Search
             </button>
           </form>
 
           {submittedQuery && (
             <div className="fc-social-results">
-              {searchResults.isPending && <div className="fc-social-hint">Searching…</div>}
-              {!searchResults.isPending && (searchResults.data?.length ?? 0) === 0 && (
-                <div className="fc-social-hint">No users found for "{submittedQuery}".</div>
+              {searchResults.isPending && (
+                <div className="fc-social-hint">Searching…</div>
               )}
+              {!searchResults.isPending &&
+                (searchResults.data?.length ?? 0) === 0 && (
+                  <div className="fc-social-hint">
+                    No users found for "{submittedQuery}".
+                  </div>
+                )}
               {searchResults.data?.map((u) => {
                 const isFriend = friendIds.has(u.userId)
                 const isOutgoing = outgoingIds.has(u.userId)
                 return (
                   <div key={u.userId} className="fc-social-user-row">
-                    <div className="fc-social-user-avatar">{(u.displayName[0] ?? '?').toUpperCase()}</div>
+                    <div className="fc-social-user-avatar">
+                      {(u.displayName[0] ?? '?').toUpperCase()}
+                    </div>
                     <div className="fc-social-user-info">
-                      <Link to="/u/$username" params={{ username: u.username }} className="fc-social-user-name">
+                      <Link
+                        to="/u/$username"
+                        params={{ username: u.username }}
+                        className="fc-social-user-name"
+                      >
                         {u.displayName}
                       </Link>
                       <div className="fc-social-user-handle">@{u.username}</div>
                     </div>
                     <div className="fc-social-user-actions">
                       {isFriend ? (
-                        <span className="fc-social-badge fc-social-badge--friends">Friends</span>
+                        <span className="fc-social-badge fc-social-badge--friends">
+                          Friends
+                        </span>
                       ) : isOutgoing ? (
                         <button
                           className="fc-social-btn fc-social-btn--secondary"
                           onClick={() => {
-                            const req = outgoing.find((r) => r.userId === u.userId)
-                            if (req) cancelRequest.mutate({ friendshipId: req.friendshipId })
+                            const req = outgoing.find(
+                              (r) => r.userId === u.userId,
+                            )
+                            if (req)
+                              cancelRequest.mutate({
+                                friendshipId: req.friendshipId,
+                              })
                           }}
                         >
                           Cancel
@@ -155,7 +188,9 @@ function FriendsPage() {
                       ) : (
                         <button
                           className="fc-social-btn fc-social-btn--primary"
-                          onClick={() => sendRequest.mutate({ targetUserId: u.userId })}
+                          onClick={() =>
+                            sendRequest.mutate({ targetUserId: u.userId })
+                          }
                         >
                           Add Friend
                         </button>
@@ -173,31 +208,47 @@ function FriendsPage() {
           <div className="fc-social-section">
             <div className="fc-social-section-title">
               Friend Requests
-              <span className="fc-social-badge fc-social-badge--count">{incoming.length}</span>
+              <span className="fc-social-badge fc-social-badge--count">
+                {incoming.length}
+              </span>
             </div>
             {incoming.map((req) => (
               <div key={req.friendshipId} className="fc-social-user-row">
-                <div className="fc-social-user-avatar">{(req.displayName[0] ?? '?').toUpperCase()}</div>
+                <div className="fc-social-user-avatar">
+                  {(req.displayName[0] ?? '?').toUpperCase()}
+                </div>
                 <div className="fc-social-user-info">
                   {req.username ? (
-                    <Link to="/u/$username" params={{ username: req.username }} className="fc-social-user-name">
+                    <Link
+                      to="/u/$username"
+                      params={{ username: req.username }}
+                      className="fc-social-user-name"
+                    >
                       {req.displayName}
                     </Link>
                   ) : (
-                    <span className="fc-social-user-name">{req.displayName}</span>
+                    <span className="fc-social-user-name">
+                      {req.displayName}
+                    </span>
                   )}
-                  {req.username && <div className="fc-social-user-handle">@{req.username}</div>}
+                  {req.username && (
+                    <div className="fc-social-user-handle">@{req.username}</div>
+                  )}
                 </div>
                 <div className="fc-social-user-actions">
                   <button
                     className="fc-social-btn fc-social-btn--primary"
-                    onClick={() => acceptRequest.mutate({ friendshipId: req.friendshipId })}
+                    onClick={() =>
+                      acceptRequest.mutate({ friendshipId: req.friendshipId })
+                    }
                   >
                     Accept
                   </button>
                   <button
                     className="fc-social-btn fc-social-btn--secondary"
-                    onClick={() => declineRequest.mutate({ friendshipId: req.friendshipId })}
+                    onClick={() =>
+                      declineRequest.mutate({ friendshipId: req.friendshipId })
+                    }
                   >
                     Decline
                   </button>
@@ -213,22 +264,36 @@ function FriendsPage() {
             <div className="fc-social-section-title">Sent Requests</div>
             {outgoing.map((req) => (
               <div key={req.friendshipId} className="fc-social-user-row">
-                <div className="fc-social-user-avatar">{(req.displayName[0] ?? '?').toUpperCase()}</div>
+                <div className="fc-social-user-avatar">
+                  {(req.displayName[0] ?? '?').toUpperCase()}
+                </div>
                 <div className="fc-social-user-info">
                   {req.username ? (
-                    <Link to="/u/$username" params={{ username: req.username }} className="fc-social-user-name">
+                    <Link
+                      to="/u/$username"
+                      params={{ username: req.username }}
+                      className="fc-social-user-name"
+                    >
                       {req.displayName}
                     </Link>
                   ) : (
-                    <span className="fc-social-user-name">{req.displayName}</span>
+                    <span className="fc-social-user-name">
+                      {req.displayName}
+                    </span>
                   )}
-                  {req.username && <div className="fc-social-user-handle">@{req.username}</div>}
+                  {req.username && (
+                    <div className="fc-social-user-handle">@{req.username}</div>
+                  )}
                 </div>
                 <div className="fc-social-user-actions">
-                  <span className="fc-social-badge fc-social-badge--pending">Pending</span>
+                  <span className="fc-social-badge fc-social-badge--pending">
+                    Pending
+                  </span>
                   <button
                     className="fc-social-btn fc-social-btn--secondary"
-                    onClick={() => cancelRequest.mutate({ friendshipId: req.friendshipId })}
+                    onClick={() =>
+                      cancelRequest.mutate({ friendshipId: req.friendshipId })
+                    }
                   >
                     Cancel
                   </button>
@@ -243,25 +308,39 @@ function FriendsPage() {
           <div className="fc-social-section-title">
             Friends
             {friends.length > 0 && (
-              <span className="fc-social-badge fc-social-badge--neutral">{friends.length}</span>
+              <span className="fc-social-badge fc-social-badge--neutral">
+                {friends.length}
+              </span>
             )}
           </div>
-          {friendsQuery.isPending && <div className="fc-social-hint">Loading…</div>}
+          {friendsQuery.isPending && (
+            <div className="fc-social-hint">Loading…</div>
+          )}
           {!friendsQuery.isPending && friends.length === 0 && (
-            <div className="fc-social-hint">No friends yet. Search above to add someone!</div>
+            <div className="fc-social-hint">
+              No friends yet. Search above to add someone!
+            </div>
           )}
           {friends.map((f) => (
             <div key={f.friendshipId} className="fc-social-user-row">
-              <div className="fc-social-user-avatar">{(f.displayName[0] ?? '?').toUpperCase()}</div>
+              <div className="fc-social-user-avatar">
+                {(f.displayName[0] ?? '?').toUpperCase()}
+              </div>
               <div className="fc-social-user-info">
                 {f.username ? (
-                  <Link to="/u/$username" params={{ username: f.username }} className="fc-social-user-name">
+                  <Link
+                    to="/u/$username"
+                    params={{ username: f.username }}
+                    className="fc-social-user-name"
+                  >
                     {f.displayName}
                   </Link>
                 ) : (
                   <span className="fc-social-user-name">{f.displayName}</span>
                 )}
-                {f.username && <div className="fc-social-user-handle">@{f.username}</div>}
+                {f.username && (
+                  <div className="fc-social-user-handle">@{f.username}</div>
+                )}
               </div>
               <div className="fc-social-user-actions">
                 <button
@@ -278,7 +357,6 @@ function FriendsPage() {
             </div>
           ))}
         </div>
-
       </div>
     </div>
   )

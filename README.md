@@ -16,16 +16,16 @@ A full-stack web app for studying Mandarin Chinese vocabulary. Covers HSK 1, HSK
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | [TanStack Start](https://tanstack.com/start) (full-stack React, SSR) |
-| Routing | [TanStack Router](https://tanstack.com/router) (file-based) |
-| API | [tRPC](https://trpc.io) (type-safe, batched) |
-| Data fetching | [TanStack Query](https://tanstack.com/query) |
-| Database | PostgreSQL + [Drizzle ORM](https://orm.drizzle.team) |
-| Auth | [Better Auth](https://www.better-auth.com) (Google OAuth + email/password) |
-| AI | [OpenAI](https://platform.openai.com) GPT-4o-mini (chat, distractors, translation) + TTS |
-| Deployment | [Netlify](https://netlify.com) (static client + Netlify Functions for SSR) |
+| Layer         | Technology                                                                               |
+| ------------- | ---------------------------------------------------------------------------------------- |
+| Framework     | [TanStack Start](https://tanstack.com/start) (full-stack React, SSR)                     |
+| Routing       | [TanStack Router](https://tanstack.com/router) (file-based)                              |
+| API           | [tRPC](https://trpc.io) (type-safe, batched)                                             |
+| Data fetching | [TanStack Query](https://tanstack.com/query)                                             |
+| Database      | PostgreSQL + [Drizzle ORM](https://orm.drizzle.team)                                     |
+| Auth          | [Better Auth](https://www.better-auth.com) (Google OAuth + email/password)               |
+| AI            | [OpenAI](https://platform.openai.com) GPT-4o-mini (chat, distractors, translation) + TTS |
+| Deployment    | [Netlify](https://netlify.com) (static client + Netlify Functions for SSR)               |
 
 ## Word Sets
 
@@ -42,14 +42,14 @@ pnpm dev          # starts on local dev server
 
 Requires a `.env.local` with the following variables:
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `BETTER_AUTH_SECRET` | Random secret for Better Auth |
-| `BETTER_AUTH_URL` | Your app's base URL (local dev URL or Netlify deploy URL) |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `OPENAI_API_KEY` | OpenAI API key |
+| Variable               | Description                                               |
+| ---------------------- | --------------------------------------------------------- |
+| `DATABASE_URL`         | PostgreSQL connection string                              |
+| `BETTER_AUTH_SECRET`   | Random secret for Better Auth                             |
+| `BETTER_AUTH_URL`      | Your app's base URL (local dev URL or Netlify deploy URL) |
+| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                    |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                |
+| `OPENAI_API_KEY`       | OpenAI API key                                            |
 
 ```bash
 pnpm db:push      # push schema to DB

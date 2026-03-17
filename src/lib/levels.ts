@@ -13,13 +13,13 @@
  *  Lv 6 → 7:   ~18 months
  */
 export const LEVELS = [
-  { level: 1, title: 'Beginner',     minXP: 0 },
-  { level: 2, title: 'Student',      minXP: 50 },
-  { level: 3, title: 'Scholar',      minXP: 250 },
+  { level: 1, title: 'Beginner', minXP: 0 },
+  { level: 2, title: 'Student', minXP: 50 },
+  { level: 3, title: 'Scholar', minXP: 250 },
   { level: 4, title: 'Practitioner', minXP: 750 },
-  { level: 5, title: 'Expert',       minXP: 2_000 },
-  { level: 6, title: 'Master',       minXP: 6_000 },
-  { level: 7, title: 'Legend',       minXP: 15_000 },
+  { level: 5, title: 'Expert', minXP: 2_000 },
+  { level: 6, title: 'Master', minXP: 6_000 },
+  { level: 7, title: 'Legend', minXP: 15_000 },
 ] as const
 
 export type LevelInfo = {

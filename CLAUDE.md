@@ -96,6 +96,7 @@ English wrong-answer choices are fetched from the DB (`distractorSets` table). T
 ### TTS / Audio
 
 `speakHanzi(hanzi)` in `index.tsx`:
+
 1. Tries `new Audio('/audio/' + encodeURIComponent(hanzi) + '.mp3')` — waits for `canplaythrough` before playing to avoid first-play choppiness
 2. Falls back to `speakFallback()` (Web Speech API, `zh-CN`, rate 0.65) on error
 
@@ -106,6 +107,7 @@ Inline `ChatPanel` component rendered in the right column of every study page. U
 ### Pronunciation box
 
 Below the chat panel in every study mode. Users type Chinese, pinyin, or English:
+
 - Chinese text → plays directly (free, no limit)
 - English/other → calls `chat.translateToZh` to get characters + pinyin, then plays (limited to 5 translations per page load)
 

@@ -11,7 +11,9 @@ interface Props {
 
 export function FriendsModal({ userId, displayName, onClose }: Props) {
   const trpc = useTRPC()
-  const friendsQuery = useQuery(trpc.social.getFriendsOf.queryOptions({ userId }))
+  const friendsQuery = useQuery(
+    trpc.social.getFriendsOf.queryOptions({ userId }),
+  )
   const friends = friendsQuery.data ?? []
 
   return (
@@ -24,7 +26,11 @@ export function FriendsModal({ userId, displayName, onClose }: Props) {
               <span className="fc-friends-modal-count">{friends.length}</span>
             )}
           </span>
-          <button className="fc-friends-modal-close" onClick={onClose} aria-label="Close">
+          <button
+            className="fc-friends-modal-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
             <X size={16} strokeWidth={2} />
           </button>
         </div>
@@ -32,7 +38,10 @@ export function FriendsModal({ userId, displayName, onClose }: Props) {
         <div className="fc-friends-modal-body">
           {friendsQuery.isPending && (
             <div className="fc-friends-modal-loading">
-              <div className="fc-auth-spinner" style={{ width: 22, height: 22, borderWidth: 2 }} />
+              <div
+                className="fc-auth-spinner"
+                style={{ width: 22, height: 22, borderWidth: 2 }}
+              />
             </div>
           )}
 

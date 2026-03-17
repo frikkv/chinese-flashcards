@@ -37,7 +37,10 @@ export async function generateDistractors(
   } catch {
     // fall through to fallback
   }
-  return { distractors: fallbackDistractors(word, allVocab), source: 'fallback' }
+  return {
+    distractors: fallbackDistractors(word, allVocab),
+    source: 'fallback',
+  }
 }
 
 function validateDistractors(raw: unknown[], correctAnswer: string): string[] {
@@ -45,7 +48,9 @@ function validateDistractors(raw: unknown[], correctAnswer: string): string[] {
   return [
     ...new Set(
       raw
-        .filter((d): d is string => typeof d === 'string' && d.trim().length > 0)
+        .filter(
+          (d): d is string => typeof d === 'string' && d.trim().length > 0,
+        )
         .map((d) => d.trim())
         .filter((d) => d.toLowerCase() !== normalized),
     ),
@@ -55,7 +60,9 @@ function validateDistractors(raw: unknown[], correctAnswer: string): string[] {
 function fallbackDistractors(word: Word, allVocab: Word[]): string[] {
   const correct = word.english.toLowerCase()
   return shuffle(
-    allVocab.filter((w) => w.char !== word.char && w.english.toLowerCase() !== correct),
+    allVocab.filter(
+      (w) => w.char !== word.char && w.english.toLowerCase() !== correct,
+    ),
   )
     .slice(0, 3)
     .map((w) => w.english)

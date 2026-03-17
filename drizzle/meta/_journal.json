@@ -8,6 +8,13 @@
       "when": 1773159214750,
       "tag": "0000_eager_mentor",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773729756011,
+      "tag": "0001_brave_the_renegades",
+      "breakpoints": true
     }
   ]
 }

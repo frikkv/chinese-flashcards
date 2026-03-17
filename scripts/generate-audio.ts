@@ -63,4 +63,6 @@ async function main() {
   console.log(`\nDone. Generated: ${generated}, Skipped (cached): ${skipped}`)
 }
 
-main().catch(console.error).finally(() => process.exit(0))
+main()
+  .catch(console.error)
+  .finally(() => process.exit(0))

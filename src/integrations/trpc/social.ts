@@ -1,5 +1,16 @@
 import { z } from 'zod'
-import { eq, or, and, desc, ilike, ne, inArray, count, sql, gte } from 'drizzle-orm'
+import {
+  eq,
+  or,
+  and,
+  desc,
+  ilike,
+  ne,
+  inArray,
+  count,
+  sql,
+  gte,
+} from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { createTRPCRouter, protectedProcedure, publicProcedure } from './init'
 import { db } from '#/db'
@@ -17,7 +28,10 @@ import {
  * Ensure a userProfile row exists for the given user.
  * Creates one lazily on first call, deriving username from email.
  */
-async function ensureProfile(userId: string, info: { name: string; email: string }) {
+async function ensureProfile(
+  userId: string,
+  info: { name: string; email: string },
+) {
   const [existing] = await db
     .select()
     .from(userProfiles)
@@ -54,7 +68,11 @@ async function ensureProfile(userId: string, info: { name: string; email: string
     updatedAt: new Date(),
   })
 
-  const [created] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1)
+  const [created] = await db
+    .select()
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, userId))
+    .limit(1)
   return created!
 }
 
@@ -69,24 +87,41 @@ type FriendStatus =
   | { status: 'request_received'; friendshipId: string }
   | { status: 'friends'; friendshipId: string }
 
-async function getFriendStatus(viewerId: string, targetUserId: string): Promise<FriendStatus> {
+async function getFriendStatus(
+  viewerId: string,
+  targetUserId: string,
+): Promise<FriendStatus> {
   if (viewerId === targetUserId) return { status: 'self' }
 
   const [outgoing] = await db
     .select()
     .from(friendships)
-    .where(and(eq(friendships.senderId, viewerId), eq(friendships.receiverId, targetUserId)))
+    .where(
+      and(
+        eq(friendships.senderId, viewerId),
+        eq(friendships.receiverId, targetUserId),
+      ),
+    )
     .limit(1)
-  if (outgoing?.status === 'pending') return { status: 'request_sent', friendshipId: outgoing.id }
-  if (outgoing?.status === 'accepted') return { status: 'friends', friendshipId: outgoing.id }
+  if (outgoing?.status === 'pending')
+    return { status: 'request_sent', friendshipId: outgoing.id }
+  if (outgoing?.status === 'accepted')
+    return { status: 'friends', friendshipId: outgoing.id }
 
   const [incoming] = await db
     .select()
     .from(friendships)
-    .where(and(eq(friendships.senderId, targetUserId), eq(friendships.receiverId, viewerId)))
+    .where(
+      and(
+        eq(friendships.senderId, targetUserId),
+        eq(friendships.receiverId, viewerId),
+      ),
+    )
     .limit(1)
-  if (incoming?.status === 'pending') return { status: 'request_received', friendshipId: incoming.id }
-  if (incoming?.status === 'accepted') return { status: 'friends', friendshipId: incoming.id }
+  if (incoming?.status === 'pending')
+    return { status: 'request_received', friendshipId: incoming.id }
+  if (incoming?.status === 'accepted')
+    return { status: 'friends', friendshipId: incoming.id }
 
   return { status: 'not_friends' }
 }
@@ -118,7 +153,12 @@ async function getPublicStats(userId: string) {
       cardsReviewed: sql<string>`coalesce(sum(${studySessions.totalCount}), 0)`,
     })
     .from(studySessions)
-    .where(and(eq(studySessions.userId, userId), sql`${studySessions.completedAt} >= ${weekAgo}`))
+    .where(
+      and(
+        eq(studySessions.userId, userId),
+        sql`${studySessions.completedAt} >= ${weekAgo}`,
+      ),
+    )
 
   const totalCards = parseInt(totals?.cardsReviewed ?? '0')
   const totalCorrect = parseInt(totals?.correctAnswers ?? '0')
@@ -126,7 +166,8 @@ async function getPublicStats(userId: string) {
     totalSessions: totals?.sessions ?? 0,
     totalCardsReviewed: totalCards,
     totalCorrectAnswers: totalCorrect,
-    accuracy: totalCards > 0 ? Math.round((totalCorrect / totalCards) * 100) : null,
+    accuracy:
+      totalCards > 0 ? Math.round((totalCorrect / totalCards) * 100) : null,
     uniqueCardsStudied: cardCount?.unique ?? 0,
     weeklySessions: weekly?.sessions ?? 0,
     weeklyCardsReviewed: parseInt(weekly?.cardsReviewed ?? '0'),
@@ -164,7 +205,12 @@ export const socialRouter = createTRPCRouter({
           displayName: userProfiles.displayName,
         })
         .from(userProfiles)
-        .where(or(ilike(userProfiles.username, q), ilike(userProfiles.displayName, q)))
+        .where(
+          or(
+            ilike(userProfiles.username, q),
+            ilike(userProfiles.displayName, q),
+          ),
+        )
         .limit(20)
       const viewerId = ctx.session?.user.id
       return rows.filter((r) => r.userId !== viewerId)
@@ -179,7 +225,8 @@ export const socialRouter = createTRPCRouter({
         .from(userProfiles)
         .where(eq(userProfiles.username, input.username))
         .limit(1)
-      if (!profile) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
+      if (!profile)
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
 
       const [user] = await db
         .select({ name: users.name, createdAt: users.createdAt })
@@ -198,7 +245,10 @@ export const socialRouter = createTRPCRouter({
         .from(friendships)
         .where(
           and(
-            or(eq(friendships.senderId, profile.userId), eq(friendships.receiverId, profile.userId)),
+            or(
+              eq(friendships.senderId, profile.userId),
+              eq(friendships.receiverId, profile.userId),
+            ),
             eq(friendships.status, 'accepted'),
           ),
         )
@@ -224,7 +274,10 @@ export const socialRouter = createTRPCRouter({
         .from(friendships)
         .where(
           and(
-            or(eq(friendships.senderId, input.userId), eq(friendships.receiverId, input.userId)),
+            or(
+              eq(friendships.senderId, input.userId),
+              eq(friendships.receiverId, input.userId),
+            ),
             eq(friendships.status, 'accepted'),
           ),
         )
@@ -254,7 +307,10 @@ export const socialRouter = createTRPCRouter({
       .from(friendships)
       .where(
         and(
-          or(eq(friendships.senderId, profile.userId), eq(friendships.receiverId, profile.userId)),
+          or(
+            eq(friendships.senderId, profile.userId),
+            eq(friendships.receiverId, profile.userId),
+          ),
           eq(friendships.status, 'accepted'),
         ),
       )
@@ -270,28 +326,45 @@ export const socialRouter = createTRPCRouter({
           .string()
           .min(2)
           .max(30)
-          .regex(/^[a-z0-9_]+$/, 'Lowercase letters, numbers, and underscores only.')
+          .regex(
+            /^[a-z0-9_]+$/,
+            'Lowercase letters, numbers, and underscores only.',
+          )
           .optional(),
         bio: z.string().max(200).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-      await ensureProfile(userId, { name: ctx.session.user.name, email: ctx.session.user.email })
+      await ensureProfile(userId, {
+        name: ctx.session.user.name,
+        email: ctx.session.user.email,
+      })
 
       if (input.username) {
         const [conflict] = await db
           .select({ u: userProfiles.userId })
           .from(userProfiles)
-          .where(and(eq(userProfiles.username, input.username), ne(userProfiles.userId, userId)))
+          .where(
+            and(
+              eq(userProfiles.username, input.username),
+              ne(userProfiles.userId, userId),
+            ),
+          )
           .limit(1)
-        if (conflict) throw new TRPCError({ code: 'CONFLICT', message: 'Username already taken.' })
+        if (conflict)
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'Username already taken.',
+          })
       }
 
       await db
         .update(userProfiles)
         .set({
-          ...(input.displayName !== undefined && { displayName: input.displayName }),
+          ...(input.displayName !== undefined && {
+            displayName: input.displayName,
+          }),
           ...(input.username !== undefined && { username: input.username }),
           ...(input.bio !== undefined && { bio: input.bio }),
           updatedAt: new Date(),
@@ -317,23 +390,42 @@ export const socialRouter = createTRPCRouter({
           .string()
           .min(2)
           .max(30)
-          .regex(/^[a-z0-9_]+$/, 'Lowercase letters, numbers, and underscores only.'),
+          .regex(
+            /^[a-z0-9_]+$/,
+            'Lowercase letters, numbers, and underscores only.',
+          ),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
-      await ensureProfile(userId, { name: ctx.session.user.name, email: ctx.session.user.email })
+      await ensureProfile(userId, {
+        name: ctx.session.user.name,
+        email: ctx.session.user.email,
+      })
 
       const [conflict] = await db
         .select({ u: userProfiles.userId })
         .from(userProfiles)
-        .where(and(eq(userProfiles.username, input.username), ne(userProfiles.userId, userId)))
+        .where(
+          and(
+            eq(userProfiles.username, input.username),
+            ne(userProfiles.userId, userId),
+          ),
+        )
         .limit(1)
-      if (conflict) throw new TRPCError({ code: 'CONFLICT', message: 'Username already taken.' })
+      if (conflict)
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'Username already taken.',
+        })
 
       await db
         .update(userProfiles)
-        .set({ username: input.username, usernameConfirmed: true, updatedAt: new Date() })
+        .set({
+          username: input.username,
+          usernameConfirmed: true,
+          updatedAt: new Date(),
+        })
         .where(eq(userProfiles.userId, userId))
 
       const [updated] = await db
@@ -353,26 +445,43 @@ export const socialRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const senderId = ctx.session.user.id
       if (senderId === input.targetUserId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot send a friend request to yourself.' })
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot send a friend request to yourself.',
+        })
       }
       const [targetProfile] = await db
         .select({ userId: userProfiles.userId })
         .from(userProfiles)
         .where(eq(userProfiles.userId, input.targetUserId))
         .limit(1)
-      if (!targetProfile) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
+      if (!targetProfile)
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
 
       // Check existing outgoing relationship
       const [existing] = await db
         .select()
         .from(friendships)
-        .where(and(eq(friendships.senderId, senderId), eq(friendships.receiverId, input.targetUserId)))
+        .where(
+          and(
+            eq(friendships.senderId, senderId),
+            eq(friendships.receiverId, input.targetUserId),
+          ),
+        )
         .limit(1)
       if (existing) {
-        if (existing.status === 'accepted') throw new TRPCError({ code: 'CONFLICT', message: 'Already friends.' })
-        if (existing.status === 'pending') throw new TRPCError({ code: 'CONFLICT', message: 'Friend request already sent.' })
+        if (existing.status === 'accepted')
+          throw new TRPCError({ code: 'CONFLICT', message: 'Already friends.' })
+        if (existing.status === 'pending')
+          throw new TRPCError({
+            code: 'CONFLICT',
+            message: 'Friend request already sent.',
+          })
         // Re-activate a previously canceled/declined row
-        await db.update(friendships).set({ status: 'pending', updatedAt: new Date() }).where(eq(friendships.id, existing.id))
+        await db
+          .update(friendships)
+          .set({ status: 'pending', updatedAt: new Date() })
+          .where(eq(friendships.id, existing.id))
         return { friendshipId: existing.id, autoAccepted: false }
       }
 
@@ -389,7 +498,10 @@ export const socialRouter = createTRPCRouter({
         )
         .limit(1)
       if (incoming) {
-        await db.update(friendships).set({ status: 'accepted', updatedAt: new Date() }).where(eq(friendships.id, incoming.id))
+        await db
+          .update(friendships)
+          .set({ status: 'accepted', updatedAt: new Date() })
+          .where(eq(friendships.id, incoming.id))
         return { friendshipId: incoming.id, autoAccepted: true }
       }
 
@@ -413,10 +525,19 @@ export const socialRouter = createTRPCRouter({
       const [row] = await db
         .select()
         .from(friendships)
-        .where(and(eq(friendships.id, input.friendshipId), eq(friendships.senderId, userId), eq(friendships.status, 'pending')))
+        .where(
+          and(
+            eq(friendships.id, input.friendshipId),
+            eq(friendships.senderId, userId),
+            eq(friendships.status, 'pending'),
+          ),
+        )
         .limit(1)
       if (!row) throw new TRPCError({ code: 'NOT_FOUND' })
-      await db.update(friendships).set({ status: 'canceled', updatedAt: new Date() }).where(eq(friendships.id, input.friendshipId))
+      await db
+        .update(friendships)
+        .set({ status: 'canceled', updatedAt: new Date() })
+        .where(eq(friendships.id, input.friendshipId))
     }),
 
   /** Accept an incoming pending request. */
@@ -427,10 +548,19 @@ export const socialRouter = createTRPCRouter({
       const [row] = await db
         .select()
         .from(friendships)
-        .where(and(eq(friendships.id, input.friendshipId), eq(friendships.receiverId, userId), eq(friendships.status, 'pending')))
+        .where(
+          and(
+            eq(friendships.id, input.friendshipId),
+            eq(friendships.receiverId, userId),
+            eq(friendships.status, 'pending'),
+          ),
+        )
         .limit(1)
       if (!row) throw new TRPCError({ code: 'NOT_FOUND' })
-      await db.update(friendships).set({ status: 'accepted', updatedAt: new Date() }).where(eq(friendships.id, input.friendshipId))
+      await db
+        .update(friendships)
+        .set({ status: 'accepted', updatedAt: new Date() })
+        .where(eq(friendships.id, input.friendshipId))
     }),
 
   /** Decline an incoming pending request. */
@@ -441,10 +571,19 @@ export const socialRouter = createTRPCRouter({
       const [row] = await db
         .select()
         .from(friendships)
-        .where(and(eq(friendships.id, input.friendshipId), eq(friendships.receiverId, userId), eq(friendships.status, 'pending')))
+        .where(
+          and(
+            eq(friendships.id, input.friendshipId),
+            eq(friendships.receiverId, userId),
+            eq(friendships.status, 'pending'),
+          ),
+        )
         .limit(1)
       if (!row) throw new TRPCError({ code: 'NOT_FOUND' })
-      await db.update(friendships).set({ status: 'declined', updatedAt: new Date() }).where(eq(friendships.id, input.friendshipId))
+      await db
+        .update(friendships)
+        .set({ status: 'declined', updatedAt: new Date() })
+        .where(eq(friendships.id, input.friendshipId))
     }),
 
   /** Remove an accepted friend (either direction). */
@@ -459,7 +598,10 @@ export const socialRouter = createTRPCRouter({
           and(
             eq(friendships.id, input.friendshipId),
             eq(friendships.status, 'accepted'),
-            or(eq(friendships.senderId, userId), eq(friendships.receiverId, userId)),
+            or(
+              eq(friendships.senderId, userId),
+              eq(friendships.receiverId, userId),
+            ),
           ),
         )
         .limit(1)
@@ -475,15 +617,23 @@ export const socialRouter = createTRPCRouter({
       .from(friendships)
       .where(
         and(
-          or(eq(friendships.senderId, userId), eq(friendships.receiverId, userId)),
+          or(
+            eq(friendships.senderId, userId),
+            eq(friendships.receiverId, userId),
+          ),
           eq(friendships.status, 'accepted'),
         ),
       )
       .orderBy(desc(friendships.updatedAt))
 
     if (rows.length === 0) return []
-    const friendIds = rows.map((r) => (r.senderId === userId ? r.receiverId : r.senderId))
-    const profiles = await db.select().from(userProfiles).where(inArray(userProfiles.userId, friendIds))
+    const friendIds = rows.map((r) =>
+      r.senderId === userId ? r.receiverId : r.senderId,
+    )
+    const profiles = await db
+      .select()
+      .from(userProfiles)
+      .where(inArray(userProfiles.userId, friendIds))
 
     return rows.map((r) => {
       const friendId = r.senderId === userId ? r.receiverId : r.senderId
@@ -504,12 +654,20 @@ export const socialRouter = createTRPCRouter({
     const rows = await db
       .select()
       .from(friendships)
-      .where(and(eq(friendships.receiverId, userId), eq(friendships.status, 'pending')))
+      .where(
+        and(
+          eq(friendships.receiverId, userId),
+          eq(friendships.status, 'pending'),
+        ),
+      )
       .orderBy(desc(friendships.createdAt))
 
     if (rows.length === 0) return []
     const senderIds = rows.map((r) => r.senderId)
-    const profiles = await db.select().from(userProfiles).where(inArray(userProfiles.userId, senderIds))
+    const profiles = await db
+      .select()
+      .from(userProfiles)
+      .where(inArray(userProfiles.userId, senderIds))
 
     return rows.map((r) => {
       const profile = profiles.find((p) => p.userId === r.senderId)
@@ -529,12 +687,20 @@ export const socialRouter = createTRPCRouter({
     const rows = await db
       .select()
       .from(friendships)
-      .where(and(eq(friendships.senderId, userId), eq(friendships.status, 'pending')))
+      .where(
+        and(
+          eq(friendships.senderId, userId),
+          eq(friendships.status, 'pending'),
+        ),
+      )
       .orderBy(desc(friendships.createdAt))
 
     if (rows.length === 0) return []
     const receiverIds = rows.map((r) => r.receiverId)
-    const profiles = await db.select().from(userProfiles).where(inArray(userProfiles.userId, receiverIds))
+    const profiles = await db
+      .select()
+      .from(userProfiles)
+      .where(inArray(userProfiles.userId, receiverIds))
 
     return rows.map((r) => {
       const profile = profiles.find((p) => p.userId === r.receiverId)
@@ -563,7 +729,10 @@ export const socialRouter = createTRPCRouter({
       .from(friendships)
       .where(
         and(
-          or(eq(friendships.senderId, userId), eq(friendships.receiverId, userId)),
+          or(
+            eq(friendships.senderId, userId),
+            eq(friendships.receiverId, userId),
+          ),
           eq(friendships.status, 'accepted'),
         ),
       )
@@ -641,14 +810,19 @@ export const socialRouter = createTRPCRouter({
       .from(friendships)
       .where(
         and(
-          or(eq(friendships.senderId, userId), eq(friendships.receiverId, userId)),
+          or(
+            eq(friendships.senderId, userId),
+            eq(friendships.receiverId, userId),
+          ),
           eq(friendships.status, 'accepted'),
         ),
       )
 
     const participantIds = [
       userId,
-      ...friendRows.map((r) => (r.senderId === userId ? r.receiverId : r.senderId)),
+      ...friendRows.map((r) =>
+        r.senderId === userId ? r.receiverId : r.senderId,
+      ),
     ]
 
     // 2. Weekly session stats — single grouped query, uses (userId, completedAt) index

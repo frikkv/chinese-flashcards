@@ -1,4 +1,5 @@
 import { Volume2 } from 'lucide-react'
+import type { Dialect } from '#/lib/dialect'
 import { speakHanzi } from '#/lib/tts'
 
 export interface CardContent {
@@ -28,10 +29,12 @@ export function CardFace({
   content,
   isBack,
   hanzi,
+  dialect = 'mandarin',
 }: {
   content: CardContent | null
   isBack?: boolean
   hanzi: string
+  dialect?: Dialect
 }) {
   return (
     <div className={`fc-card-face${isBack ? ' back' : ''}`}>
@@ -40,7 +43,7 @@ export function CardFace({
           className="fc-speaker-btn"
           onClick={(e) => {
             e.stopPropagation()
-            speakHanzi(hanzi)
+            speakHanzi(hanzi, dialect)
           }}
           aria-label="Play pronunciation"
         >

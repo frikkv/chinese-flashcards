@@ -46,7 +46,9 @@ async function main() {
     })
 
     generated++
-    console.log(`[${generated}] ${word.char} → [${distractors.join(', ')}] [${source}]`)
+    console.log(
+      `[${generated}] ${word.char} → [${distractors.join(', ')}] [${source}]`,
+    )
 
     // Rate limit: ~5 req/s to stay well under GPT-4o-mini limits
     await new Promise((resolve) => setTimeout(resolve, 200))
@@ -55,4 +57,6 @@ async function main() {
   console.log(`\nDone. Generated: ${generated}, Skipped (cached): ${skipped}`)
 }
 
-main().catch(console.error).finally(() => process.exit(0))
+main()
+  .catch(console.error)
+  .finally(() => process.exit(0))

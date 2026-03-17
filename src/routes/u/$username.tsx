@@ -6,7 +6,9 @@ import { useTRPC } from '#/integrations/trpc/react'
 import { computeXP, getLevelInfo } from '#/lib/levels'
 import { FriendsModal } from '#/components/FriendsModal'
 
-export const Route = createFileRoute('/u/$username')({ component: PublicProfilePage })
+export const Route = createFileRoute('/u/$username')({
+  component: PublicProfilePage,
+})
 
 function PublicProfilePage() {
   const { username } = Route.useParams()
@@ -14,14 +16,22 @@ function PublicProfilePage() {
   const trpc = useTRPC()
   const qc = useQueryClient()
 
-  const profileQuery = useQuery(trpc.social.getProfile.queryOptions({ username }))
+  const profileQuery = useQuery(
+    trpc.social.getProfile.queryOptions({ username }),
+  )
   const [showFriendsModal, setShowFriendsModal] = useState(false)
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: trpc.social.getProfile.queryKey({ username }) })
+    qc.invalidateQueries({
+      queryKey: trpc.social.getProfile.queryKey({ username }),
+    })
     qc.invalidateQueries({ queryKey: trpc.social.listFriends.queryKey() })
-    qc.invalidateQueries({ queryKey: trpc.social.listOutgoingRequests.queryKey() })
-    qc.invalidateQueries({ queryKey: trpc.social.listIncomingRequests.queryKey() })
+    qc.invalidateQueries({
+      queryKey: trpc.social.listOutgoingRequests.queryKey(),
+    })
+    qc.invalidateQueries({
+      queryKey: trpc.social.listIncomingRequests.queryKey(),
+    })
   }
 
   const sendRequest = useMutation(
@@ -55,7 +65,11 @@ function PublicProfilePage() {
           <div className="fc-profile-noauth-char">404</div>
           <h2 className="fc-profile-noauth-title">User not found</h2>
           <p className="fc-profile-noauth-sub">@{username} doesn't exist.</p>
-          <Link to="/" className="fc-start-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
+          <Link
+            to="/"
+            className="fc-start-btn"
+            style={{ display: 'inline-block', textDecoration: 'none' }}
+          >
             ← Home
           </Link>
         </div>
@@ -89,7 +103,9 @@ function PublicProfilePage() {
       return (
         <button
           className="fc-social-btn fc-social-btn--secondary"
-          onClick={() => cancelRequest.mutate({ friendshipId: fs.friendshipId })}
+          onClick={() =>
+            cancelRequest.mutate({ friendshipId: fs.friendshipId })
+          }
         >
           Cancel Request
         </button>
@@ -100,13 +116,17 @@ function PublicProfilePage() {
         <>
           <button
             className="fc-social-btn fc-social-btn--primary"
-            onClick={() => acceptRequest.mutate({ friendshipId: fs.friendshipId })}
+            onClick={() =>
+              acceptRequest.mutate({ friendshipId: fs.friendshipId })
+            }
           >
             Accept Request
           </button>
           <button
             className="fc-social-btn fc-social-btn--secondary"
-            onClick={() => declineRequest.mutate({ friendshipId: fs.friendshipId })}
+            onClick={() =>
+              declineRequest.mutate({ friendshipId: fs.friendshipId })
+            }
           >
             Decline
           </button>
@@ -132,7 +152,6 @@ function PublicProfilePage() {
   return (
     <div className="fc-app">
       <div className="fc-social-container">
-
         <Link to="/" className="fc-back-btn" style={{ textDecoration: 'none' }}>
           ← Home
         </Link>
@@ -145,7 +164,9 @@ function PublicProfilePage() {
           <div className="fc-profile-header-info">
             <div className="fc-profile-name-row">
               <div className="fc-profile-name">{profile.displayName}</div>
-              <span className={`fc-level-badge fc-level-badge--tier${Math.ceil(levelInfo.level / 2)}`}>
+              <span
+                className={`fc-level-badge fc-level-badge--tier${Math.ceil(levelInfo.level / 2)}`}
+              >
                 Lv.{levelInfo.level} · {levelInfo.title}
               </span>
             </div>
@@ -154,18 +175,33 @@ function PublicProfilePage() {
             <div className="fc-profile-meta">
               {profile.joinedAt && (
                 <>
-                  <span>Joined {new Date(profile.joinedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long' })}</span>
+                  <span>
+                    Joined{' '}
+                    {new Date(profile.joinedAt).toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'long',
+                    })}
+                  </span>
                   <span className="fc-profile-dot">·</span>
                 </>
               )}
-              <button className="fc-profile-friend-count-btn" onClick={() => setShowFriendsModal(true)}>
-                {profile.friendCount} {profile.friendCount === 1 ? 'friend' : 'friends'}
+              <button
+                className="fc-profile-friend-count-btn"
+                onClick={() => setShowFriendsModal(true)}
+              >
+                {profile.friendCount}{' '}
+                {profile.friendCount === 1 ? 'friend' : 'friends'}
               </button>
             </div>
           </div>
           <div className="fc-social-profile-actions">
             {fs?.status === 'friends' && (
-              <span className="fc-social-badge fc-social-badge--friends" style={{ marginRight: 8 }}>Friends</span>
+              <span
+                className="fc-social-badge fc-social-badge--friends"
+                style={{ marginRight: 8 }}
+              >
+                Friends
+              </span>
             )}
             <FriendButton />
           </div>
@@ -180,11 +216,15 @@ function PublicProfilePage() {
               <div className="fc-profile-stat-label">Sessions</div>
             </div>
             <div className="fc-profile-stat">
-              <div className="fc-profile-stat-num">{stats.totalCardsReviewed}</div>
+              <div className="fc-profile-stat-num">
+                {stats.totalCardsReviewed}
+              </div>
               <div className="fc-profile-stat-label">Cards Reviewed</div>
             </div>
             <div className="fc-profile-stat">
-              <div className="fc-profile-stat-num">{stats.uniqueCardsStudied}</div>
+              <div className="fc-profile-stat-num">
+                {stats.uniqueCardsStudied}
+              </div>
               <div className="fc-profile-stat-label">Unique Cards</div>
             </div>
             <div className="fc-profile-stat">
@@ -196,12 +236,13 @@ function PublicProfilePage() {
               <div className="fc-profile-stat-label">Sessions This Week</div>
             </div>
             <div className="fc-profile-stat">
-              <div className="fc-profile-stat-num">{stats.weeklyCardsReviewed}</div>
+              <div className="fc-profile-stat-num">
+                {stats.weeklyCardsReviewed}
+              </div>
               <div className="fc-profile-stat-label">Cards This Week</div>
             </div>
           </div>
         </div>
-
       </div>
 
       {showFriendsModal && (

@@ -3,7 +3,9 @@ import superjson from 'superjson'
 import { auth } from '#/lib/auth'
 
 export async function createContext({ request }: { request: Request }) {
-  const session = await auth.api.getSession({ headers: request.headers }).catch(() => null)
+  const session = await auth.api
+    .getSession({ headers: request.headers })
+    .catch(() => null)
   return { session }
 }
 
@@ -25,7 +27,9 @@ const logger = t.middleware(async ({ path, type, next }) => {
 export const createTRPCRouter = t.router
 export const publicProcedure = t.procedure.use(logger)
 
-export const protectedProcedure = t.procedure.use(logger).use(({ ctx, next }) => {
-  if (!ctx.session) throw new TRPCError({ code: 'UNAUTHORIZED' })
-  return next({ ctx: { ...ctx, session: ctx.session } })
-})
+export const protectedProcedure = t.procedure
+  .use(logger)
+  .use(({ ctx, next }) => {
+    if (!ctx.session) throw new TRPCError({ code: 'UNAUTHORIZED' })
+    return next({ ctx: { ...ctx, session: ctx.session } })
+  })
