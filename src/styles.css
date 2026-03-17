@@ -39,6 +39,9 @@ body {
   --fc-success-light: #edfbf3;
   --fc-wrong: #e74c3c;
   --fc-wrong-light: #fef0ef;
+  --fc-blue-dark: #1e4a6e;
+  --fc-blue-tint: #f0f5fa;
+  --fc-text-hover: #333333;
   --fc-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
   --fc-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
   /* top bar height = button (top:16px + ~33px height) + breathing room */
@@ -675,7 +678,7 @@ body {
   margin-bottom: 6px;
 }
 .fc-progress-bar {
-  height: 5px;
+  height: 6px;
   background: var(--fc-border);
   border-radius: 99px;
   overflow: hidden;
@@ -842,7 +845,7 @@ body {
 }
 .fc-choice-btn:hover:not(:disabled) {
   border-color: var(--fc-blue);
-  background: #f0f5fa;
+  background: var(--fc-blue-tint);
 }
 .fc-choice-btn--skeleton {
   height: 58px;
@@ -915,13 +918,18 @@ body {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s,
+    transform 0.2s;
 }
 .fc-submit-btn:hover {
-  background: #1e4a6e;
+  background: var(--fc-blue-dark);
+  box-shadow: var(--fc-shadow);
+  transform: translateY(-1px);
 }
 .fc-submit-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
 }
 .fc-flip-btn {
@@ -993,8 +1001,8 @@ body {
   border-color: #f9d18c;
 }
 .fc-anki-good {
-  background: #edfbf3;
-  color: #27ae60;
+  background: var(--fc-success-light);
+  color: var(--fc-success);
   border-color: #a9dfbf;
 }
 .fc-anki-easy {
@@ -1028,7 +1036,7 @@ body {
   display: none;
 }
 .fc-next-btn:hover {
-  background: #333;
+  background: var(--fc-text-hover);
 }
 .fc-next-btn.visible {
   display: block;
@@ -1384,7 +1392,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px 14px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--fc-border);
   gap: 10px;
   flex-shrink: 0;
@@ -1406,7 +1414,7 @@ body {
 .fc-chat-card-tag {
   font-size: 0.85rem;
   color: var(--fc-blue);
-  background: #f0f5fa;
+  background: var(--fc-blue-tint);
   border: 1px solid #d0e0ef;
   border-radius: 8px;
   padding: 2px 9px;
@@ -1523,7 +1531,7 @@ body {
 .fc-chat-suggest-btn {
   background: var(--fc-surface);
   border: 1.5px solid var(--fc-border);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 9px 14px;
   font-family: 'Lora', serif;
   font-size: 0.83rem;
@@ -1544,7 +1552,7 @@ body {
 .fc-chat-input-row {
   display: flex;
   gap: 8px;
-  padding: 12px 16px 14px;
+  padding: 12px 16px;
   border-top: 1px solid var(--fc-border);
   flex-shrink: 0;
 }
@@ -1563,7 +1571,7 @@ body {
   line-height: 1.4;
 }
 .fc-chat-input:focus {
-  border-color: var(--fc-muted);
+  border-color: var(--fc-blue);
 }
 .fc-chat-send {
   background: var(--fc-text);
@@ -1582,10 +1590,10 @@ body {
   align-self: flex-end;
 }
 .fc-chat-send:hover {
-  background: #333;
+  background: var(--fc-text-hover);
 }
 .fc-chat-send:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: default;
 }
 .fc-chat-error {
@@ -1612,7 +1620,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px 6px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--fc-border);
   flex-shrink: 0;
 }
@@ -1635,9 +1643,9 @@ body {
 .fc-pronbox-input {
   flex: 1;
   border: 1.5px solid var(--fc-border);
-  border-radius: 10px;
-  padding: 8px 11px;
-  font-size: 0.93rem;
+  border-radius: 14px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
   font-family: inherit;
   background: var(--fc-bg);
   color: var(--fc-text);
@@ -1646,7 +1654,7 @@ body {
   outline: none;
 }
 .fc-pronbox-input:focus {
-  border-color: var(--fc-muted);
+  border-color: var(--fc-blue);
 }
 .fc-pronbox-input:disabled {
   opacity: 0.5;
@@ -1666,10 +1674,10 @@ body {
   transition: background 0.15s;
 }
 .fc-pronbox-play:hover:not(:disabled) {
-  background: #333;
+  background: var(--fc-text-hover);
 }
 .fc-pronbox-play:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: default;
 }
 .fc-pronbox-spinner {
@@ -1688,7 +1696,7 @@ body {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  padding: 4px 14px 10px;
+  padding: 8px 14px;
   border-top: 1px solid var(--fc-border);
 }
 .fc-pronbox-result-char {
@@ -1787,7 +1795,7 @@ body {
 }
 .fc-mastery-bar-fill {
   height: 100%;
-  background: #27ae60;
+  background: var(--fc-success);
   border-radius: 99px;
   transition: width 0.6s ease;
   min-width: 0;
@@ -1795,7 +1803,7 @@ body {
 .fc-mastery-pct {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #27ae60;
+  color: var(--fc-success);
   min-width: 30px;
   text-align: right;
 }
@@ -1828,7 +1836,7 @@ body {
   color: var(--fc-muted);
   line-height: 1;
 }
-.fc-mastery-chip--known .fc-mastery-chip-num { color: #27ae60; }
+.fc-mastery-chip--known .fc-mastery-chip-num { color: var(--fc-success); }
 .fc-mastery-chip--learning .fc-mastery-chip-num { color: #c9900a; }
 .fc-mastery-chip-label {
   font-size: 0.7rem;
@@ -2106,7 +2114,7 @@ body {
 
 .fc-profile-wordset-bar-fill {
   height: 100%;
-  background: #27ae60;
+  background: var(--fc-success);
   border-radius: 3px;
   transition: width 0.4s ease;
 }
