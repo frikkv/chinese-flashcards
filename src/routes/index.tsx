@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Volume2, User } from 'lucide-react'
+import { Volume2, User, Undo2, X } from 'lucide-react'
 import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
+import { cantoneseBasicsWords } from '../data/cantonese-vocabulary'
 import type { Word } from '../data/vocabulary'
+import type { Dialect } from '../lib/dialect'
+import { getRomanization, getRomanizationLabel } from '../lib/dialect'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { speakHanzi } from '#/lib/tts'
@@ -38,6 +41,7 @@ interface LastSession {
   hskLevels: Set<number>
   units: Set<number>
   customSetId?: string
+  dialect: Dialect
   settings: Settings
   soundSettings?: SoundSettings
   toneSessionSize?: 10 | 20 | 30
@@ -50,6 +54,7 @@ interface CustomWordSet {
   name: string
   words: Word[]
   wordCount: number
+  dialect: Dialect
   sourceFileName: string | null | undefined
   isFavorited: boolean
   createdAt: Date
@@ -64,7 +69,7 @@ interface AllTimeStats {
   sessions: number
 }
 
-type SoundAnswerFormat = 'char' | 'pinyin' | 'both'
+type SoundAnswerFormat = 'char' | 'pinyin' | 'both' | 'english'
 
 interface SoundSettings {
   answerFormat: SoundAnswerFormat
@@ -124,7 +129,8 @@ function applyToneToSyllable(syllable: string, tone: number): string {
   for (const v of ['a', 'e']) {
     if (syllable.includes(v)) return syllable.replace(v, TONE_VOWELS[v][tone])
   }
-  if (syllable.includes('ou')) return syllable.replace('o', TONE_VOWELS['o'][tone])
+  if (syllable.includes('ou'))
+    return syllable.replace('o', TONE_VOWELS['o'][tone])
   let lastIdx = -1
   let lastVowel = ''
   for (const v of ['i', 'o', 'u', 'ü']) {
@@ -185,12 +191,55 @@ function buildToneChoices(word: Word, vocab: Word[]): string[] {
   return shuffle([word.pinyin, ...Array.from(distractors).slice(0, 3)])
 }
 
-function buildQueue(vocab: Word[], mode: 1 | 2 | 3, size: number): QueueItem[] {
+function buildQueue(
+  vocab: Word[],
+  mode: 1 | 2 | 3,
+  size: number,
+  dialect: Dialect = 'mandarin',
+): QueueItem[] {
   const count = Math.min(
     size >= vocab.length ? vocab.length : size,
     vocab.length,
   )
   const words = shuffle(vocab).slice(0, count)
+
+  if (dialect === 'cantonese') {
+    // Cantonese mode 1: stages [1] — char+jyutping → english
+    if (mode === 1) {
+      return words.map((w) => ({ word: w, stage: 1 as const }))
+    }
+    // Cantonese mode 2: interleave stage 1 (char+jyutping→english) and stage 2 (english→recall)
+    // Uses same interleaving logic as Mandarin mode 3
+    const studiedSet = new Set<Word>()
+    const pendingRecalls: QueueItem[] = shuffle(words).map((w) => ({
+      word: w,
+      stage: 2 as const,
+    }))
+    const result: QueueItem[] = []
+    let pairsSinceLastRecall = 0
+    for (let i = 0; i < words.length; i++) {
+      const w = words[i]
+      result.push({ word: w, stage: 1 })
+      studiedSet.add(w)
+      pairsSinceLastRecall++
+      const eligibleIdx = pendingRecalls.findIndex(
+        (r) => studiedSet.has(r.word) && r.word !== w,
+      )
+      if (eligibleIdx !== -1) {
+        const remainingPairs = words.length - i - 1
+        const forceInsert = pendingRecalls.length > remainingPairs + 1
+        const insertProb =
+          0.5 + Math.min((pairsSinceLastRecall - 1) * 0.15, 0.35)
+        if (forceInsert || Math.random() < insertProb) {
+          const [recall] = pendingRecalls.splice(eligibleIdx, 1)
+          result.push(recall)
+          pairsSinceLastRecall = 0
+        }
+      }
+    }
+    result.push(...pendingRecalls)
+    return result
+  }
 
   if (mode !== 3) {
     const stages = (mode === 1 ? [1] : [1, 2]) as (1 | 2 | 3)[]
@@ -248,12 +297,35 @@ function getQuestionContent(
   word: Word,
   stage: 1 | 2 | 3,
   mode: 1 | 2 | 3,
+  dialect: Dialect = 'mandarin',
 ): CardContent {
+  const romanization = getRomanization(word, dialect)
+  const romanLabel = getRomanizationLabel(dialect)
+
+  if (dialect === 'cantonese') {
+    // Cantonese mode 1: char + jyutping → english
+    if (mode === 1 || stage === 1) {
+      return {
+        tag: 'What does this mean?',
+        char: word.char,
+        pinyin: romanization,
+      }
+    }
+    // Cantonese mode 2 stage 2: english → recall char + jyutping
+    return {
+      tag: 'Recall the character',
+      english: word.english,
+      englishLarge: true,
+      isRecall: true,
+    }
+  }
+
+  // Mandarin (unchanged)
   if (mode === 1 || stage === 2) {
     return { tag: 'What does this mean?', char: word.char, pinyin: word.pinyin }
   }
   if (stage === 1) {
-    return { tag: 'What is the pinyin?', char: word.char }
+    return { tag: `What is the ${romanLabel.toLowerCase()}?`, char: word.char }
   }
   // stage 3
   return {
@@ -268,12 +340,26 @@ function getAnswerContent(
   word: Word,
   stage: 1 | 2 | 3,
   mode: 1 | 2 | 3,
+  dialect: Dialect = 'mandarin',
 ): CardContent {
+  const romanization = getRomanization(word, dialect)
+  const romanLabel = getRomanizationLabel(dialect)
+
+  if (dialect === 'cantonese') {
+    // Cantonese mode 1: answer is english
+    if (mode === 1 || stage === 1) {
+      return { tag: 'English', english: word.english }
+    }
+    // Cantonese mode 2 stage 2: answer is char + jyutping
+    return { tag: 'Character', char: word.char, pinyin: romanization }
+  }
+
+  // Mandarin (unchanged)
   if (mode === 1 || stage === 2) {
     return { tag: 'English', english: word.english }
   }
   if (stage === 1) {
-    return { tag: 'Pinyin', pinyin: word.pinyin, pinyinLarge: true }
+    return { tag: romanLabel, pinyin: word.pinyin, pinyinLarge: true }
   }
   return { tag: 'Character', char: word.char, pinyin: word.pinyin }
 }
@@ -379,10 +465,22 @@ function AuthPage({ onSkip }: { onSkip: () => void }) {
           disabled={googleLoading || loading}
         >
           <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            <path
+              fill="#EA4335"
+              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+            />
+            <path
+              fill="#4285F4"
+              d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+            />
+            <path
+              fill="#34A853"
+              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+            />
           </svg>
           {googleLoading ? 'Redirecting…' : 'Continue with Google'}
         </button>
@@ -422,12 +520,16 @@ function AuthGate() {
   }
 
   if (!session && !skipped) return <AuthPage onSkip={() => setSkipped(true)} />
-  return <FlashcardsApp onSignIn={session ? undefined : () => setSkipped(false)} />
+  return (
+    <FlashcardsApp onSignIn={session ? undefined : () => setSkipped(false)} />
+  )
 }
 
 function wordSetDetailOf(session: LastSession | null): string {
   if (!session) return ''
-  if (session.wordSetKey === 'hsk') return [...session.hskLevels].sort().join(',')
+  if (session.wordSetKey === 'cantonese_basics') return ''
+  if (session.wordSetKey === 'hsk')
+    return [...session.hskLevels].sort().join(',')
   if (session.wordSetKey === 'custom') return session.customSetId ?? ''
   return [...session.units].sort((a, b) => a - b).join(',')
 }
@@ -447,7 +549,9 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     ...trpc.wordsets.list.queryOptions(),
     enabled: isSignedIn,
   })
-  const batchRecordCardsMutation = useMutation(trpc.progress.batchRecordCards.mutationOptions())
+  const batchRecordCardsMutation = useMutation(
+    trpc.progress.batchRecordCards.mutationOptions(),
+  )
   const cardResultsRef = useRef<{ cardId: string; correct: boolean }[]>([])
   const sessionSavedRef = useRef(false)
   const saveLastSessionMutation = useMutation(
@@ -473,6 +577,12 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   const handleAnkiRateRef = useRef<(correct: boolean) => void>(() => {})
 
   const [page, setPage] = useState<Page>('wordset')
+  const [activeDialect, _setActiveDialect] = useState<Dialect>('mandarin')
+  const activeDialectRef = useRef<Dialect>('mandarin')
+  function setActiveDialect(d: Dialect) {
+    activeDialectRef.current = d
+    _setActiveDialect(d)
+  }
 
   // Word set selection
   const [lastSession, setLastSession] = useState<LastSession | null>(null)
@@ -481,14 +591,16 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   useEffect(() => {
     const db = progressQuery.data?.lastSession
     if (!db || lastSession) return
-    if (!db.wordSetDetail) return  // no valid data yet
+    if (!db.wordSetDetail) return // no valid data yet
 
     let vocab: Word[] = []
     let hskLevels = new Set<number>()
     let units = new Set<number>()
     let customSetId: string | undefined
 
-    if (db.wordSetKey === 'hsk') {
+    if (db.wordSetKey === 'cantonese_basics') {
+      vocab = cantoneseBasicsWords
+    } else if (db.wordSetKey === 'hsk') {
       const detail = db.wordSetDetail.split(',').map(Number).filter(Boolean)
       if (detail.includes(1)) vocab = vocab.concat(hsk1Words)
       if (detail.includes(2)) vocab = vocab.concat(hsk2Words)
@@ -496,26 +608,37 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     } else if (db.wordSetKey === 'lang1511') {
       const detail = db.wordSetDetail.split(',').map(Number).filter(Boolean)
       const unitSet = new Set(detail)
-      vocab = lang1511Units.filter((u) => unitSet.has(u.unit)).flatMap((u) => u.words)
+      vocab = lang1511Units
+        .filter((u) => unitSet.has(u.unit))
+        .flatMap((u) => u.words)
       units = new Set(detail)
     } else if (db.wordSetKey === 'custom') {
       if (!customWordSetsQuery.data) return // wait for custom sets to load
-      const customSet = customWordSetsQuery.data.find((s) => s.id === db.wordSetDetail)
+      const customSet = customWordSetsQuery.data.find(
+        (s) => s.id === db.wordSetDetail,
+      )
       if (!customSet) return
       vocab = customSet.words as Word[]
       customSetId = customSet.id
     }
 
     if (vocab.length === 0) return
-    const size = ([10, 20, 30] as const).includes(db.sessionSize as 10 | 20 | 30)
+    const size = ([10, 20, 30] as const).includes(
+      db.sessionSize as 10 | 20 | 30,
+    )
       ? (db.sessionSize as 10 | 20 | 30)
       : 20
+    const dbDialect = (
+      db.dialect === 'cantonese' ? 'cantonese' : 'mandarin'
+    ) as Dialect
     const desc =
-      db.wordSetKey === 'hsk'
-        ? `HSK ${[...hskLevels].sort().join(' + ')} · ${vocab.length} words`
-        : db.wordSetKey === 'custom'
-          ? `${customWordSetsQuery.data?.find((s) => s.id === customSetId)?.name ?? 'Custom'} · ${vocab.length} words`
-          : `LANG 1511 · Units ${[...units].sort((a, b) => a - b).join(', ')}`
+      db.wordSetKey === 'cantonese_basics'
+        ? `Cantonese Basics · ${vocab.length} words`
+        : db.wordSetKey === 'hsk'
+          ? `HSK ${[...hskLevels].sort().join(' + ')} · ${vocab.length} words`
+          : db.wordSetKey === 'custom'
+            ? `${customWordSetsQuery.data?.find((s) => s.id === customSetId)?.name ?? 'Custom'} · ${vocab.length} words`
+            : `LANG 1511 · Units ${[...units].sort((a, b) => a - b).join(', ')}`
     const modeStr = db.mode
     let soundSettings: SoundSettings | undefined
     let toneSessionSize: 10 | 20 | 30 | undefined
@@ -545,6 +668,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       hskLevels,
       units,
       customSetId,
+      dialect: dbDialect,
       settings: reconstructedSettings,
       soundSettings,
       toneSessionSize,
@@ -661,7 +785,12 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     // Already in flight — nothing to do
     if (distractorPendingRef.current.has(key)) return
     const promise = prefetchDistractorsMutation
-      .mutateAsync({ vocabKey: key, char: word.char, pinyin: word.pinyin, correctAnswer: word.english })
+      .mutateAsync({
+        vocabKey: key,
+        char: word.char,
+        pinyin: word.pinyin,
+        correctAnswer: word.english,
+      })
       .then((r) => {
         distractorCacheRef.current.set(key, r.distractors)
         distractorPendingRef.current.delete(key)
@@ -682,8 +811,9 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     const s = settingsRef.current
     const v = vocabRef.current
 
-    const qContent = getQuestionContent(word, stage, mode)
-    const aContent = getAnswerContent(word, stage, mode)
+    const dialect = activeDialectRef.current
+    const qContent = getQuestionContent(word, stage, mode, dialect)
+    const aContent = getAnswerContent(word, stage, mode, dialect)
 
     if (currentFlipped) {
       setFaceB(qContent)
@@ -700,14 +830,18 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setTypeResult(null)
     setShowSelfRate(false)
 
-    if (stage === 3) {
+    // Cantonese mode 2 stage 2 = recall (like Mandarin stage 3)
+    const isSelfRate =
+      stage === 3 ||
+      (dialect === 'cantonese' && mode === 2 && stage === 2)
+    if (isSelfRate) {
       setCardMode('selfrate')
       setAnswerCorrect(word.char)
       setAnswerChoices([])
     } else {
       const target: 'english' | 'pinyin' =
-        mode === 1 || stage === 2 ? 'english' : 'pinyin'
-      const correct = target === 'english' ? word.english : word.pinyin
+        mode === 1 || stage === 2 || dialect === 'cantonese' ? 'english' : 'pinyin'
+      const correct = target === 'english' ? word.english : getRomanization(word, dialect)
       setAnswerTarget(target)
       setAnswerCorrect(correct)
 
@@ -727,24 +861,39 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
             // 2. Prefetch already in flight — wait for it
             const pending = distractorPendingRef.current.get(key)
             if (pending) {
-              pending.then((distractors) => {
-                if (currentDistractorFetchRef.current === key && !answeredRef.current) {
-                  setAnswerChoices(shuffle([word.english, ...distractors]))
-                  currentDistractorFetchRef.current = null
-                }
-              }).catch(() => {
-                fetchDistractorsMutation.mutate({ vocabKey: key, char: word.char, pinyin: word.pinyin, correctAnswer: word.english })
-              })
+              pending
+                .then((distractors) => {
+                  if (
+                    currentDistractorFetchRef.current === key &&
+                    !answeredRef.current
+                  ) {
+                    setAnswerChoices(shuffle([word.english, ...distractors]))
+                    currentDistractorFetchRef.current = null
+                  }
+                })
+                .catch(() => {
+                  fetchDistractorsMutation.mutate({
+                    vocabKey: key,
+                    char: word.char,
+                    pinyin: word.pinyin,
+                    correctAnswer: word.english,
+                  })
+                })
             } else {
               // 3. Nothing available — fire a fresh fetch
-              fetchDistractorsMutation.mutate({ vocabKey: key, char: word.char, pinyin: word.pinyin, correctAnswer: word.english })
+              fetchDistractorsMutation.mutate({
+                vocabKey: key,
+                char: word.char,
+                pinyin: word.pinyin,
+                correctAnswer: word.english,
+              })
             }
           }
         } else {
-          // Pinyin targets have no AI fetch — set choices immediately
+          // Pinyin/jyutping targets have no AI fetch — set choices immediately
           const distractors = shuffle(v.filter((w) => w !== word)).slice(0, 3)
           const options = shuffle([word, ...distractors])
-          setAnswerChoices(options.map((o) => o.pinyin))
+          setAnswerChoices(options.map((o) => getRomanization(o, dialect)))
           currentDistractorFetchRef.current = null
         }
       } else {
@@ -754,11 +903,18 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     }
   }
 
-  function handleStartStudy(v: Word[], mode: 1 | 2 | 3, s: Settings) {
+  function handleStartStudy(
+    v: Word[],
+    mode: 1 | 2 | 3,
+    s: Settings,
+    dialect: Dialect = 'mandarin',
+  ) {
+    setActiveDialect(dialect)
     const q = buildQueue(
       v,
       mode,
       s.sessionSize === 30 ? v.length : s.sessionSize,
+      dialect,
     )
     setQueue(q)
     queueRef.current = q
@@ -842,7 +998,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setNextBtnVisible(true)
     if (isSignedIn) {
       const word = queueRef.current[qIdx]?.word
-      if (word) cardResultsRef.current.push({ cardId: word.char, correct: isCorrect })
+      if (word)
+        cardResultsRef.current.push({ cardId: word.char, correct: isCorrect })
     }
   }
 
@@ -863,7 +1020,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setNextBtnVisible(true)
     if (isSignedIn) {
       const word = queueRef.current[qIdx]?.word
-      if (word) cardResultsRef.current.push({ cardId: word.char, correct: isCorrect })
+      if (word)
+        cardResultsRef.current.push({ cardId: word.char, correct: isCorrect })
     }
   }
 
@@ -882,12 +1040,17 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
         // Flush batched per-card results in a single call
         const results = cardResultsRef.current
         cardResultsRef.current = []
-        if (results.length > 0) batchRecordCardsMutation.mutate(results)
+        if (results.length > 0)
+          batchRecordCardsMutation.mutate({
+            dialect: activeDialect,
+            cards: results,
+          })
         saveSessionMutation.mutate({
           wordSetKey: lastSession?.wordSetKey ?? 'unknown',
           wordSetDetail: wordSetDetailOf(lastSession),
           mode: `study:${sessionModeRef.current}`,
           sessionSize: settingsRef.current.sessionSize,
+          dialect: activeDialect,
           correctCount: score,
           totalCount: totalAttempts,
         })
@@ -900,6 +1063,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       nextItem.word,
       nextItem.stage,
       sessionModeRef.current,
+      activeDialect,
     )
 
     // Pre-load next question on hidden face
@@ -916,7 +1080,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       for (let ahead = 0; ahead <= 1; ahead++) {
         const futureItem = currentQ[nextIdx + ahead]
         if (!futureItem || futureItem.stage === 3) continue
-        const target = mode === 1 || futureItem.stage === 2 ? 'english' : 'pinyin'
+        const target =
+          mode === 1 || futureItem.stage === 2 ? 'english' : 'pinyin'
         if (target === 'english') prefetchDistractors(futureItem.word)
       }
     }
@@ -946,14 +1111,24 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
 
       // Space reveals the card in selfrate mode
-      if (e.key === ' ' && cardModeRef.current === 'selfrate' && !showSelfRateRef.current && !answeredRef.current) {
+      if (
+        e.key === ' ' &&
+        cardModeRef.current === 'selfrate' &&
+        !showSelfRateRef.current &&
+        !answeredRef.current
+      ) {
         e.preventDefault()
         handleReveal()
         return
       }
 
       // 1=Again 2=Hard 3=Good 4=Easy
-      if (['1', '2', '3', '4'].includes(e.key) && cardModeRef.current === 'selfrate' && showSelfRateRef.current && !answeredRef.current) {
+      if (
+        ['1', '2', '3', '4'].includes(e.key) &&
+        cardModeRef.current === 'selfrate' &&
+        showSelfRateRef.current &&
+        !answeredRef.current
+      ) {
         e.preventDefault()
         handleAnkiRateRef.current(e.key === '3' || e.key === '4')
         return
@@ -983,13 +1158,15 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
           setSessionMode(mode)
           setSettings(s)
           if (session) setLastSession(session)
-          handleStartStudy(v, mode, s)
+          const dialect = session?.dialect ?? 'mandarin'
+          handleStartStudy(v, mode, s, dialect)
           if (isSignedIn && session) {
             saveLastSessionMutation.mutate({
               wordSetKey: session.wordSetKey,
               wordSetDetail: wordSetDetailOf(session),
               mode: `study:${mode}`,
               sessionSize: s.sessionSize,
+              dialect,
             })
           }
         }}
@@ -997,6 +1174,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
           setSoundVocab(v)
           setSoundSettings(ss)
           if (session) setLastSession(session)
+          const dialect = session?.dialect ?? 'mandarin'
+          setActiveDialect(dialect)
           setPage('sound')
           if (isSignedIn && session) {
             saveLastSessionMutation.mutate({
@@ -1004,6 +1183,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
               wordSetDetail: wordSetDetailOf(session),
               mode: 'sound',
               sessionSize: ss.sessionSize,
+              dialect,
             })
           }
         }}
@@ -1011,6 +1191,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
           setToneVocab(v)
           setToneSessionSize(sz)
           if (session) setLastSession(session)
+          const dialect = session?.dialect ?? 'mandarin'
+          setActiveDialect(dialect)
           setPage('tone')
           if (isSignedIn && session) {
             saveLastSessionMutation.mutate({
@@ -1018,6 +1200,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
               wordSetDetail: wordSetDetailOf(session),
               mode: 'tone',
               sessionSize: sz,
+              dialect,
             })
           }
         }}
@@ -1031,6 +1214,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       <SoundOnlyPage
         vocab={soundVocab}
         soundSettings={soundSettings}
+        dialect={activeDialect}
         onBack={() => setPage('wordset')}
         onSessionComplete={
           isSignedIn
@@ -1040,6 +1224,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
                   wordSetDetail: wordSetDetailOf(lastSession),
                   mode: 'sound',
                   sessionSize: soundSettings.sessionSize,
+                  dialect: activeDialect,
                   correctCount: stats.correct,
                   totalCount: stats.total,
                 })
@@ -1114,13 +1299,11 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
       {/* Study workspace: header spans full width, body is two-column grid */}
       <div className="fc-study-workspace">
-
         {/* Progress header — spans both columns */}
         <StudyHeader current={qIdx + 1} total={queue.length} pct={pct} score={score} />
 
         {/* Two-column grid body */}
         <div className="fc-study-body">
-
           {/* Stage dots (grid row 1, col 1) */}
           <StageDots stageCount={sessionMode} currentStage={currentItem?.stage ?? 0} />
 
@@ -1129,8 +1312,17 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
             {/* Card */}
             <div className="fc-card-scene">
               <div className={`fc-card-inner${isFlipped ? ' flipped' : ''}`}>
-                <CardFace content={faceA} hanzi={currentItem?.word.char ?? ''} />
-                <CardFace content={faceB} isBack hanzi={currentItem?.word.char ?? ''} />
+                <CardFace
+                  content={faceA}
+                  hanzi={currentItem?.word.char ?? ''}
+                  dialect={activeDialect}
+                />
+                <CardFace
+                  content={faceB}
+                  isBack
+                  hanzi={currentItem?.word.char ?? ''}
+                  dialect={activeDialect}
+                />
               </div>
             </div>
 
@@ -1147,7 +1339,9 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
                     </div>
                   ) : (
                     <div>
-                      <p className="fc-self-rate-label">How well did you know it?</p>
+                      <p className="fc-self-rate-label">
+                        How well did you know it?
+                      </p>
                       <div className="fc-anki-rating">
                         <button
                           className="fc-anki-btn fc-anki-again"
@@ -1190,7 +1384,10 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
               {cardMode === 'mc' && answerChoices.length === 0 && !answered && (
                 <div className="fc-choices fc-choices--loading">
                   {[0, 1, 2, 3].map((i) => (
-                    <div key={i} className="fc-choice-btn fc-choice-btn--skeleton" />
+                    <div
+                      key={i}
+                      className="fc-choice-btn fc-choice-btn--skeleton"
+                    />
                   ))}
                 </div>
               )}
@@ -1241,7 +1438,6 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
             <ChatPanel cardContext={chatCtx} inline />
             <PronunciationBox />
           </div>
-
         </div>
       </div>
     </div>
@@ -1313,7 +1509,10 @@ function ChatPanel({
     if (!userText || isLoading) return
     setInput('')
     setErrorMsg('')
-    const newMessages: ChatMessage[] = [...messages, { role: 'user', content: userText }]
+    const newMessages: ChatMessage[] = [
+      ...messages,
+      { role: 'user', content: userText },
+    ]
     setMessages(newMessages)
     setIsLoading(true)
     try {
@@ -1321,7 +1520,10 @@ function ChatPanel({
         messages: newMessages,
         cardContext,
       })
-      setMessages((prev) => [...prev, { role: 'assistant', content: result.content }])
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: result.content },
+      ])
     } catch (err: unknown) {
       const msg =
         err && typeof err === 'object' && 'message' in err
@@ -1346,14 +1548,20 @@ function ChatPanel({
     : CHAT_SUGGESTIONS_DEFAULT
 
   const panel = (
-    <div className={inline ? 'fc-chat-panel--inline' : 'fc-chat-panel--overlay'}>
+    <div
+      className={inline ? 'fc-chat-panel--inline' : 'fc-chat-panel--overlay'}
+    >
       {/* Header */}
       <div className="fc-chat-header">
         <div className="fc-chat-header-left">
           <span className="fc-chat-title">Ask AI</span>
         </div>
         {!inline && onClose && (
-          <button className="fc-chat-close" onClick={onClose} aria-label="Close chat">
+          <button
+            className="fc-chat-close"
+            onClick={onClose}
+            aria-label="Close chat"
+          >
             ✕
           </button>
         )}
@@ -1455,11 +1663,15 @@ function PronunciationBox() {
   const trpc = useTRPC()
   const [input, setInput] = useState('')
   const [translationsLeft, setTranslationsLeft] = useState(MAX_TRANSLATIONS)
-  const [result, setResult] = useState<{ char: string; pinyin: string } | null>(null)
+  const [result, setResult] = useState<{ char: string; pinyin: string } | null>(
+    null,
+  )
   const [isLoading, setIsLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
-  const translateMutation = useMutation(trpc.chat.translateToZh.mutationOptions())
+  const translateMutation = useMutation(
+    trpc.chat.translateToZh.mutationOptions(),
+  )
 
   const isChinese = isChineseText(input.trim())
   const translationBlocked = !isChinese && translationsLeft <= 0
@@ -1546,15 +1758,22 @@ function PronunciationBox() {
 function SoundOnlyPage({
   vocab,
   soundSettings,
+  dialect = 'mandarin',
   onBack,
   onSessionComplete,
 }: {
   vocab: Word[]
   soundSettings: SoundSettings
+  dialect?: Dialect
   onBack: () => void
   onSessionComplete?: (stats: { correct: number; total: number }) => void
 }) {
-  const { answerFormat, answerStyle, sessionSize, stageCount = 1 } = soundSettings
+  const {
+    answerFormat,
+    answerStyle,
+    sessionSize,
+    stageCount = 1,
+  } = soundSettings
 
   function buildQueue(): Word[] {
     const count =
@@ -1603,14 +1822,14 @@ function SoundOnlyPage({
         vocab.filter((w) => w.char !== word.char),
       ).slice(0, 3)
       setChoiceWords(shuffle([word, ...distractors]))
-      if (stageCount === 2) {
+      if (stageCount === 2 || answerFormat === 'english') {
         const engDistractors = shuffle(
           vocab.filter((w) => w.char !== word.char),
         ).slice(0, 3)
         setEnglishChoices(shuffle([word, ...engDistractors]))
       }
     }
-    const t = setTimeout(() => speakHanzi(word.char), 150)
+    const t = setTimeout(() => speakHanzi(word.char, dialect), 150)
     return () => clearTimeout(t)
   }, [idx, queue]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1622,7 +1841,7 @@ function SoundOnlyPage({
       if (e.code === 'Space') {
         e.preventDefault()
         const word = queue[idx]
-        if (word && !done && stage === 1) speakHanzi(word.char)
+        if (word && !done && stage === 1) speakHanzi(word.char, dialect)
         return
       }
       if (e.key !== 'Enter') return
@@ -1667,16 +1886,19 @@ function SoundOnlyPage({
     if (answered || !typeValue.trim() || !currentWord) return
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
+    const correctVal = answerFormat === 'english'
+      ? currentWord.english
+      : getRomanization(currentWord, dialect)
     const isCorrect =
-      normalizeAnswer(typeValue) === normalizeAnswer(currentWord.pinyin)
+      normalizeAnswer(typeValue) === normalizeAnswer(correctVal)
     setTypeResult(isCorrect ? 'correct' : 'wrong')
     if (isCorrect) setScore((p) => p + 1)
     setNextBtnVisible(true)
   }
 
   function handleNext() {
-    // In 2-stage mode, first Next press advances to stage 2
-    if (stageCount === 2 && stage === 1) {
+    // In 2-stage mode, first Next press advances to stage 2 (not for english format — single stage)
+    if (stageCount === 2 && stage === 1 && answerFormat !== 'english') {
       setStage(2)
       setAnswered(false)
       setNextBtnVisible(false)
@@ -1717,7 +1939,11 @@ function SoundOnlyPage({
   }
 
   const soundChatCtx: ChatCardContext | undefined = currentWord
-    ? { char: currentWord.char, pinyin: currentWord.pinyin, english: currentWord.english }
+    ? {
+        char: currentWord.char,
+        pinyin: currentWord.pinyin,
+        english: currentWord.english,
+      }
     : undefined
 
   return (
@@ -1743,13 +1969,15 @@ function SoundOnlyPage({
                       className="fc-sound-play-btn"
                       onClick={(e) => {
                         e.currentTarget.blur()
-                        currentWord && speakHanzi(currentWord.char)
+                        currentWord && speakHanzi(currentWord.char, dialect)
                       }}
                       aria-label="Replay pronunciation"
                     >
                       <Volume2 size={36} />
                     </button>
-                    <div className="fc-sound-hint">Tap or press Space to replay</div>
+                    <div className="fc-sound-hint">
+                      Tap or press Space to replay
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1761,8 +1989,15 @@ function SoundOnlyPage({
                 <div className="fc-card-inner">
                   <div className="fc-card-face">
                     <div className="fc-card-tag">What does this mean?</div>
-                    <div className="fc-card-char" style={charFontStyle(currentWord.char, true)}>{currentWord.char}</div>
-                    <div className="fc-card-pinyin">{currentWord.pinyin}</div>
+                    <div
+                      className="fc-card-char"
+                      style={charFontStyle(currentWord.char, true)}
+                    >
+                      {currentWord.char}
+                    </div>
+                    <div className="fc-card-pinyin">
+                      {getRomanization(currentWord, dialect)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1770,44 +2005,91 @@ function SoundOnlyPage({
 
             {/* Answers */}
             <div className="fc-answer-area">
-              {/* Stage 1 answers */}
-              {stage === 1 && answerStyle === 'multiple-choice' && choiceWords.length > 0 && (
-                <div
-                  className={`fc-choices${answerFormat === 'both' || (answerFormat === 'char' && answered) ? ' fc-choices--tall' : ''}`}
-                >
-                  {choiceWords.map((w) => (
-                    <button
-                      key={w.char}
-                      className={`fc-choice-btn${choiceStates[w.char] ? ` ${choiceStates[w.char]}` : ''}`}
-                      disabled={answered}
-                      onClick={() => handleChoice(w)}
-                    >
-                      {answerFormat === 'char' &&
-                        (answered ? (
-                          <span className="fc-sound-choice-both">
-                            <span className="fc-sound-choice-char">{w.char}</span>
-                            <span className="fc-sound-choice-pinyin">{w.pinyin}</span>
-                          </span>
-                        ) : (
-                          <span className="fc-sound-choice-char">{w.char}</span>
-                        ))}
-                      {answerFormat === 'pinyin' && w.pinyin}
-                      {answerFormat === 'both' && (
-                        <span className="fc-sound-choice-both">
-                          <span className="fc-sound-choice-char">{w.char}</span>
-                          <span className="fc-sound-choice-pinyin">{w.pinyin}</span>
-                        </span>
-                      )}
-                    </button>
-                  ))}
+              {/* Stage 1 answers — English format (audio → guess English) */}
+              {stage === 1 &&
+                answerFormat === 'english' &&
+                answerStyle === 'multiple-choice' &&
+                englishChoices.length > 0 && (
+                  <div className="fc-choices">
+                    {englishChoices.map((w) => (
+                      <button
+                        key={w.char}
+                        className={`fc-choice-btn${englishChoiceStates[w.char] ? ` ${englishChoiceStates[w.char]}` : ''}`}
+                        disabled={answered}
+                        onClick={() => handleEnglishChoice(w)}
+                      >
+                        {w.english}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+              {/* Reveal character + romanization after answering in English format */}
+              {answerFormat === 'english' && answered && currentWord && (
+                <div className="fc-sound-reveal">
+                  <span className="fc-sound-reveal-char">{currentWord.char}</span>
+                  <span className="fc-sound-reveal-pinyin">{getRomanization(currentWord, dialect)}</span>
                 </div>
               )}
+
+              {/* Stage 1 answers — char/pinyin/both formats */}
+              {stage === 1 &&
+                answerFormat !== 'english' &&
+                answerStyle === 'multiple-choice' &&
+                choiceWords.length > 0 && (
+                  <div
+                    className={`fc-choices${answerFormat === 'both' || (answerFormat === 'char' && answered) ? ' fc-choices--tall' : ''}`}
+                  >
+                    {choiceWords.map((w) => (
+                      <button
+                        key={w.char}
+                        className={`fc-choice-btn${choiceStates[w.char] ? ` ${choiceStates[w.char]}` : ''}`}
+                        disabled={answered}
+                        onClick={() => handleChoice(w)}
+                      >
+                        {answerFormat === 'char' &&
+                          (answered ? (
+                            <span className="fc-sound-choice-both">
+                              <span className="fc-sound-choice-char">
+                                {w.char}
+                              </span>
+                              <span className="fc-sound-choice-pinyin">
+                                {getRomanization(w, dialect)}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="fc-sound-choice-char">
+                              {w.char}
+                            </span>
+                          ))}
+                        {answerFormat === 'pinyin' &&
+                          getRomanization(w, dialect)}
+                        {answerFormat === 'both' && (
+                          <span className="fc-sound-choice-both">
+                            <span className="fc-sound-choice-char">
+                              {w.char}
+                            </span>
+                            <span className="fc-sound-choice-pinyin">
+                              {getRomanization(w, dialect)}
+                            </span>
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
               {stage === 1 && answerStyle === 'type' && (
                 <div className="fc-type-area">
                   <input
                     className={`fc-type-input${typeResult ? ` ${typeResult}` : ''}`}
-                    placeholder="Type pinyin (e.g. nǐ hǎo)..."
+                    placeholder={
+                      answerFormat === 'english'
+                        ? 'Type the English meaning...'
+                        : dialect === 'cantonese'
+                          ? 'Type jyutping (e.g. nei5 hou2)...'
+                          : 'Type pinyin (e.g. nǐ hǎo)...'
+                    }
                     value={typeValue}
                     disabled={answered}
                     onChange={(e) => setTypeValue(e.target.value)}
@@ -1818,14 +2100,16 @@ function SoundOnlyPage({
                   />
                   {answered && typeResult === 'wrong' && currentWord && (
                     <div className="fc-type-correct">
-                      Correct: {currentWord.pinyin} ({currentWord.char})
+                      Correct: {answerFormat === 'english'
+                        ? currentWord.english
+                        : `${getRomanization(currentWord, dialect)} (${currentWord.char})`}
                     </div>
                   )}
                   <button
                     className="fc-submit-btn"
                     disabled={answered}
                     onClick={handleTypeSubmit}
-            >
+                  >
                     Check
                   </button>
                 </div>
@@ -1976,7 +2260,11 @@ function ToneQuizPage({
   }
 
   const toneChatCtx: ChatCardContext | undefined = currentWord
-    ? { char: currentWord.char, pinyin: currentWord.pinyin, english: currentWord.english }
+    ? {
+        char: currentWord.char,
+        pinyin: currentWord.pinyin,
+        english: currentWord.english,
+      }
     : undefined
 
   return (
@@ -1998,10 +2286,15 @@ function ToneQuizPage({
                   <div className="fc-card-tag">Which tones are correct?</div>
                   {currentWord && (
                     <>
-                      <div className="fc-card-pinyin" style={{ fontSize: '2rem' }}>
+                      <div
+                        className="fc-card-pinyin"
+                        style={{ fontSize: '2rem' }}
+                      >
                         {stripTones(currentWord.pinyin)}
                       </div>
-                      <div className="fc-card-english">{currentWord.english}</div>
+                      <div className="fc-card-english">
+                        {currentWord.english}
+                      </div>
                       <button
                         className="fc-speaker-btn"
                         style={{ marginTop: 8 }}
@@ -2013,7 +2306,9 @@ function ToneQuizPage({
                       >
                         <Volume2 size={16} />
                       </button>
-                      <div className="fc-sound-hint">Tap or press Space to replay</div>
+                      <div className="fc-sound-hint">
+                        Tap or press Space to replay
+                      </div>
                     </>
                   )}
                 </div>
@@ -2064,18 +2359,25 @@ function InlineLeaderboard() {
     <div className="fc-ws-lb">
       <div className="fc-ws-lb-header">
         <span className="fc-ws-lb-title">This Week</span>
-        <Link to="/leaderboard" className="fc-ws-lb-fulllink">Full view →</Link>
+        <Link to="/leaderboard" className="fc-ws-lb-fulllink">
+          Full view →
+        </Link>
       </div>
 
       {lbQuery.isPending && (
         <div className="fc-ws-lb-loading">
-          <div className="fc-auth-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
+          <div
+            className="fc-auth-spinner"
+            style={{ width: 20, height: 20, borderWidth: 2 }}
+          />
         </div>
       )}
 
       {!lbQuery.isPending && !hasFriends && (
         <div className="fc-ws-lb-empty">
-          <Link to="/friends" className="fc-ws-lb-add-link">Add friends to compete →</Link>
+          <Link to="/friends" className="fc-ws-lb-add-link">
+            Add friends to compete →
+          </Link>
         </div>
       )}
 
@@ -2083,23 +2385,32 @@ function InlineLeaderboard() {
         <div className="fc-ws-lb-empty">No activity yet this week.</div>
       )}
 
-      {!lbQuery.isPending && entries.map((entry) => (
-        <div
-          key={entry.userId}
-          className={`fc-ws-lb-row${entry.isMe ? ' fc-ws-lb-row--me' : ''}`}
-        >
-          <span className="fc-ws-lb-rank">
-            {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`}
-          </span>
-          <span className="fc-ws-lb-name">
-            {entry.displayName}
-            {entry.isMe && <span className="fc-ws-lb-you">you</span>}
-          </span>
-          <span className={`fc-ws-lb-xp${entry.xp === 0 ? ' fc-ws-lb-xp--zero' : ''}`}>
-            {entry.xp > 0 ? `${entry.xp} XP` : '—'}
-          </span>
-        </div>
-      ))}
+      {!lbQuery.isPending &&
+        entries.map((entry) => (
+          <div
+            key={entry.userId}
+            className={`fc-ws-lb-row${entry.isMe ? ' fc-ws-lb-row--me' : ''}`}
+          >
+            <span className="fc-ws-lb-rank">
+              {entry.rank === 1
+                ? '🥇'
+                : entry.rank === 2
+                  ? '🥈'
+                  : entry.rank === 3
+                    ? '🥉'
+                    : `#${entry.rank}`}
+            </span>
+            <span className="fc-ws-lb-name">
+              {entry.displayName}
+              {entry.isMe && <span className="fc-ws-lb-you">you</span>}
+            </span>
+            <span
+              className={`fc-ws-lb-xp${entry.xp === 0 ? ' fc-ws-lb-xp--zero' : ''}`}
+            >
+              {entry.xp > 0 ? `${entry.xp} XP` : '—'}
+            </span>
+          </div>
+        ))}
     </div>
   )
 }
@@ -2146,12 +2457,27 @@ function WordSetPage({
   const saveMutation = useMutation(trpc.wordsets.save.mutationOptions())
   const updateMutation = useMutation(trpc.wordsets.update.mutationOptions())
   const deleteMutation = useMutation(trpc.wordsets.delete.mutationOptions())
-  const toggleFavoriteMutation = useMutation(trpc.wordsets.toggleFavorite.mutationOptions())
+  const replaceWordsMutation = useMutation(
+    trpc.wordsets.replaceWords.mutationOptions(),
+  )
+  const aiEditMutation = useMutation(trpc.wordsets.aiEdit.mutationOptions())
+  const toggleFavoriteMutation = useMutation(
+    trpc.wordsets.toggleFavorite.mutationOptions(),
+  )
 
   // Modal state
   const [showCustomModal, setShowCustomModal] = useState(false)
   // null = list view; 'upload' | 'paste' = create/edit view
-  const [createMode, setCreateMode] = useState<'upload' | 'paste' | null>(null)
+  const [createMode, setCreateMode] = useState<
+    'upload' | 'paste' | 'describe' | 'edit' | null
+  >(null)
+  const [describePrompt, setDescribePrompt] = useState('')
+  const [describeWordCount, setDescribeWordCount] = useState(0)
+  const [editWords, setEditWords] = useState<Word[]>([])
+  const [aiEditInstruction, setAiEditInstruction] = useState('')
+  const [editWordsBeforeAi, setEditWordsBeforeAi] = useState<Word[] | null>(null)
+  const [addedChars, setAddedChars] = useState<Set<string>>(new Set())
+  const [removedWords, setRemovedWords] = useState<Word[]>([])
   // Create/edit form state
   const [uploadFiles, setUploadFiles] = useState<File[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
@@ -2160,15 +2486,21 @@ function WordSetPage({
   const [previewWords, setPreviewWords] = useState<Word[] | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   // Which word set is highlighted inside the modal (for the shared action bar)
-  const [selectedModalSetId, setSelectedModalSetId] = useState<string | null>(null)
+  const [selectedModalSetId, setSelectedModalSetId] = useState<string | null>(
+    null,
+  )
   // Set ID being edited (add more words); null = create new
   const [editTargetSetId, setEditTargetSetId] = useState<string | null>(null)
   const [selectedWordSet, setSelectedWordSet] = useState<string | null>(null)
+  const [tempStudyWords, setTempStudyWords] = useState<Word[] | null>(null)
   const [selectedUnits, setSelectedUnits] = useState<Set<number>>(new Set())
   const [selectedHSKLevels, setSelectedHSKLevels] = useState<Set<number>>(
     new Set(),
   )
   const [settings, setSettings] = useState<Settings>(initialSettings)
+  const [dialectTab, setDialectTab] = useState<Dialect>(
+    () => (localStorage.getItem('preferred-dialect') as Dialect | null) ?? 'mandarin',
+  )
   const [soundOnlyOpen, setSoundOnlyOpen] = useState(false)
   const [soundSettings, setSoundSettings] = useState<SoundSettings>({
     answerFormat: 'char',
@@ -2178,6 +2510,7 @@ function WordSetPage({
   const [toneQuizOpen, setToneQuizOpen] = useState(false)
 
   const dashVocab = useMemo(() => {
+    if (selectedWordSet === 'cantonese_basics') return cantoneseBasicsWords
     if (selectedWordSet === 'hsk') {
       if (selectedHSKLevels.size > 0) {
         let v: Word[] = []
@@ -2195,13 +2528,34 @@ function WordSetPage({
       }
       return lang1511Units.flatMap((u) => u.words)
     }
+    if (selectedWordSet === 'temp' && tempStudyWords) return tempStudyWords
     if (selectedWordSet === 'last' && lastSession) return lastSession.vocab
     if (selectedWordSet?.startsWith('custom:')) {
       const id = selectedWordSet.slice(7)
       return customWordSets.find((s) => s.id === id)?.words ?? null
     }
     return null
-  }, [selectedWordSet, selectedHSKLevels, selectedUnits, lastSession, customWordSets])
+  }, [
+    selectedWordSet,
+    selectedHSKLevels,
+    selectedUnits,
+    lastSession,
+    customWordSets,
+    tempStudyWords,
+  ])
+
+  // Derive the active dialect from the selected word set
+  const activeDialect: Dialect = useMemo(() => {
+    if (selectedWordSet === 'cantonese_basics') return 'cantonese'
+    if (selectedWordSet === 'temp') return dialectTab
+    if (selectedWordSet?.startsWith('custom:')) {
+      const id = selectedWordSet.slice(7)
+      const set = customWordSets.find((s) => s.id === id)
+      return set?.dialect === 'cantonese' ? 'cantonese' : 'mandarin'
+    }
+    if (selectedWordSet === 'last' && lastSession) return lastSession.dialect
+    return 'mandarin'
+  }, [selectedWordSet, customWordSets, lastSession])
 
   // Drag-select state
   const mouseIsDownRef = useRef(false)
@@ -2250,6 +2604,7 @@ function WordSetPage({
   }, [])
 
   function buildSelectedVocab(): Word[] | null {
+    if (selectedWordSet === 'cantonese_basics') return cantoneseBasicsWords
     if (selectedWordSet === 'hsk') {
       if (selectedHSKLevels.size === 0) {
         alert('Please select at least one HSK level.')
@@ -2283,6 +2638,8 @@ function WordSetPage({
   }
 
   function buildSessionDesc(v: Word[]): string {
+    if (selectedWordSet === 'cantonese_basics')
+      return `Cantonese Basics · ${v.length} words`
     if (selectedWordSet === 'hsk')
       return `HSK ${[...selectedHSKLevels].sort().join(' + ')} · ${v.length} words`
     if (selectedWordSet?.startsWith('custom:')) {
@@ -2300,6 +2657,7 @@ function WordSetPage({
       hskLevels: new Set(selectedHSKLevels),
       units: new Set(selectedUnits),
       customSetId: isCustom ? selectedWordSet!.slice(7) : undefined,
+      dialect: activeDialect,
       settings: { ...settings },
       vocab: v,
       desc: buildSessionDesc(v),
@@ -2322,7 +2680,10 @@ function WordSetPage({
   function handleStartToneQuiz() {
     const v = buildSelectedVocab()
     if (!v) return
-    const session: LastSession = { ...buildSessionBase(v), toneSessionSize: settings.sessionSize }
+    const session: LastSession = {
+      ...buildSessionBase(v),
+      toneSessionSize: settings.sessionSize,
+    }
     onStartToneQuiz(v, settings.sessionSize, session)
   }
 
@@ -2330,18 +2691,18 @@ function WordSetPage({
     if (selectedWordSet === 'last') {
       if (!lastSession) return
       if (lastSession.soundSettings) {
-        onStartSoundOnly(lastSession.vocab, lastSession.soundSettings)
+        onStartSoundOnly(lastSession.vocab, lastSession.soundSettings, lastSession)
         return
       }
       if (lastSession.toneSessionSize !== undefined) {
-        onStartToneQuiz(lastSession.vocab, lastSession.toneSessionSize)
+        onStartToneQuiz(lastSession.vocab, lastSession.toneSessionSize, lastSession)
         return
       }
       onContinue(
         lastSession.vocab,
         lastSession.settings.defaultMode,
         lastSession.settings,
-        null,
+        lastSession,
       )
       return
     }
@@ -2359,9 +2720,19 @@ function WordSetPage({
     setPreviewWords(null)
     try {
       let allWords: Word[] = []
-      if (createMode === 'paste') {
+      if (createMode === 'describe') {
+        if (!describePrompt.trim()) return
+        const result = (await generateMutation.mutateAsync({
+          promptText: describePrompt.trim(),
+          wordCount: describeWordCount || undefined,
+          dialect: dialectTab,
+        })) as { words: Word[] }
+        allWords = result.words
+      } else if (createMode === 'paste') {
         if (!pasteText.trim()) return
-        const result = await generateMutation.mutateAsync({ pasteText }) as { words: Word[] }
+        const result = (await generateMutation.mutateAsync({ pasteText })) as {
+          words: Word[]
+        }
         allWords = result.words
       } else {
         if (uploadFiles.length === 0) return
@@ -2374,18 +2745,23 @@ function WordSetPage({
             binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
           }
           const base64 = btoa(binary)
-          const result = await generateMutation.mutateAsync({
+          const result = (await generateMutation.mutateAsync({
             fileName: file.name,
             fileBase64: base64,
-          }) as { words: Word[] }
+          })) as { words: Word[] }
           // Merge, deduplicating by char
           const seen = new Set(allWords.map((w) => w.char))
-          allWords = [...allWords, ...result.words.filter((w) => !seen.has(w.char))]
+          allWords = [
+            ...allWords,
+            ...result.words.filter((w) => !seen.has(w.char)),
+          ]
         }
       }
       setPreviewWords(allWords)
       if (!uploadName) {
-        if (createMode === 'paste') {
+        if (createMode === 'describe') {
+          setUploadName(describePrompt.trim().slice(0, 50))
+        } else if (createMode === 'paste') {
           setUploadName('My Word Set')
         } else if (uploadFiles.length === 1) {
           setUploadName(uploadFiles[0]!.name.replace(/\.[^.]+$/, ''))
@@ -2404,26 +2780,39 @@ function WordSetPage({
     try {
       if (editTargetSetId) {
         // Edit mode: merge new words into existing set
-        await updateMutation.mutateAsync({ id: editTargetSetId, additionalWords: previewWords })
-        await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
+        await updateMutation.mutateAsync({
+          id: editTargetSetId,
+          additionalWords: previewWords,
+        })
+        await queryClient.invalidateQueries({
+          queryKey: trpc.wordsets.list.queryKey(),
+        })
         setCreateMode(null)
         setUploadFiles([])
         setPasteText('')
+        setDescribePrompt('')
+        setDescribeWordCount(0)
         setUploadName('')
         setPreviewWords(null)
         setEditTargetSetId(null)
       } else {
-        const { id } = await saveMutation.mutateAsync({
+        const { id } = (await saveMutation.mutateAsync({
           name: uploadName.trim(),
           words: previewWords,
-          sourceFileName: createMode === 'upload' ? uploadFiles[0]?.name : undefined,
-        }) as { id: string }
-        await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
+          sourceFileName:
+            createMode === 'upload' ? uploadFiles[0]?.name : undefined,
+          dialect: dialectTab,
+        })) as { id: string }
+        await queryClient.invalidateQueries({
+          queryKey: trpc.wordsets.list.queryKey(),
+        })
         setSelectedWordSet(`custom:${id}`)
         setShowCustomModal(false)
         setCreateMode(null)
         setUploadFiles([])
         setPasteText('')
+        setDescribePrompt('')
+        setDescribeWordCount(0)
         setUploadName('')
         setPreviewWords(null)
       }
@@ -2435,25 +2824,85 @@ function WordSetPage({
   async function handleDeleteCustomSet(id: string) {
     if (!confirm('Delete this word set?')) return
     await deleteMutation.mutateAsync({ id })
-    await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
+    await queryClient.invalidateQueries({
+      queryKey: trpc.wordsets.list.queryKey(),
+    })
     if (selectedWordSet === `custom:${id}`) setSelectedWordSet(null)
     if (selectedModalSetId === id) setSelectedModalSetId(null)
   }
 
   async function handleToggleFavorite(id: string) {
     await toggleFavoriteMutation.mutateAsync({ id })
-    await queryClient.invalidateQueries({ queryKey: trpc.wordsets.list.queryKey() })
+    await queryClient.invalidateQueries({
+      queryKey: trpc.wordsets.list.queryKey(),
+    })
   }
 
   function handleEditSet(id: string) {
     const set = customWordSets.find((s) => s.id === id)
+    if (!set) return
     setEditTargetSetId(id)
-    setUploadName(set?.name ?? '')
-    setCreateMode('upload')
-    setPreviewWords(null)
+    setUploadName(set.name)
+    setEditWords([...set.words])
+    setCreateMode('edit')
     setUploadError(null)
+    setAiEditInstruction('')
+    setEditWordsBeforeAi(null)
+    setAddedChars(new Set())
+    setRemovedWords([])
   }
 
+  async function handleAiEdit() {
+    if (!aiEditInstruction.trim() || editWords.length === 0) return
+    setUploadError(null)
+    try {
+      const before = [...editWords]
+      const result = (await aiEditMutation.mutateAsync({
+        words: editWords,
+        instruction: aiEditInstruction.trim(),
+        dialect: dialectTab,
+      })) as { words: Word[] }
+      const newWords = result.words
+      const beforeChars = new Set(before.map((w) => w.char))
+      const afterChars = new Set(newWords.map((w) => w.char))
+      setAddedChars(new Set([...afterChars].filter((c) => !beforeChars.has(c))))
+      setRemovedWords(before.filter((w) => !afterChars.has(w.char)))
+      setEditWordsBeforeAi(before)
+      setEditWords(newWords)
+      setAiEditInstruction('')
+    } catch (e: unknown) {
+      setUploadError(e instanceof Error ? e.message : 'AI edit failed.')
+    }
+  }
+
+  function handleUndoAiEdit() {
+    if (!editWordsBeforeAi) return
+    setEditWords(editWordsBeforeAi)
+    setEditWordsBeforeAi(null)
+    setAddedChars(new Set())
+    setRemovedWords([])
+  }
+
+  async function handleSaveEdit() {
+    if (!editTargetSetId || editWords.length === 0) return
+    setUploadError(null)
+    try {
+      await replaceWordsMutation.mutateAsync({
+        id: editTargetSetId,
+        words: editWords,
+      })
+      await queryClient.invalidateQueries({
+        queryKey: trpc.wordsets.list.queryKey(),
+      })
+      setCreateMode(null)
+      setEditWords([])
+      setEditTargetSetId(null)
+      setAiEditInstruction('')
+      setUploadError(null)
+    } catch (e: unknown) {
+      setUploadError(e instanceof Error ? e.message : 'Save failed.')
+    }
+  }
 
   return (
     <div className="fc-app">
@@ -2463,401 +2912,582 @@ function WordSetPage({
             Sign in
           </button>
         ) : (
-          <Link to="/profile" className="fc-profile-icon-btn" aria-label="Profile">
+          <Link
+            to="/profile"
+            className="fc-profile-icon-btn"
+            aria-label="Profile"
+          >
             <User size={18} strokeWidth={1.8} />
           </Link>
         )}
       </div>
       <div className="fc-wordset-container">
         <div className="fc-ws-outer-row">
-        <div className="fc-ws-layout">
-          {/* Left: brand + stats + word set buttons */}
-          <div className="fc-ws-left">
-            <div className="fc-ws-brand">
-              <div className="fc-ws-brand-title">学中文</div>
-              <div className="fc-ws-brand-sub">Choose a word set to study.</div>
-            </div>
-            {allTimeStats.sessions > 0 && (
-              <div className="fc-stats-bar fc-stats-bar--compact">
-                <div className="fc-stat">
-                  <div className="fc-stat-num">{allTimeStats.studied}</div>
-                  <div className="fc-stat-label">Words Studied</div>
-                </div>
-                <div className="fc-stat">
-                  <div className="fc-stat-num">{allTimeStats.correct}</div>
-                  <div className="fc-stat-label">Correct</div>
-                </div>
-                <div className="fc-stat">
-                  <div className="fc-stat-num">{allTimeStats.sessions}</div>
-                  <div className="fc-stat-label">Sessions</div>
+          <div className="fc-ws-layout">
+            {/* Left: brand + stats + word set buttons */}
+            <div className="fc-ws-left">
+              <div className="fc-ws-brand">
+                <div className="fc-ws-brand-title">学中文</div>
+                <div className="fc-ws-brand-sub">
+                  Choose a word set to study.
                 </div>
               </div>
-            )}
-          <div className="fc-ws-list">
-            <button
-              className={`fc-ws-btn${selectedWordSet === 'hsk' ? ' selected' : ''}`}
-              onClick={() =>
-                setSelectedWordSet(selectedWordSet === 'hsk' ? null : 'hsk')
-              }
-            >
-              <span className="fc-ws-char">汉语</span>
-              <span className="fc-ws-label">HSK</span>
-              <span className="fc-ws-count">2 levels · 300 words</span>
-              <span className="fc-ws-desc">Official HSK vocabulary</span>
-            </button>
-            <button
-              className={`fc-ws-btn${selectedWordSet === 'lang1511' ? ' selected' : ''}`}
-              onClick={() =>
-                setSelectedWordSet(
-                  selectedWordSet === 'lang1511' ? null : 'lang1511',
-                )
-              }
-            >
-              <span className="fc-ws-char">课程</span>
-              <span className="fc-ws-label">LANG 1511</span>
-              <span className="fc-ws-count">10 units · 123 words</span>
-              <span className="fc-ws-desc">University course vocabulary</span>
-            </button>
-            {lastSession && (
-              <button
-                className={`fc-ws-btn${selectedWordSet === 'last' ? ' selected' : ''}`}
-                onClick={() =>
-                  setSelectedWordSet(selectedWordSet === 'last' ? null : 'last')
-                }
-              >
-                <span className="fc-ws-char">上次</span>
-                <span className="fc-ws-label">Last Session</span>
-                <span className="fc-ws-count">{lastSession.desc}</span>
-                <span className="fc-ws-desc">Continue where you left off</span>
-              </button>
-            )}
-
-            {isSignedIn && (
-              <button
-                className={`fc-ws-btn${selectedWordSet?.startsWith('custom:') ? ' selected' : ''}`}
-                onClick={() => setShowCustomModal(true)}
-              >
-                <span className="fc-ws-char">自定</span>
-                <span className="fc-ws-label">My Word Sets</span>
-                <span className="fc-ws-count">
-                  {customWordSets.length === 0
-                    ? 'No sets yet'
-                    : `${customWordSets.length} set${customWordSets.length !== 1 ? 's' : ''}`}
-                </span>
-                <span className="fc-ws-desc">
-                  {selectedWordSet?.startsWith('custom:')
-                    ? customWordSets.find((s) => s.id === selectedWordSet.slice(7))?.name ?? 'Custom set selected'
-                    : 'Upload a document or paste text'}
-                </span>
-              </button>
-            )}
-          </div>{/* end fc-ws-list */}
-          </div>{/* end fc-ws-left */}
-
-          {/* Right: scrollable content area + pinned start button */}
-          <div className="fc-ws-right">
-            <div className="fc-ws-right-scroll">
-            {selectedWordSet ? (
-              <>
-                {/* Progress dashboard — always at top, updates with selection */}
-                {dashVocab && cardProgress && (
-                  <WordSetDashboard vocab={dashVocab} cardProgress={cardProgress} />
+              {allTimeStats.sessions > 0 && (
+                <div className="fc-stats-bar fc-stats-bar--compact">
+                  <div className="fc-stat">
+                    <div className="fc-stat-num">{allTimeStats.studied}</div>
+                    <div className="fc-stat-label">Words Studied</div>
+                  </div>
+                  <div className="fc-stat">
+                    <div className="fc-stat-num">{allTimeStats.correct}</div>
+                    <div className="fc-stat-label">Correct</div>
+                  </div>
+                  <div className="fc-stat">
+                    <div className="fc-stat-num">{allTimeStats.sessions}</div>
+                    <div className="fc-stat-label">Sessions</div>
+                  </div>
+                </div>
+              )}
+              <div className="fc-dialect-tabs">
+                <button
+                  className={`fc-dialect-tab${dialectTab === 'mandarin' ? ' active' : ''}`}
+                  onClick={() => {
+                    setDialectTab('mandarin')
+                    localStorage.setItem('preferred-dialect', 'mandarin')
+                    setSelectedWordSet(null)
+                  }}
+                >
+                  <span className="fc-dialect-tab-flag">🇨🇳</span> Mandarin
+                </button>
+                <button
+                  className={`fc-dialect-tab${dialectTab === 'cantonese' ? ' active' : ''}`}
+                  onClick={() => {
+                    setDialectTab('cantonese')
+                    localStorage.setItem('preferred-dialect', 'cantonese')
+                    setSelectedWordSet(null)
+                    if (settings.defaultMode === 3)
+                      setSettings((s) => ({ ...s, defaultMode: 1 }))
+                    setToneQuizOpen(false)
+                  }}
+                >
+                  <span className="fc-dialect-tab-flag">🇭🇰</span> Cantonese
+                </button>
+              </div>
+              <div className="fc-ws-list">
+                {dialectTab === 'mandarin' && (
+                  <>
+                    <button
+                      className={`fc-ws-btn${selectedWordSet === 'hsk' ? ' selected' : ''}`}
+                      onClick={() =>
+                        setSelectedWordSet(selectedWordSet === 'hsk' ? null : 'hsk')
+                      }
+                    >
+                      <span className="fc-ws-char">汉语</span>
+                      <span className="fc-ws-label">HSK</span>
+                      <span className="fc-ws-count">2 levels · 300 words</span>
+                      <span className="fc-ws-desc">Official HSK vocabulary</span>
+                    </button>
+                    <button
+                      className={`fc-ws-btn${selectedWordSet === 'lang1511' ? ' selected' : ''}`}
+                      onClick={() =>
+                        setSelectedWordSet(
+                          selectedWordSet === 'lang1511' ? null : 'lang1511',
+                        )
+                      }
+                    >
+                      <span className="fc-ws-char">课程</span>
+                      <span className="fc-ws-label">LANG 1511</span>
+                      <span className="fc-ws-count">10 units · 123 words</span>
+                      <span className="fc-ws-desc">
+                        University course vocabulary
+                      </span>
+                    </button>
+                  </>
+                )}
+                {dialectTab === 'cantonese' && (
+                  <button
+                    className={`fc-ws-btn${selectedWordSet === 'cantonese_basics' ? ' selected' : ''}`}
+                    onClick={() =>
+                      setSelectedWordSet(
+                        selectedWordSet === 'cantonese_basics'
+                          ? null
+                          : 'cantonese_basics',
+                      )
+                    }
+                  >
+                    <span className="fc-ws-char">粵語</span>
+                    <span className="fc-ws-label">Cantonese Basics</span>
+                    <span className="fc-ws-count">
+                      {cantoneseBasicsWords.length} words
+                    </span>
+                    <span className="fc-ws-desc">
+                      Common Cantonese words &amp; phrases
+                    </span>
+                  </button>
+                )}
+                {lastSession && lastSession.dialect === dialectTab && (
+                  <button
+                    className={`fc-ws-btn${selectedWordSet === 'last' ? ' selected' : ''}`}
+                    onClick={() =>
+                      setSelectedWordSet(
+                        selectedWordSet === 'last' ? null : 'last',
+                      )
+                    }
+                  >
+                    <span className="fc-ws-char">上次</span>
+                    <span className="fc-ws-label">Last Session</span>
+                    <span className="fc-ws-count">{lastSession.desc}</span>
+                    <span className="fc-ws-desc">
+                      Continue where you left off
+                    </span>
+                  </button>
                 )}
 
-                {/* Session Settings */}
-                {selectedWordSet !== 'last' && !selectedWordSet.startsWith('custom') && (
-                  <div className="fc-settings-wrap">
-                    {/* HSK level picker */}
-                    {selectedWordSet === 'hsk' && (
-                      <div className="fc-settings-section">
-                        <div className="fc-settings-label">HSK Level</div>
-                        <div className="fc-picker-grid">
-                          {[1, 2].map((level, idx) => (
-                            <button
-                              key={level}
-                              className={`fc-unit-btn${selectedHSKLevels.has(level) ? ' selected' : ''}`}
-                              onMouseDown={() => {
-                                mouseIsDownRef.current = true
-                                isDraggingRef.current = false
-                                dragAnchorIdxRef.current = idx
-                                dragTypeRef.current = 'hsk'
-                                dragActionRef.current = selectedHSKLevels.has(level)
-                                  ? 'deselect'
-                                  : 'select'
-                                preDragHSKRef.current = new Set(selectedHSKLevels)
-                              }}
-                              onMouseEnter={() => {
-                                if (
-                                  !mouseIsDownRef.current ||
-                                  dragTypeRef.current !== 'hsk' ||
-                                  dragAnchorIdxRef.current === null
-                                )
-                                  return
-                                isDraggingRef.current = true
-                                const hskLevels = [1, 2]
-                                const [lo, hi] = [
-                                  Math.min(dragAnchorIdxRef.current, idx),
-                                  Math.max(dragAnchorIdxRef.current, idx),
-                                ]
-                                const next = new Set(preDragHSKRef.current)
-                                hskLevels.slice(lo, hi + 1).forEach((l) => {
-                                  if (dragActionRef.current === 'select') next.add(l)
-                                  else next.delete(l)
-                                })
-                                setSelectedHSKLevels(next)
-                              }}
-                            >
-                              HSK {level}{' '}
-                              <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                                (150)
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                {isSignedIn && (
+                  <button
+                    className={`fc-ws-btn${selectedWordSet?.startsWith('custom:') ? ' selected' : ''}`}
+                    onClick={() => setShowCustomModal(true)}
+                  >
+                    <span className="fc-ws-char">自定</span>
+                    <span className="fc-ws-label">My Word Sets</span>
+                    <span className="fc-ws-count">
+                      {customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).length === 0
+                        ? 'No sets yet'
+                        : `${customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).length} set${customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).length !== 1 ? 's' : ''}`}
+                    </span>
+                    <span className="fc-ws-desc">
+                      {selectedWordSet?.startsWith('custom:')
+                        ? (customWordSets.find(
+                            (s) => s.id === selectedWordSet.slice(7),
+                          )?.name ?? 'Custom set selected')
+                        : 'Upload a document or paste text'}
+                    </span>
+                  </button>
+                )}
+              </div>
+              {/* end fc-ws-list */}
+            </div>
+            {/* end fc-ws-left */}
+
+            {/* Right: scrollable content area + pinned start button */}
+            <div className="fc-ws-right">
+              <div className="fc-ws-right-scroll">
+                {selectedWordSet ? (
+                  <>
+                    {/* Progress dashboard — always at top, updates with selection */}
+                    {dashVocab && cardProgress && (
+                      <WordSetDashboard
+                        vocab={dashVocab}
+                        cardProgress={cardProgress}
+                      />
                     )}
 
-                    {/* LANG 1511 unit picker */}
-                    {selectedWordSet === 'lang1511' && (
-                      <div className="fc-settings-section">
-                        <div className="fc-settings-label">Units</div>
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                          <button
-                            className="fc-util-btn"
-                            onClick={() =>
-                              setSelectedUnits(new Set(lang1511Units.map((u) => u.unit)))
-                            }
-                          >
-                            Select all
-                          </button>
-                          <button
-                            className="fc-util-btn"
-                            onClick={() => setSelectedUnits(new Set())}
-                          >
-                            Clear
-                          </button>
-                        </div>
-                        <div className="fc-picker-grid fc-picker-grid--units">
-                          {lang1511Units.map((u, idx) => (
-                            <button
-                              key={u.unit}
-                              className={`fc-unit-btn${selectedUnits.has(u.unit) ? ' selected' : ''}`}
-                              onMouseDown={() => {
-                                mouseIsDownRef.current = true
-                                isDraggingRef.current = false
-                                dragAnchorIdxRef.current = idx
-                                dragTypeRef.current = 'unit'
-                                dragActionRef.current = selectedUnits.has(u.unit)
-                                  ? 'deselect'
-                                  : 'select'
-                                preDragUnitsRef.current = new Set(selectedUnits)
-                              }}
-                              onMouseEnter={() => {
-                                if (
-                                  !mouseIsDownRef.current ||
-                                  dragTypeRef.current !== 'unit' ||
-                                  dragAnchorIdxRef.current === null
-                                )
-                                  return
-                                isDraggingRef.current = true
-                                const [lo, hi] = [
-                                  Math.min(dragAnchorIdxRef.current, idx),
-                                  Math.max(dragAnchorIdxRef.current, idx),
-                                ]
-                                const next = new Set(preDragUnitsRef.current)
-                                lang1511Units.slice(lo, hi + 1).forEach((unit) => {
-                                  if (dragActionRef.current === 'select')
-                                    next.add(unit.unit)
-                                  else next.delete(unit.unit)
-                                })
-                                setSelectedUnits(next)
-                              }}
-                            >
-                              Unit {u.unit}{' '}
-                              <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                                ({u.words.length})
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    {/* Session Settings */}
+                    {selectedWordSet !== 'last' &&
+                      !selectedWordSet.startsWith('custom') &&
+                      selectedWordSet !== null && (
+                        <div className="fc-settings-wrap">
+                          {/* HSK level picker */}
+                          {selectedWordSet === 'hsk' && (
+                            <div className="fc-settings-section">
+                              <div className="fc-settings-label">HSK Level</div>
+                              <div className="fc-picker-grid">
+                                {[1, 2].map((level, idx) => (
+                                  <button
+                                    key={level}
+                                    className={`fc-unit-btn${selectedHSKLevels.has(level) ? ' selected' : ''}`}
+                                    onMouseDown={() => {
+                                      mouseIsDownRef.current = true
+                                      isDraggingRef.current = false
+                                      dragAnchorIdxRef.current = idx
+                                      dragTypeRef.current = 'hsk'
+                                      dragActionRef.current =
+                                        selectedHSKLevels.has(level)
+                                          ? 'deselect'
+                                          : 'select'
+                                      preDragHSKRef.current = new Set(
+                                        selectedHSKLevels,
+                                      )
+                                    }}
+                                    onMouseEnter={() => {
+                                      if (
+                                        !mouseIsDownRef.current ||
+                                        dragTypeRef.current !== 'hsk' ||
+                                        dragAnchorIdxRef.current === null
+                                      )
+                                        return
+                                      isDraggingRef.current = true
+                                      const hskLevels = [1, 2]
+                                      const [lo, hi] = [
+                                        Math.min(dragAnchorIdxRef.current, idx),
+                                        Math.max(dragAnchorIdxRef.current, idx),
+                                      ]
+                                      const next = new Set(
+                                        preDragHSKRef.current,
+                                      )
+                                      hskLevels
+                                        .slice(lo, hi + 1)
+                                        .forEach((l) => {
+                                          if (
+                                            dragActionRef.current === 'select'
+                                          )
+                                            next.add(l)
+                                          else next.delete(l)
+                                        })
+                                      setSelectedHSKLevels(next)
+                                    }}
+                                  >
+                                    HSK {level}{' '}
+                                    <span
+                                      style={{
+                                        fontSize: '0.75rem',
+                                        opacity: 0.6,
+                                      }}
+                                    >
+                                      (150)
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
-                    {(selectedWordSet === 'hsk' || selectedWordSet === 'lang1511') && (
-                      <div className="fc-settings-divider" />
-                    )}
-                    <div
-                      className="fc-settings-section"
-                      style={toneQuizOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
-                    >
-                      <div className="fc-settings-label">Study Mode</div>
-                      <div className="fc-settings-options">
-                        {([1, 2, 3] as const).map((m) => (
-                          <button
-                            key={m}
-                            className={`fc-setting-opt${settings.defaultMode === m ? ' selected' : ''}`}
-                            disabled={soundOnlyOpen && m === 3}
-                            style={soundOnlyOpen && m === 3 ? { opacity: 0.35 } : undefined}
-                            onClick={() =>
-                              setSettings((s) => ({ ...s, defaultMode: m }))
+                          {/* LANG 1511 unit picker */}
+                          {selectedWordSet === 'lang1511' && (
+                            <div className="fc-settings-section">
+                              <div className="fc-settings-label">Units</div>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  gap: 8,
+                                  marginBottom: 10,
+                                }}
+                              >
+                                <button
+                                  className="fc-util-btn"
+                                  onClick={() =>
+                                    setSelectedUnits(
+                                      new Set(lang1511Units.map((u) => u.unit)),
+                                    )
+                                  }
+                                >
+                                  Select all
+                                </button>
+                                <button
+                                  className="fc-util-btn"
+                                  onClick={() => setSelectedUnits(new Set())}
+                                >
+                                  Clear
+                                </button>
+                              </div>
+                              <div className="fc-picker-grid fc-picker-grid--units">
+                                {lang1511Units.map((u, idx) => (
+                                  <button
+                                    key={u.unit}
+                                    className={`fc-unit-btn${selectedUnits.has(u.unit) ? ' selected' : ''}`}
+                                    onMouseDown={() => {
+                                      mouseIsDownRef.current = true
+                                      isDraggingRef.current = false
+                                      dragAnchorIdxRef.current = idx
+                                      dragTypeRef.current = 'unit'
+                                      dragActionRef.current = selectedUnits.has(
+                                        u.unit,
+                                      )
+                                        ? 'deselect'
+                                        : 'select'
+                                      preDragUnitsRef.current = new Set(
+                                        selectedUnits,
+                                      )
+                                    }}
+                                    onMouseEnter={() => {
+                                      if (
+                                        !mouseIsDownRef.current ||
+                                        dragTypeRef.current !== 'unit' ||
+                                        dragAnchorIdxRef.current === null
+                                      )
+                                        return
+                                      isDraggingRef.current = true
+                                      const [lo, hi] = [
+                                        Math.min(dragAnchorIdxRef.current, idx),
+                                        Math.max(dragAnchorIdxRef.current, idx),
+                                      ]
+                                      const next = new Set(
+                                        preDragUnitsRef.current,
+                                      )
+                                      lang1511Units
+                                        .slice(lo, hi + 1)
+                                        .forEach((unit) => {
+                                          if (
+                                            dragActionRef.current === 'select'
+                                          )
+                                            next.add(unit.unit)
+                                          else next.delete(unit.unit)
+                                        })
+                                      setSelectedUnits(next)
+                                    }}
+                                  >
+                                    Unit {u.unit}{' '}
+                                    <span
+                                      style={{
+                                        fontSize: '0.75rem',
+                                        opacity: 0.6,
+                                      }}
+                                    >
+                                      ({u.words.length})
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {(selectedWordSet === 'hsk' ||
+                            selectedWordSet === 'lang1511') && (
+                            <div className="fc-settings-divider" />
+                          )}
+                          <div
+                            className="fc-settings-section"
+                            style={
+                              toneQuizOpen
+                                ? { opacity: 0.35, pointerEvents: 'none' }
+                                : undefined
                             }
                           >
-                            {m} Card{m > 1 ? 's' : ''}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="fc-settings-mode-hint">
-                        {settings.defaultMode === 1 &&
-                          'See character + pinyin, guess the English meaning.'}
-                        {settings.defaultMode === 2 &&
-                          'Guess pinyin from character, then guess English.'}
-                        {settings.defaultMode === 3 &&
-                          'Full cycle: character → pinyin → English → recall character.'}
-                      </p>
-                    </div>
-                    <div className="fc-settings-section">
-                      <div className="fc-settings-label">Answer Style</div>
-                      <div className="fc-settings-options">
-                        {(
-                          [
-                            ['multiple-choice', 'Multiple Choice'],
-                            ['type', 'Type Answer'],
-                          ] as const
-                        ).map(([val, label]) => (
-                          <button
-                            key={val}
-                            className={`fc-setting-opt${settings.answerStyle === val ? ' selected' : ''}`}
-                            onClick={() =>
-                              setSettings((s) => ({ ...s, answerStyle: val }))
+                            <div className="fc-settings-label">Study Mode</div>
+                            <div className="fc-settings-options">
+                              {([1, 2, 3] as const)
+                                .filter(
+                                  (m) =>
+                                    !(activeDialect === 'cantonese' && m === 3),
+                                )
+                                .map((m) => (
+                                  <button
+                                    key={m}
+                                    className={`fc-setting-opt${settings.defaultMode === m ? ' selected' : ''}`}
+                                    disabled={soundOnlyOpen && m === 3}
+                                    style={
+                                      soundOnlyOpen && m === 3
+                                        ? { opacity: 0.35 }
+                                        : undefined
+                                    }
+                                    onClick={() =>
+                                      setSettings((s) => ({
+                                        ...s,
+                                        defaultMode: m,
+                                      }))
+                                    }
+                                  >
+                                    {m} Card{m > 1 ? 's' : ''}
+                                  </button>
+                                ))}
+                            </div>
+                            <p className="fc-settings-mode-hint">
+                              {settings.defaultMode === 1 &&
+                                activeDialect === 'cantonese' &&
+                                'See character + jyutping, guess the English meaning.'}
+                              {settings.defaultMode === 1 &&
+                                activeDialect !== 'cantonese' &&
+                                'See character + pinyin, guess the English meaning.'}
+                              {settings.defaultMode === 2 &&
+                                activeDialect === 'cantonese' &&
+                                'Char + jyutping → English, then English → recall character.'}
+                              {settings.defaultMode === 2 &&
+                                activeDialect !== 'cantonese' &&
+                                'Guess pinyin from character, then guess English.'}
+                              {settings.defaultMode === 3 &&
+                                'Full cycle: character → pinyin → English → recall character.'}
+                            </p>
+                          </div>
+                          <div className="fc-settings-section">
+                            <div className="fc-settings-label">
+                              Answer Style
+                            </div>
+                            <div className="fc-settings-options">
+                              {(
+                                [
+                                  ['multiple-choice', 'Multiple Choice'],
+                                  ['type', 'Type Answer'],
+                                ] as const
+                              ).map(([val, label]) => (
+                                <button
+                                  key={val}
+                                  className={`fc-setting-opt${settings.answerStyle === val ? ' selected' : ''}`}
+                                  onClick={() =>
+                                    setSettings((s) => ({
+                                      ...s,
+                                      answerStyle: val,
+                                    }))
+                                  }
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="fc-settings-section">
+                            <div className="fc-settings-label">
+                              Cards per Session
+                            </div>
+                            <div className="fc-settings-options">
+                              {(
+                                [
+                                  [10, '10'],
+                                  [20, '20'],
+                                  [30, 'All'],
+                                ] as const
+                              ).map(([val, label]) => (
+                                <button
+                                  key={val}
+                                  className={`fc-setting-opt${settings.sessionSize === val ? ' selected' : ''}`}
+                                  onClick={() =>
+                                    setSettings((s) => ({
+                                      ...s,
+                                      sessionSize: val,
+                                    }))
+                                  }
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div
+                            className="fc-settings-section"
+                            style={
+                              toneQuizOpen
+                                ? { opacity: 0.35, pointerEvents: 'none' }
+                                : undefined
                             }
                           >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="fc-settings-section">
-                      <div className="fc-settings-label">Cards per Session</div>
-                      <div className="fc-settings-options">
-                        {(
-                          [
-                            [10, '10'],
-                            [20, '20'],
-                            [30, 'All'],
-                          ] as const
-                        ).map(([val, label]) => (
-                          <button
-                            key={val}
-                            className={`fc-setting-opt${settings.sessionSize === val ? ' selected' : ''}`}
-                            onClick={() =>
-                              setSettings((s) => ({ ...s, sessionSize: val }))
-                            }
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div
-                      className="fc-settings-section"
-                      style={toneQuizOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
-                    >
-                      <div className="fc-settings-label">Sound Only Mode</div>
-                      <div className="fc-settings-options">
-                        <button
-                          className={`fc-setting-opt${!soundOnlyOpen ? ' selected' : ''}`}
-                          onClick={() => setSoundOnlyOpen(false)}
-                        >
-                          Off
-                        </button>
-                        {(
-                          [
-                            ['char', 'Characters'],
-                            ['pinyin', 'Pinyin'],
-                            ['both', 'Char + Pinyin'],
-                          ] as const
-                        ).map(([val, label]) => (
-                          <button
-                            key={val}
-                            className={`fc-setting-opt${soundOnlyOpen && soundSettings.answerFormat === val ? ' selected' : ''}`}
-                            onClick={() => {
-                              setSoundOnlyOpen(true)
-                              setToneQuizOpen(false)
-                              setSoundSettings((s) => ({ ...s, answerFormat: val }))
-                              if (settings.defaultMode === 3)
-                                setSettings((s) => ({ ...s, defaultMode: 1 }))
-                            }}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div
-                      className="fc-settings-section"
-                      style={soundOnlyOpen ? { opacity: 0.35, pointerEvents: 'none' } : undefined}
-                    >
-                      <div className="fc-settings-label">Tone Quiz Mode</div>
-                      <div className="fc-settings-options">
-                        <button
-                          className={`fc-setting-opt${!toneQuizOpen ? ' selected' : ''}`}
-                          onClick={() => setToneQuizOpen(false)}
-                        >
-                          Off
-                        </button>
-                        <button
-                          className={`fc-setting-opt${toneQuizOpen ? ' selected' : ''}`}
-                          onClick={() => {
-                            setToneQuizOpen(true)
-                            setSoundOnlyOpen(false)
-                          }}
-                        >
-                          On
-                        </button>
-                      </div>
-                      {toneQuizOpen && (
-                        <p className="fc-settings-mode-hint">
-                          See pinyin without tones + English, pick the correct tones.
-                        </p>
+                            <div className="fc-settings-label">
+                              Sound Only Mode
+                            </div>
+                            <div className="fc-settings-options">
+                              <button
+                                className={`fc-setting-opt${!soundOnlyOpen ? ' selected' : ''}`}
+                                onClick={() => setSoundOnlyOpen(false)}
+                              >
+                                Off
+                              </button>
+                              {(
+                                [
+                                  ['char', 'Characters'],
+                                  [
+                                    'pinyin',
+                                    activeDialect === 'cantonese'
+                                      ? 'Jyutping'
+                                      : 'Pinyin',
+                                  ],
+                                  [
+                                    'both',
+                                    activeDialect === 'cantonese'
+                                      ? 'Char + Jyutping'
+                                      : 'Char + Pinyin',
+                                  ],
+                                  ...(activeDialect === 'cantonese'
+                                    ? ([['english', 'English']] as const)
+                                    : []),
+                                ] as [string, string][]
+                              ).map(([val, label]) => (
+                                <button
+                                  key={val}
+                                  className={`fc-setting-opt${soundOnlyOpen && soundSettings.answerFormat === val ? ' selected' : ''}`}
+                                  onClick={() => {
+                                    setSoundOnlyOpen(true)
+                                    setToneQuizOpen(false)
+                                    setSoundSettings((s) => ({
+                                      ...s,
+                                      answerFormat: val as SoundAnswerFormat,
+                                    }))
+                                    if (settings.defaultMode === 3)
+                                      setSettings((s) => ({
+                                        ...s,
+                                        defaultMode: 1,
+                                      }))
+                                  }}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          {activeDialect !== 'cantonese' && (
+                            <div
+                              className="fc-settings-section"
+                              style={
+                                soundOnlyOpen
+                                  ? { opacity: 0.35, pointerEvents: 'none' }
+                                  : undefined
+                              }
+                            >
+                              <div className="fc-settings-label">
+                                Tone Quiz Mode
+                              </div>
+                              <div className="fc-settings-options">
+                                <button
+                                  className={`fc-setting-opt${!toneQuizOpen ? ' selected' : ''}`}
+                                  onClick={() => setToneQuizOpen(false)}
+                                >
+                                  Off
+                                </button>
+                                <button
+                                  className={`fc-setting-opt${toneQuizOpen ? ' selected' : ''}`}
+                                  onClick={() => {
+                                    setToneQuizOpen(true)
+                                    setSoundOnlyOpen(false)
+                                  }}
+                                >
+                                  On
+                                </button>
+                              </div>
+                              {toneQuizOpen && (
+                                <p className="fc-settings-mode-hint">
+                                  See pinyin without tones + English, pick the
+                                  correct tones.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
-                    </div>
+                  </>
+                ) : (
+                  <div className="fc-ws-right-empty">
+                    ← Select a word set to get started
                   </div>
                 )}
-              </>
-            ) : (
-              <div className="fc-ws-right-empty">
-                ← Select a word set to get started
+
+                <button
+                  className="fc-start-btn"
+                  onClick={
+                    soundOnlyOpen
+                      ? handleStartSoundOnly
+                      : toneQuizOpen
+                        ? handleStartToneQuiz
+                        : handleGoNext
+                  }
+                >
+                  {soundOnlyOpen ||
+                  (selectedWordSet === 'last' && lastSession?.soundSettings)
+                    ? 'Start Sound Only →'
+                    : toneQuizOpen ||
+                        (selectedWordSet === 'last' &&
+                          lastSession?.toneSessionSize !== undefined)
+                      ? 'Start Tone Quiz →'
+                      : selectedWordSet === 'last'
+                        ? 'Start →'
+                        : 'Start Studying →'}
+                </button>
               </div>
-            )}
-
-            <button
-              className="fc-start-btn"
-              onClick={
-                soundOnlyOpen
-                  ? handleStartSoundOnly
-                  : toneQuizOpen
-                    ? handleStartToneQuiz
-                    : handleGoNext
-              }
-            >
-              {soundOnlyOpen ||
-              (selectedWordSet === 'last' && lastSession?.soundSettings)
-                ? 'Start Sound Only →'
-                : toneQuizOpen ||
-                    (selectedWordSet === 'last' &&
-                      lastSession?.toneSessionSize !== undefined)
-                  ? 'Start Tone Quiz →'
-                  : selectedWordSet === 'last'
-                    ? 'Start →'
-                    : 'Start Studying →'}
-            </button>
-            </div>{/* end fc-ws-right-scroll */}
+              {/* end fc-ws-right-scroll */}
+            </div>
           </div>
-        </div>{/* end fc-ws-layout */}
+          {/* end fc-ws-layout */}
 
-        {/* Leaderboard sidebar — visible on large screens only, sibling to layout */}
-        {isSignedIn && <InlineLeaderboard />}
-        </div>{/* end fc-ws-outer-row */}
+          {/* Leaderboard sidebar — visible on large screens only, sibling to layout */}
+          {isSignedIn && <InlineLeaderboard />}
+        </div>
+        {/* end fc-ws-outer-row */}
       </div>
 
       {/* ── CUSTOM WORD SETS MODAL ────────────────────────────────── */}
@@ -2889,15 +3519,19 @@ function WordSetPage({
                     setUploadName('')
                     setEditTargetSetId(null)
                     setSelectedModalSetId(null)
+                    setEditWords([])
+                    setAiEditInstruction('')
                   }}
                 >
                   ← Back
                 </button>
               )}
               <span className="fc-modal-title">
-                {createMode !== null
-                  ? editTargetSetId ? 'Add More Words' : 'Create Word Set'
-                  : 'My Word Sets'}
+                {createMode === 'edit'
+                  ? 'Edit Word Set'
+                  : createMode !== null
+                    ? 'Create Word Set'
+                    : 'My Word Sets'}
               </span>
               <button
                 className="fc-modal-close"
@@ -2919,21 +3553,31 @@ function WordSetPage({
             {createMode === null && (
               <>
                 <div className="fc-modal-scroll-body">
-                  {customWordSets.length === 0 ? (
-                    <p className="fc-modal-empty">No word sets yet. Create one below.</p>
+                  {customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).length === 0 ? (
+                    <p className="fc-modal-empty">
+                      No word sets yet. Create one below.
+                    </p>
                   ) : (
                     <div className="fc-modal-set-list">
-                      {customWordSets.map((cs) => (
+                      {customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).map((cs) => (
                         <button
                           key={cs.id}
                           className={`fc-modal-set-row${selectedModalSetId === cs.id ? ' selected' : ''}`}
-                          onClick={() => setSelectedModalSetId(selectedModalSetId === cs.id ? null : cs.id)}
+                          onClick={() =>
+                            setSelectedModalSetId(
+                              selectedModalSetId === cs.id ? null : cs.id,
+                            )
+                          }
                         >
                           <span className="fc-modal-set-name">
-                            {cs.isFavorited && <span className="fc-modal-set-star">★ </span>}
+                            {cs.isFavorited && (
+                              <span className="fc-modal-set-star">★ </span>
+                            )}
                             {cs.name}
                           </span>
-                          <span className="fc-modal-set-meta">{cs.wordCount} words</span>
+                          <span className="fc-modal-set-meta">
+                            {cs.wordCount} words
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -2957,27 +3601,41 @@ function WordSetPage({
                   <button
                     className="fc-modal-action-edit"
                     disabled={!selectedModalSetId}
-                    onClick={() => { if (selectedModalSetId) handleEditSet(selectedModalSetId) }}
+                    onClick={() => {
+                      if (selectedModalSetId) handleEditSet(selectedModalSetId)
+                    }}
                   >
                     Edit
                   </button>
                   <button
                     className={`fc-modal-action-fav${customWordSets.find((cs) => cs.id === selectedModalSetId)?.isFavorited ? ' active' : ''}`}
                     disabled={!selectedModalSetId}
-                    onClick={() => { if (selectedModalSetId) void handleToggleFavorite(selectedModalSetId) }}
+                    onClick={() => {
+                      if (selectedModalSetId)
+                        void handleToggleFavorite(selectedModalSetId)
+                    }}
                   >
-                    {customWordSets.find((cs) => cs.id === selectedModalSetId)?.isFavorited ? 'Unfavorite' : 'Favorite'}
+                    {customWordSets.find((cs) => cs.id === selectedModalSetId)
+                      ?.isFavorited
+                      ? 'Unfavorite'
+                      : 'Favorite'}
                   </button>
                   <button
                     className="fc-modal-action-delete"
                     disabled={!selectedModalSetId}
-                    onClick={() => { if (selectedModalSetId) void handleDeleteCustomSet(selectedModalSetId) }}
+                    onClick={() => {
+                      if (selectedModalSetId)
+                        void handleDeleteCustomSet(selectedModalSetId)
+                    }}
                   >
                     Delete
                   </button>
                   <button
                     className="fc-modal-action-new"
-                    onClick={() => { setCreateMode('upload'); setSelectedModalSetId(null) }}
+                    onClick={() => {
+                      setCreateMode('upload')
+                      setSelectedModalSetId(null)
+                    }}
                   >
                     New+
                   </button>
@@ -2985,8 +3643,139 @@ function WordSetPage({
               </>
             )}
 
-            {/* CREATE / EDIT VIEW */}
-            {createMode !== null && (
+            {/* EDIT VIEW */}
+            {createMode === 'edit' && (
+              <div className="fc-modal-body">
+                <div className="fc-edit-word-list">
+                  {editWords.map((w, i) => (
+                    <div
+                      key={i}
+                      className={`fc-edit-word-row${addedChars.has(w.char) ? ' fc-edit-word-added' : ''}`}
+                    >
+                      <span className="fc-upload-preview-char">{w.char}</span>
+                      <span className="fc-upload-preview-pinyin">
+                        {dialectTab === 'cantonese' ? w.jyutping : w.pinyin}
+                      </span>
+                      <span className="fc-upload-preview-english">
+                        {w.english}
+                      </span>
+                      {addedChars.has(w.char) ? (
+                        <button
+                          className="fc-edit-word-undo"
+                          title="Undo addition"
+                          onClick={() => {
+                            setEditWords((prev) => prev.filter((_, j) => j !== i))
+                            setAddedChars((prev) => {
+                              const next = new Set(prev)
+                              next.delete(w.char)
+                              return next
+                            })
+                          }}
+                        >
+                          <Undo2 size={14} />
+                        </button>
+                      ) : (
+                        <button
+                          className="fc-edit-word-remove"
+                          onClick={() =>
+                            setEditWords((prev) =>
+                              prev.filter((_, j) => j !== i),
+                            )
+                          }
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {removedWords.map((w, i) => (
+                    <div
+                      key={`removed-${i}`}
+                      className="fc-edit-word-row fc-edit-word-removed"
+                    >
+                      <span className="fc-upload-preview-char">{w.char}</span>
+                      <span className="fc-upload-preview-pinyin">
+                        {dialectTab === 'cantonese' ? w.jyutping : w.pinyin}
+                      </span>
+                      <span className="fc-upload-preview-english">
+                        {w.english}
+                      </span>
+                      <button
+                        className="fc-edit-word-undo"
+                        title="Undo removal"
+                        onClick={() => {
+                          setEditWords((prev) => [...prev, w])
+                          setRemovedWords((prev) => prev.filter((_, j) => j !== i))
+                        }}
+                      >
+                        <Undo2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="fc-edit-word-count-row">
+                  <span className="fc-edit-word-count">
+                    {editWords.length} word{editWords.length !== 1 ? 's' : ''}
+                    {addedChars.size > 0 && (
+                      <span className="fc-edit-diff-summary">
+                        {' '}(+{addedChars.size} added, -{removedWords.length} removed)
+                      </span>
+                    )}
+                  </span>
+                  {editWordsBeforeAi && (
+                    <button
+                      className="fc-edit-undo-btn"
+                      onClick={handleUndoAiEdit}
+                    >
+                      Undo
+                    </button>
+                  )}
+                </div>
+
+                <div className="fc-ai-edit-section">
+                  <label className="fc-upload-label">
+                    Describe changes
+                    <textarea
+                      className="fc-upload-paste-input"
+                      placeholder="e.g. remove all food-related words, add more time expressions, replace formal words with casual ones..."
+                      value={aiEditInstruction}
+                      onChange={(e) => setAiEditInstruction(e.target.value)}
+                      rows={2}
+                      maxLength={500}
+                    />
+                  </label>
+                  <button
+                    className="fc-upload-generate-btn"
+                    disabled={
+                      aiEditMutation.isPending || !aiEditInstruction.trim()
+                    }
+                    onClick={() => void handleAiEdit()}
+                  >
+                    {aiEditMutation.isPending
+                      ? 'Applying changes…'
+                      : 'Apply with AI →'}
+                  </button>
+                </div>
+
+                {uploadError && (
+                  <p className="fc-upload-error">{uploadError}</p>
+                )}
+
+                <button
+                  className="fc-upload-save-btn"
+                  disabled={
+                    editWords.length === 0 ||
+                    replaceWordsMutation.isPending
+                  }
+                  onClick={() => void handleSaveEdit()}
+                >
+                  {replaceWordsMutation.isPending ? 'Saving…' : 'Save Changes →'}
+                </button>
+              </div>
+            )}
+
+            {/* CREATE VIEW */}
+            {createMode !== null && createMode !== 'edit' && (
               <div className="fc-modal-body">
                 {/* Input mode toggle */}
                 <div className="fc-modal-mode-tabs">
@@ -3010,19 +3799,32 @@ function WordSetPage({
                   >
                     Paste Text
                   </button>
+                  <button
+                    className={`fc-modal-tab${createMode === 'describe' ? ' active' : ''}`}
+                    onClick={() => {
+                      setCreateMode('describe')
+                      setPreviewWords(null)
+                      setUploadError(null)
+                    }}
+                  >
+                    AI Generate
+                  </button>
                 </div>
 
                 {/* Upload / drag-and-drop input */}
                 {createMode === 'upload' && !previewWords && (
                   <div
                     className={`fc-upload-dropzone${isDragOver ? ' drag-over' : ''}`}
-                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setIsDragOver(true)
+                    }}
                     onDragLeave={() => setIsDragOver(false)}
                     onDrop={(e) => {
                       e.preventDefault()
                       setIsDragOver(false)
-                      const files = Array.from(e.dataTransfer.files).filter((f) =>
-                        /\.(txt|pdf|docx)$/i.test(f.name),
+                      const files = Array.from(e.dataTransfer.files).filter(
+                        (f) => /\.(txt|pdf|docx)$/i.test(f.name),
                       )
                       if (files.length > 0) {
                         setUploadFiles(files)
@@ -3035,9 +3837,13 @@ function WordSetPage({
                   >
                     <label className="fc-upload-label">
                       <span className="fc-upload-drop-hint">
-                        {isDragOver ? 'Drop files here' : 'Click to browse or drag & drop'}
+                        {isDragOver
+                          ? 'Drop files here'
+                          : 'Click to browse or drag & drop'}
                       </span>
-                      <span className="fc-upload-file-types">.txt · .pdf · .docx — multiple files OK</span>
+                      <span className="fc-upload-file-types">
+                        .txt · .pdf · .docx — multiple files OK
+                      </span>
                       <input
                         type="file"
                         accept=".txt,.pdf,.docx"
@@ -3049,14 +3855,18 @@ function WordSetPage({
                           setPreviewWords(null)
                           setUploadError(null)
                           if (files.length === 1 && !uploadName)
-                            setUploadName(files[0]!.name.replace(/\.[^.]+$/, ''))
+                            setUploadName(
+                              files[0]!.name.replace(/\.[^.]+$/, ''),
+                            )
                         }}
                       />
                     </label>
                     {uploadFiles.length > 0 && (
                       <div className="fc-upload-file-list">
                         {uploadFiles.map((f, i) => (
-                          <span key={i} className="fc-upload-file-chip">{f.name}</span>
+                          <span key={i} className="fc-upload-file-chip">
+                            {f.name}
+                          </span>
                         ))}
                       </div>
                     )}
@@ -3075,25 +3885,76 @@ function WordSetPage({
                       rows={7}
                       maxLength={20000}
                     />
-                    <span className="fc-upload-paste-count">{pasteText.length} / 20,000 chars</span>
+                    <span className="fc-upload-paste-count">
+                      {pasteText.length} / 20,000 chars
+                    </span>
                   </label>
                 )}
 
-                {/* Extract button */}
+                {/* Describe / AI generate input */}
+                {createMode === 'describe' && !previewWords && (
+                  <div className="fc-describe-input">
+                    <label className="fc-upload-label">
+                      Describe what you want to learn
+                      <textarea
+                        className="fc-upload-paste-input"
+                        placeholder="e.g. food vocabulary, business Chinese, travel phrases for ordering at restaurants..."
+                        value={describePrompt}
+                        onChange={(e) => setDescribePrompt(e.target.value)}
+                        rows={3}
+                        maxLength={500}
+                      />
+                      <span className="fc-upload-paste-count">
+                        {describePrompt.length} / 500 chars
+                      </span>
+                    </label>
+                    <label className="fc-describe-count-label">
+                      Number of words
+                      <select
+                        className="fc-describe-count-select"
+                        value={describeWordCount}
+                        onChange={(e) =>
+                          setDescribeWordCount(Number(e.target.value))
+                        }
+                      >
+                        <option value={0}>Auto</option>
+                        {[10, 20, 30, 40, 50, 60].map((n) => (
+                          <option key={n} value={n}>
+                            {n} words
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
+
+                {/* Extract / generate button */}
                 {!previewWords && (
                   <button
                     className="fc-upload-generate-btn"
                     disabled={
                       generateMutation.isPending ||
-                      (createMode === 'upload' ? uploadFiles.length === 0 : !pasteText.trim())
+                      (createMode === 'describe'
+                        ? !describePrompt.trim()
+                        : createMode === 'upload'
+                          ? uploadFiles.length === 0
+                          : !pasteText.trim())
                     }
                     onClick={() => void handleGenerate()}
                   >
-                    {generateMutation.isPending ? 'Extracting vocabulary…' : 'Extract Vocabulary →'}
+                    {generateMutation.isPending
+                      ? createMode === 'describe'
+                        ? 'Generating vocabulary…'
+                        : 'Extracting vocabulary…'
+                      : createMode === 'describe'
+                        ? 'Generate Vocabulary →'
+                        : 'Extract Vocabulary →'}
                   </button>
                 )}
 
-                {uploadError && <p className="fc-upload-error">{uploadError}</p>}
+                {uploadError && (
+                  <p className="fc-upload-error">{uploadError}</p>
+                )}
 
                 {/* Preview + save */}
                 {previewWords && (
@@ -3113,9 +3974,15 @@ function WordSetPage({
                     <div className="fc-upload-preview-list">
                       {previewWords.map((w, i) => (
                         <div key={i} className="fc-upload-preview-row">
-                          <span className="fc-upload-preview-char">{w.char}</span>
-                          <span className="fc-upload-preview-pinyin">{w.pinyin}</span>
-                          <span className="fc-upload-preview-english">{w.english}</span>
+                          <span className="fc-upload-preview-char">
+                            {w.char}
+                          </span>
+                          <span className="fc-upload-preview-pinyin">
+                            {w.pinyin}
+                          </span>
+                          <span className="fc-upload-preview-english">
+                            {w.english}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -3132,21 +3999,42 @@ function WordSetPage({
                         />
                       </label>
                     )}
-                    <button
-                      className="fc-upload-save-btn"
-                      disabled={
-                        (!editTargetSetId && !uploadName.trim()) ||
-                        saveMutation.isPending ||
-                        updateMutation.isPending
-                      }
-                      onClick={() => void handleSaveWordSet()}
-                    >
-                      {saveMutation.isPending || updateMutation.isPending
-                        ? 'Saving…'
-                        : editTargetSetId
-                          ? 'Add Words to Set →'
-                          : 'Save & Start Studying →'}
-                    </button>
+                    <div className="fc-upload-btn-row">
+                      {!editTargetSetId && (
+                        <button
+                          className="fc-upload-study-once-btn"
+                          onClick={() => {
+                            setTempStudyWords(previewWords)
+                            setSelectedWordSet('temp')
+                            setShowCustomModal(false)
+                            setCreateMode(null)
+                            setUploadFiles([])
+                            setPasteText('')
+                            setDescribePrompt('')
+                            setDescribeWordCount(0)
+                            setUploadName('')
+                            setPreviewWords(null)
+                          }}
+                        >
+                          Study Once →
+                        </button>
+                      )}
+                      <button
+                        className="fc-upload-save-btn"
+                        disabled={
+                          (!editTargetSetId && !uploadName.trim()) ||
+                          saveMutation.isPending ||
+                          updateMutation.isPending
+                        }
+                        onClick={() => void handleSaveWordSet()}
+                      >
+                        {saveMutation.isPending || updateMutation.isPending
+                          ? 'Saving…'
+                          : editTargetSetId
+                            ? 'Add Words to Set →'
+                            : 'Save & Start Studying →'}
+                      </button>
+                    </div>
                   </>
                 )}
               </div>

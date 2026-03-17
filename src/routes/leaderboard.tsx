@@ -3,7 +3,9 @@ import { useQuery } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 
-export const Route = createFileRoute('/leaderboard')({ component: LeaderboardPage })
+export const Route = createFileRoute('/leaderboard')({
+  component: LeaderboardPage,
+})
 
 // ── HELPERS ───────────────────────────────────────────────────────
 
@@ -12,7 +14,11 @@ function formatWeekRange(weekStartIso: string): string {
   const end = new Date(start)
   end.setUTCDate(start.getUTCDate() + 6)
   const fmt = (d: Date) =>
-    d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    d.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    })
   return `${fmt(start)} – ${fmt(end)} UTC`
 }
 
@@ -37,9 +43,12 @@ type Entry = {
 // ── MEDAL ─────────────────────────────────────────────────────────
 
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) return <span className="fc-lb-medal fc-lb-medal--gold">1</span>
-  if (rank === 2) return <span className="fc-lb-medal fc-lb-medal--silver">2</span>
-  if (rank === 3) return <span className="fc-lb-medal fc-lb-medal--bronze">3</span>
+  if (rank === 1)
+    return <span className="fc-lb-medal fc-lb-medal--gold">1</span>
+  if (rank === 2)
+    return <span className="fc-lb-medal fc-lb-medal--silver">2</span>
+  if (rank === 3)
+    return <span className="fc-lb-medal fc-lb-medal--bronze">3</span>
   return <span className="fc-lb-rank">#{rank}</span>
 }
 
@@ -49,12 +58,16 @@ function LeaderboardRow({ entry }: { entry: Entry }) {
   const initial = (entry.displayName[0] ?? '?').toUpperCase()
 
   return (
-    <div className={`fc-lb-row${entry.isMe ? ' fc-lb-row--me' : ''}${entry.rank <= 3 ? ` fc-lb-row--top${entry.rank}` : ''}`}>
+    <div
+      className={`fc-lb-row${entry.isMe ? ' fc-lb-row--me' : ''}${entry.rank <= 3 ? ` fc-lb-row--top${entry.rank}` : ''}`}
+    >
       <div className="fc-lb-row-rank">
         <RankBadge rank={entry.rank} />
       </div>
 
-      <div className={`fc-lb-avatar${entry.rank === 1 ? ' fc-lb-avatar--gold' : ''}`}>
+      <div
+        className={`fc-lb-avatar${entry.rank === 1 ? ' fc-lb-avatar--gold' : ''}`}
+      >
         {initial}
       </div>
 
@@ -65,7 +78,11 @@ function LeaderboardRow({ entry }: { entry: Entry }) {
         </div>
         {entry.username && (
           <div className="fc-lb-row-handle">
-            <Link to="/u/$username" params={{ username: entry.username }} className="fc-lb-handle-link">
+            <Link
+              to="/u/$username"
+              params={{ username: entry.username }}
+              className="fc-lb-handle-link"
+            >
               @{entry.username}
             </Link>
           </div>
@@ -79,7 +96,9 @@ function LeaderboardRow({ entry }: { entry: Entry }) {
         {entry.xp > 0 && (
           <div className="fc-lb-substats">
             {entry.sessions > 0 && (
-              <span>{entry.sessions} {entry.sessions === 1 ? 'session' : 'sessions'}</span>
+              <span>
+                {entry.sessions} {entry.sessions === 1 ? 'session' : 'sessions'}
+              </span>
             )}
             {entry.cardsReviewed > 0 && (
               <span>{entry.cardsReviewed} cards</span>
@@ -116,11 +135,17 @@ function LeaderboardPage() {
       <div className="fc-app">
         <div className="fc-profile-noauth">
           <div className="fc-profile-noauth-char">榜</div>
-          <h2 className="fc-profile-noauth-title">Sign in to see the leaderboard</h2>
+          <h2 className="fc-profile-noauth-title">
+            Sign in to see the leaderboard
+          </h2>
           <p className="fc-profile-noauth-sub">
             Compete with friends and track your weekly progress.
           </p>
-          <Link to="/" className="fc-start-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
+          <Link
+            to="/"
+            className="fc-start-btn"
+            style={{ display: 'inline-block', textDecoration: 'none' }}
+          >
             ← Back to flashcards
           </Link>
         </div>
@@ -138,9 +163,12 @@ function LeaderboardPage() {
   return (
     <div className="fc-app">
       <div className="fc-lb-container">
-
         {/* Back nav */}
-        <Link to="/friends" className="fc-back-btn" style={{ textDecoration: 'none' }}>
+        <Link
+          to="/friends"
+          className="fc-back-btn"
+          style={{ textDecoration: 'none' }}
+        >
           ← Friends
         </Link>
 
@@ -168,7 +196,9 @@ function LeaderboardPage() {
         {!lbQuery.isPending && !hasFriends && (
           <div className="fc-lb-empty">
             <div className="fc-lb-empty-char">友</div>
-            <div className="fc-lb-empty-title">No friends on the leaderboard yet</div>
+            <div className="fc-lb-empty-title">
+              No friends on the leaderboard yet
+            </div>
             <div className="fc-lb-empty-sub">
               Add friends to compete each week and see how you stack up.
             </div>
@@ -183,7 +213,9 @@ function LeaderboardPage() {
           <>
             <div className="fc-lb-empty">
               <div className="fc-lb-empty-char">零</div>
-              <div className="fc-lb-empty-title">No study activity yet this week</div>
+              <div className="fc-lb-empty-title">
+                No study activity yet this week
+              </div>
               <div className="fc-lb-empty-sub">
                 Be the first to earn XP — start a study session now!
               </div>
@@ -208,7 +240,9 @@ function LeaderboardPage() {
               <div className="fc-lb-my-rank">
                 <span className="fc-lb-my-rank-label">Your Rank</span>
                 <span className="fc-lb-my-rank-num">#{myEntry.rank}</span>
-                <span className="fc-lb-my-rank-xp">{formatXP(myEntry.xp)} XP this week</span>
+                <span className="fc-lb-my-rank-xp">
+                  {formatXP(myEntry.xp)} XP this week
+                </span>
               </div>
             )}
 
@@ -224,10 +258,11 @@ function LeaderboardPage() {
         {lbQuery.isError && (
           <div className="fc-lb-empty">
             <div className="fc-lb-empty-title">Could not load leaderboard</div>
-            <div className="fc-lb-empty-sub">Please try refreshing the page.</div>
+            <div className="fc-lb-empty-sub">
+              Please try refreshing the page.
+            </div>
           </div>
         )}
-
       </div>
     </div>
   )

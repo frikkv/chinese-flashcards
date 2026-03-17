@@ -2,37 +2,43 @@ import { z } from 'zod'
 import { eq, desc, sql } from 'drizzle-orm'
 import { createTRPCRouter, protectedProcedure } from './init'
 import { db } from '#/db'
-import { flashcardProgress, studySessions, userLastSession, accounts } from '#/db/schema'
+import {
+  flashcardProgress,
+  studySessions,
+  userLastSession,
+  accounts,
+} from '#/db/schema'
 
 export const progressRouter = createTRPCRouter({
   getProgress: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-    const [cards, lastSessionRows, recentSessionRows, sessionDates] = await Promise.all([
-      db
-        .select()
-        .from(flashcardProgress)
-        .where(eq(flashcardProgress.userId, userId)),
-      // Single-row-per-user table: the authoritative "last session" for restoration
-      db
-        .select()
-        .from(userLastSession)
-        .where(eq(userLastSession.userId, userId))
-        .limit(1),
-      // Most recent completed session for the "X/Y correct" hint
-      db
-        .select()
-        .from(studySessions)
-        .where(eq(studySessions.userId, userId))
-        .orderBy(desc(studySessions.completedAt))
-        .limit(1),
-      // Session dates for streak calculation (last 90 days)
-      db
-        .select({ completedAt: studySessions.completedAt })
-        .from(studySessions)
-        .where(eq(studySessions.userId, userId))
-        .orderBy(desc(studySessions.completedAt))
-        .limit(90),
-    ])
+    const [cards, lastSessionRows, recentSessionRows, sessionDates] =
+      await Promise.all([
+        db
+          .select()
+          .from(flashcardProgress)
+          .where(eq(flashcardProgress.userId, userId)),
+        // Single-row-per-user table: the authoritative "last session" for restoration
+        db
+          .select()
+          .from(userLastSession)
+          .where(eq(userLastSession.userId, userId))
+          .limit(1),
+        // Most recent completed session for the "X/Y correct" hint
+        db
+          .select()
+          .from(studySessions)
+          .where(eq(studySessions.userId, userId))
+          .orderBy(desc(studySessions.completedAt))
+          .limit(1),
+        // Session dates for streak calculation (last 90 days)
+        db
+          .select({ completedAt: studySessions.completedAt })
+          .from(studySessions)
+          .where(eq(studySessions.userId, userId))
+          .orderBy(desc(studySessions.completedAt))
+          .limit(90),
+      ])
 
     // Compute study streak
     const todayMidnight = new Date()
@@ -75,6 +81,7 @@ export const progressRouter = createTRPCRouter({
         wordSetDetail: z.string(),
         mode: z.string(),
         sessionSize: z.number().int(),
+        dialect: z.enum(['mandarin', 'cantonese']).default('mandarin'),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -87,6 +94,7 @@ export const progressRouter = createTRPCRouter({
           wordSetDetail: input.wordSetDetail,
           mode: input.mode,
           sessionSize: input.sessionSize,
+          dialect: input.dialect,
           updatedAt: new Date(),
         })
         .onConflictDoUpdate({
@@ -96,6 +104,7 @@ export const progressRouter = createTRPCRouter({
             wordSetDetail: input.wordSetDetail,
             mode: input.mode,
             sessionSize: input.sessionSize,
+            dialect: input.dialect,
             updatedAt: new Date(),
           },
         })
@@ -103,7 +112,13 @@ export const progressRouter = createTRPCRouter({
 
   // Deprecated: use batchRecordCards instead (kept for compatibility)
   recordCard: protectedProcedure
-    .input(z.object({ cardId: z.string(), correct: z.boolean() }))
+    .input(
+      z.object({
+        cardId: z.string(),
+        correct: z.boolean(),
+        dialect: z.enum(['mandarin', 'cantonese']).default('mandarin'),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
       const now = new Date()
@@ -112,13 +127,18 @@ export const progressRouter = createTRPCRouter({
         .values({
           userId,
           cardId: input.cardId,
+          dialect: input.dialect,
           timesCorrect: input.correct ? 1 : 0,
           timesAttempted: 1,
           lastSeenAt: now,
           createdAt: now,
         })
         .onConflictDoUpdate({
-          target: [flashcardProgress.userId, flashcardProgress.cardId],
+          target: [
+            flashcardProgress.userId,
+            flashcardProgress.cardId,
+            flashcardProgress.dialect,
+          ],
           set: {
             timesCorrect: sql`${flashcardProgress.timesCorrect} + ${input.correct ? 1 : 0}`,
             timesAttempted: sql`${flashcardProgress.timesAttempted} + 1`,
@@ -130,24 +150,35 @@ export const progressRouter = createTRPCRouter({
   // Batch version: saves all card results for a session in one call
   batchRecordCards: protectedProcedure
     .input(
-      z.array(z.object({ cardId: z.string(), correct: z.boolean() })).min(1).max(100),
+      z.object({
+        dialect: z.enum(['mandarin', 'cantonese']).default('mandarin'),
+        cards: z
+          .array(z.object({ cardId: z.string(), correct: z.boolean() }))
+          .min(1)
+          .max(100),
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
       const now = new Date()
-      for (const { cardId, correct } of input) {
+      for (const { cardId, correct } of input.cards) {
         await db
           .insert(flashcardProgress)
           .values({
             userId,
             cardId,
+            dialect: input.dialect,
             timesCorrect: correct ? 1 : 0,
             timesAttempted: 1,
             lastSeenAt: now,
             createdAt: now,
           })
           .onConflictDoUpdate({
-            target: [flashcardProgress.userId, flashcardProgress.cardId],
+            target: [
+              flashcardProgress.userId,
+              flashcardProgress.cardId,
+              flashcardProgress.dialect,
+            ],
             set: {
               timesCorrect: sql`${flashcardProgress.timesCorrect} + ${correct ? 1 : 0}`,
               timesAttempted: sql`${flashcardProgress.timesAttempted} + 1`,
@@ -164,6 +195,7 @@ export const progressRouter = createTRPCRouter({
         wordSetDetail: z.string(),
         mode: z.string(),
         sessionSize: z.number().int(),
+        dialect: z.enum(['mandarin', 'cantonese']).default('mandarin'),
         correctCount: z.number().int(),
         totalCount: z.number().int(),
       }),
@@ -177,6 +209,7 @@ export const progressRouter = createTRPCRouter({
         wordSetDetail: input.wordSetDetail,
         mode: input.mode,
         sessionSize: input.sessionSize,
+        dialect: input.dialect,
         correctCount: input.correctCount,
         totalCount: input.totalCount,
         completedAt: new Date(),
@@ -186,7 +219,10 @@ export const progressRouter = createTRPCRouter({
   getProfileStats: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
     const [cards, allSessions, accountRows] = await Promise.all([
-      db.select().from(flashcardProgress).where(eq(flashcardProgress.userId, userId)),
+      db
+        .select()
+        .from(flashcardProgress)
+        .where(eq(flashcardProgress.userId, userId)),
       db
         .select()
         .from(studySessions)

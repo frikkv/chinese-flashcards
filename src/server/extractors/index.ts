@@ -5,7 +5,10 @@ const MAX_AI_INPUT_CHARS = 4000
 /**
  * Extract raw text from a file buffer. Deterministic — no AI involved.
  */
-async function extractRawText(fileName: string, buffer: Buffer): Promise<string> {
+async function extractRawText(
+  fileName: string,
+  buffer: Buffer,
+): Promise<string> {
   const ext = fileName.split('.').pop()?.toLowerCase()
 
   if (ext === 'txt') {
@@ -51,18 +54,16 @@ function countChinese(s: string): number {
  */
 export function preprocessText(raw: string): string {
   // ── Step 1: normalize whitespace ────────────────────────────────
-  const lines = raw
-    .split(/\r?\n/)
-    .map((l) => l.replace(/[ \t]+/g, ' ').trim())
+  const lines = raw.split(/\r?\n/).map((l) => l.replace(/[ \t]+/g, ' ').trim())
 
   // ── Step 2 & 3: filter junk + deduplicate ───────────────────────
   const seen = new Set<string>()
   const cleanLines: string[] = []
   for (const line of lines) {
-    if (line.length < 3) continue                    // too short (blank, single char, page #)
-    if (/^[-=_*·•…]+$/.test(line)) continue          // separator line
-    if (/^\d+$/.test(line)) continue                 // pure page number
-    if (seen.has(line)) continue                     // duplicate (header/footer)
+    if (line.length < 3) continue // too short (blank, single char, page #)
+    if (/^[-=_*·•…]+$/.test(line)) continue // separator line
+    if (/^\d+$/.test(line)) continue // pure page number
+    if (seen.has(line)) continue // duplicate (header/footer)
     seen.add(line)
     cleanLines.push(line)
   }
@@ -122,7 +123,10 @@ export function preprocessText(raw: string): string {
  * The returned string is ready to send directly to the AI — cleaned,
  * deduplicated, Chinese-dense, and capped at MAX_AI_INPUT_CHARS.
  */
-export async function extractText(fileName: string, buffer: Buffer): Promise<string> {
+export async function extractText(
+  fileName: string,
+  buffer: Buffer,
+): Promise<string> {
   const raw = await extractRawText(fileName, buffer)
   return preprocessText(raw)
 }

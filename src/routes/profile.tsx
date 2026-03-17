@@ -34,8 +34,11 @@ type MasteryStats = {
 // Known: ≥3 correct AND ≥80% accuracy
 function computeMastery(vocab: Word[], cards: ProgressCard[]): MasteryStats {
   const map = new Map(cards.map((c) => [c.cardId, c]))
-  let newCount = 0, learning = 0, known = 0
-  let totalCorrect = 0, totalAttempted = 0
+  let newCount = 0,
+    learning = 0,
+    known = 0
+  let totalCorrect = 0,
+    totalAttempted = 0
   const hardest: Array<{ char: string; accuracy: number }> = []
   const recentlyMastered: Array<{ char: string; lastSeenAt: Date }> = []
 
@@ -49,22 +52,31 @@ function computeMastery(vocab: Word[], cards: ProgressCard[]): MasteryStats {
       const acc = p.timesCorrect / p.timesAttempted
       if (p.timesCorrect >= 3 && acc >= 0.8) {
         known++
-        recentlyMastered.push({ char: word.char, lastSeenAt: new Date(p.lastSeenAt) })
+        recentlyMastered.push({
+          char: word.char,
+          lastSeenAt: new Date(p.lastSeenAt),
+        })
       } else {
         learning++
-        if (p.timesAttempted >= 2) hardest.push({ char: word.char, accuracy: acc })
+        if (p.timesAttempted >= 2)
+          hardest.push({ char: word.char, accuracy: acc })
       }
     }
   }
   hardest.sort((a, b) => a.accuracy - b.accuracy)
-  recentlyMastered.sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+  recentlyMastered.sort(
+    (a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime(),
+  )
 
   return {
     new: newCount,
     learning,
     known,
     total: vocab.length,
-    accuracy: totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : null,
+    accuracy:
+      totalAttempted > 0
+        ? Math.round((totalCorrect / totalAttempted) * 100)
+        : null,
     totalReviews: totalAttempted,
     hardest: hardest.slice(0, 6).map((h) => h.char),
     recentlyMastered: recentlyMastered.slice(0, 8).map((r) => r.char),
@@ -130,22 +142,34 @@ function StatCard({
 
 // ── WORD SET ROW ──────────────────────────────────────────────────
 function WordSetRow({ name, stats }: { name: string; stats: MasteryStats }) {
-  const knownPct = stats.total > 0 ? Math.round((stats.known / stats.total) * 100) : 0
+  const knownPct =
+    stats.total > 0 ? Math.round((stats.known / stats.total) * 100) : 0
   return (
     <div className="fc-profile-wordset-row">
       <div className="fc-profile-wordset-name">{name}</div>
       <div className="fc-profile-wordset-bar-wrap">
         <div className="fc-profile-wordset-bar">
-          <div className="fc-profile-wordset-bar-fill" style={{ width: `${knownPct}%` }} />
+          <div
+            className="fc-profile-wordset-bar-fill"
+            style={{ width: `${knownPct}%` }}
+          />
         </div>
         <span className="fc-profile-wordset-pct">{knownPct}%</span>
       </div>
       <div className="fc-profile-wordset-chips">
-        <span className="fc-profile-chip fc-profile-chip--new">{stats.new} new</span>
-        <span className="fc-profile-chip fc-profile-chip--learning">{stats.learning} learning</span>
-        <span className="fc-profile-chip fc-profile-chip--known">{stats.known} known</span>
+        <span className="fc-profile-chip fc-profile-chip--new">
+          {stats.new} new
+        </span>
+        <span className="fc-profile-chip fc-profile-chip--learning">
+          {stats.learning} learning
+        </span>
+        <span className="fc-profile-chip fc-profile-chip--known">
+          {stats.known} known
+        </span>
         {stats.accuracy !== null && (
-          <span className="fc-profile-chip fc-profile-chip--acc">{stats.accuracy}% acc</span>
+          <span className="fc-profile-chip fc-profile-chip--acc">
+            {stats.accuracy}% acc
+          </span>
         )}
       </div>
     </div>
@@ -195,8 +219,14 @@ function ProfilePage() {
   function submitUsername(e: React.FormEvent) {
     e.preventDefault()
     const v = usernameInput.trim().toLowerCase()
-    if (v.length < 2) { setUsernameError('At least 2 characters required.'); return }
-    if (!/^[a-z0-9_]+$/.test(v)) { setUsernameError('Only lowercase letters, numbers, and underscores.'); return }
+    if (v.length < 2) {
+      setUsernameError('At least 2 characters required.')
+      return
+    }
+    if (!/^[a-z0-9_]+$/.test(v)) {
+      setUsernameError('Only lowercase letters, numbers, and underscores.')
+      return
+    }
     confirmUsername.mutate({ username: v })
   }
 
@@ -213,11 +243,18 @@ function ProfilePage() {
       <div className="fc-app">
         <div className="fc-profile-noauth">
           <div className="fc-profile-noauth-char">个人</div>
-          <h2 className="fc-profile-noauth-title">Sign in to view your profile</h2>
+          <h2 className="fc-profile-noauth-title">
+            Sign in to view your profile
+          </h2>
           <p className="fc-profile-noauth-sub">
-            Your learning statistics and progress are only available when signed in.
+            Your learning statistics and progress are only available when signed
+            in.
           </p>
-          <Link to="/" className="fc-start-btn" style={{ display: 'inline-block', textDecoration: 'none' }}>
+          <Link
+            to="/"
+            className="fc-start-btn"
+            style={{ display: 'inline-block', textDecoration: 'none' }}
+          >
             ← Back to flashcards
           </Link>
         </div>
@@ -270,7 +307,9 @@ function ProfilePage() {
   const weakest =
     wordSetOptions.length > 1
       ? wordSetOptions.reduce((worst, ws) =>
-          (ws.stats.accuracy ?? 101) < (worst.stats.accuracy ?? 101) ? ws : worst,
+          (ws.stats.accuracy ?? 101) < (worst.stats.accuracy ?? 101)
+            ? ws
+            : worst,
         )
       : null
 
@@ -297,7 +336,9 @@ function ProfilePage() {
       }
     }
   }
-  allRecentlyMastered.sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+  allRecentlyMastered.sort(
+    (a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime(),
+  )
   const topRecentMastered = allRecentlyMastered.slice(0, 8)
 
   // ── Provider display ─────────────────────────────────────────
@@ -306,14 +347,16 @@ function ProfilePage() {
     ? 'Google'
     : providers.includes('credential')
       ? 'Email & Password'
-      : providers[0] ?? 'Email & Password'
+      : (providers[0] ?? 'Email & Password')
 
   const overallAccuracy =
     stats && stats.totalReviews > 0
       ? Math.round((stats.totalCorrect / stats.totalReviews) * 100)
       : null
 
-  const allTimeXP = stats ? computeXP(stats.totalCorrect, stats.totalSessions) : null
+  const allTimeXP = stats
+    ? computeXP(stats.totalCorrect, stats.totalSessions)
+    : null
   const levelInfo = allTimeXP !== null ? getLevelInfo(allTimeXP) : null
 
   const isLoading = profileQuery.isPending
@@ -321,7 +364,6 @@ function ProfilePage() {
   return (
     <div className="fc-app">
       <div className="fc-profile-container">
-
         {/* Back link */}
         <Link to="/" className="fc-back-btn" style={{ textDecoration: 'none' }}>
           ← Home
@@ -330,13 +372,19 @@ function ProfilePage() {
         {/* Header */}
         <div className="fc-profile-header">
           <div className="fc-profile-avatar">
-            {(user.name?.charAt(0) ?? user.email?.charAt(0) ?? '?').toUpperCase()}
+            {(
+              user.name?.charAt(0) ??
+              user.email?.charAt(0) ??
+              '?'
+            ).toUpperCase()}
           </div>
           <div className="fc-profile-header-info">
             <div className="fc-profile-name-row">
               {user.name && <div className="fc-profile-name">{user.name}</div>}
               {levelInfo && (
-                <span className={`fc-level-badge fc-level-badge--tier${Math.ceil(levelInfo.level / 2)}`}>
+                <span
+                  className={`fc-level-badge fc-level-badge--tier${Math.ceil(levelInfo.level / 2)}`}
+                >
                   Lv.{levelInfo.level} · {levelInfo.title}
                 </span>
               )}
@@ -347,7 +395,9 @@ function ProfilePage() {
                 <div className="fc-level-progress-track">
                   <div
                     className="fc-level-progress-fill"
-                    style={{ width: `${Math.round(levelInfo.progress * 100)}%` }}
+                    style={{
+                      width: `${Math.round(levelInfo.progress * 100)}%`,
+                    }}
                   />
                 </div>
                 <span className="fc-level-progress-label">
@@ -360,7 +410,10 @@ function ProfilePage() {
             {myProfileQuery.data && (
               <div className="fc-profile-username-row">
                 {editingUsername ? (
-                  <form className="fc-profile-username-edit-form" onSubmit={submitUsername}>
+                  <form
+                    className="fc-profile-username-edit-form"
+                    onSubmit={submitUsername}
+                  >
                     <span className="fc-profile-username-at">@</span>
                     <input
                       ref={usernameInputRef}
@@ -368,22 +421,44 @@ function ProfilePage() {
                       value={usernameInput}
                       maxLength={30}
                       onChange={(e) => {
-                        setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+                        setUsernameInput(
+                          e.target.value
+                            .toLowerCase()
+                            .replace(/[^a-z0-9_]/g, ''),
+                        )
                         setUsernameError('')
                       }}
                     />
-                    <button className="fc-profile-username-save" type="submit" disabled={confirmUsername.isPending}>
+                    <button
+                      className="fc-profile-username-save"
+                      type="submit"
+                      disabled={confirmUsername.isPending}
+                    >
                       {confirmUsername.isPending ? '…' : 'Save'}
                     </button>
-                    <button className="fc-profile-username-cancel" type="button" onClick={() => setEditingUsername(false)}>
+                    <button
+                      className="fc-profile-username-cancel"
+                      type="button"
+                      onClick={() => setEditingUsername(false)}
+                    >
                       Cancel
                     </button>
-                    {usernameError && <span className="fc-profile-username-err">{usernameError}</span>}
+                    {usernameError && (
+                      <span className="fc-profile-username-err">
+                        {usernameError}
+                      </span>
+                    )}
                   </form>
                 ) : (
                   <>
-                    <span className="fc-profile-username">@{myProfileQuery.data.username}</span>
-                    <button className="fc-profile-username-change-btn" onClick={startEditUsername} aria-label="Edit username">
+                    <span className="fc-profile-username">
+                      @{myProfileQuery.data.username}
+                    </span>
+                    <button
+                      className="fc-profile-username-change-btn"
+                      onClick={startEditUsername}
+                      aria-label="Edit username"
+                    >
                       <Pencil size={12} strokeWidth={2} />
                     </button>
                   </>
@@ -401,21 +476,37 @@ function ProfilePage() {
               <span className="fc-profile-dot">·</span>
               {myProfileQuery.data && (
                 <>
-                  <button className="fc-profile-friend-count-btn" onClick={() => setShowFriendsModal(true)}>
-                    {myProfileQuery.data.friendCount} {myProfileQuery.data.friendCount === 1 ? 'friend' : 'friends'}
+                  <button
+                    className="fc-profile-friend-count-btn"
+                    onClick={() => setShowFriendsModal(true)}
+                  >
+                    {myProfileQuery.data.friendCount}{' '}
+                    {myProfileQuery.data.friendCount === 1
+                      ? 'friend'
+                      : 'friends'}
                   </button>
                   <span className="fc-profile-dot">·</span>
-                  <Link to="/u/$username" params={{ username: myProfileQuery.data.username }} style={{ color: 'var(--fc-blue)', textDecoration: 'none' }}>
+                  <Link
+                    to="/u/$username"
+                    params={{ username: myProfileQuery.data.username }}
+                    style={{ color: 'var(--fc-blue)', textDecoration: 'none' }}
+                  >
                     Public profile
                   </Link>
                   <span className="fc-profile-dot">·</span>
                 </>
               )}
-              <Link to="/friends" style={{ color: 'var(--fc-blue)', textDecoration: 'none' }}>
+              <Link
+                to="/friends"
+                style={{ color: 'var(--fc-blue)', textDecoration: 'none' }}
+              >
                 Friends
               </Link>
               <span className="fc-profile-dot">·</span>
-              <Link to="/leaderboard" style={{ color: 'var(--fc-blue)', textDecoration: 'none' }}>
+              <Link
+                to="/leaderboard"
+                style={{ color: 'var(--fc-blue)', textDecoration: 'none' }}
+              >
                 Leaderboard
               </Link>
             </div>
@@ -431,7 +522,9 @@ function ProfilePage() {
           <>
             {/* ── Learning Statistics ── */}
             <div className="fc-profile-section">
-              <div className="fc-profile-section-title">Learning Statistics</div>
+              <div className="fc-profile-section-title">
+                Learning Statistics
+              </div>
               <div className="fc-profile-stat-grid">
 
                 {/* Sessions — sub line uses thisWeekSessions */}
@@ -507,7 +600,9 @@ function ProfilePage() {
 
             {/* ── Progress by Word Set ── */}
             <div className="fc-profile-section">
-              <div className="fc-profile-section-title">Progress by Word Set</div>
+              <div className="fc-profile-section-title">
+                Progress by Word Set
+              </div>
 
               {/* HSK */}
               <div className="fc-profile-wordset-group">
@@ -545,7 +640,9 @@ function ProfilePage() {
               strongest ||
               weakest) && (
               <div className="fc-profile-section">
-                <div className="fc-profile-section-title">Performance Insights</div>
+                <div className="fc-profile-section-title">
+                  Performance Insights
+                </div>
 
                 <div className="fc-profile-insights-grid">
                   {/* Strongest / weakest */}
@@ -555,12 +652,15 @@ function ProfilePage() {
                         <div className="fc-profile-insight-row">
                           <span className="fc-profile-insight-icon">🏆</span>
                           <div>
-                            <div className="fc-profile-insight-label">Strongest set</div>
+                            <div className="fc-profile-insight-label">
+                              Strongest set
+                            </div>
                             <div className="fc-profile-insight-val">
                               {strongest.name}
                               {strongest.stats.accuracy !== null && (
                                 <span className="fc-profile-insight-sub">
-                                  {' '}· {strongest.stats.accuracy}% accuracy
+                                  {' '}
+                                  · {strongest.stats.accuracy}% accuracy
                                 </span>
                               )}
                             </div>
@@ -571,12 +671,15 @@ function ProfilePage() {
                         <div className="fc-profile-insight-row">
                           <span className="fc-profile-insight-icon">📈</span>
                           <div>
-                            <div className="fc-profile-insight-label">Needs work</div>
+                            <div className="fc-profile-insight-label">
+                              Needs work
+                            </div>
                             <div className="fc-profile-insight-val">
                               {weakest.name}
                               {weakest.stats.accuracy !== null && (
                                 <span className="fc-profile-insight-sub">
-                                  {' '}· {weakest.stats.accuracy}% accuracy
+                                  {' '}
+                                  · {weakest.stats.accuracy}% accuracy
                                 </span>
                               )}
                             </div>
@@ -589,14 +692,19 @@ function ProfilePage() {
                   {/* Currently struggling with */}
                   {topHardest.length > 0 && (
                     <div className="fc-profile-insight-card">
-                      <div className="fc-profile-insight-label" style={{ marginBottom: 10 }}>
+                      <div
+                        className="fc-profile-insight-label"
+                        style={{ marginBottom: 10 }}
+                      >
                         Struggling with
                       </div>
                       <div className="fc-profile-char-grid">
                         {topHardest.map(({ char, acc }) => (
                           <div key={char} className="fc-profile-char-item">
                             <span className="fc-profile-char">{char}</span>
-                            <span className="fc-profile-char-acc">{Math.round(acc * 100)}%</span>
+                            <span className="fc-profile-char-acc">
+                              {Math.round(acc * 100)}%
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -606,12 +714,18 @@ function ProfilePage() {
                   {/* Recently mastered */}
                   {topRecentMastered.length > 0 && (
                     <div className="fc-profile-insight-card">
-                      <div className="fc-profile-insight-label" style={{ marginBottom: 10 }}>
+                      <div
+                        className="fc-profile-insight-label"
+                        style={{ marginBottom: 10 }}
+                      >
                         Recently mastered
                       </div>
                       <div className="fc-profile-char-grid">
                         {topRecentMastered.map(({ char }) => (
-                          <div key={char} className="fc-profile-char-item fc-profile-char-item--known">
+                          <div
+                            key={char}
+                            className="fc-profile-char-item fc-profile-char-item--known"
+                          >
                             <span className="fc-profile-char">{char}</span>
                           </div>
                         ))}
@@ -637,7 +751,6 @@ function ProfilePage() {
             Sign out
           </button>
         </div>
-
       </div>
 
       {showFriendsModal && myProfileQuery.data && (

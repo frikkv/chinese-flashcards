@@ -92,6 +92,7 @@ export const userLastSession = pgTable('user_last_session', {
   wordSetDetail: text('word_set_detail').notNull(),
   mode: text('mode').notNull(),
   sessionSize: integer('session_size').notNull(),
+  dialect: text('dialect').notNull().default('mandarin'),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
@@ -104,13 +105,14 @@ export const flashcardProgress = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     cardId: text('card_id').notNull(),
+    dialect: text('dialect').notNull().default('mandarin'),
     timesCorrect: integer('times_correct').notNull().default(0),
     timesAttempted: integer('times_attempted').notNull().default(0),
     lastSeenAt: timestamp('last_seen_at').defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.userId, table.cardId] }),
+    primaryKey({ columns: [table.userId, table.cardId, table.dialect] }),
     index('flashcard_progress_userId_idx').on(table.userId),
   ],
 )
@@ -132,13 +134,17 @@ export const studySessions = pgTable(
     mode: text('mode').notNull(),
     // session size setting: 10, 20, or 30 (30 = all)
     sessionSize: integer('session_size').notNull(),
+    dialect: text('dialect').notNull().default('mandarin'),
     correctCount: integer('correct_count').notNull(),
     totalCount: integer('total_count').notNull(),
     completedAt: timestamp('completed_at').defaultNow().notNull(),
   },
   (table) => [
     index('study_sessions_userId_idx').on(table.userId),
-    index('study_sessions_userId_completedAt_idx').on(table.userId, table.completedAt),
+    index('study_sessions_userId_completedAt_idx').on(
+      table.userId,
+      table.completedAt,
+    ),
   ],
 )
 
@@ -182,9 +188,10 @@ export const customWordSets = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    // JSON array of { char, pinyin, english }
+    // JSON array of { char, pinyin, english, jyutping? }
     wordsJson: text('words_json').notNull(),
     wordCount: integer('word_count').notNull(),
+    dialect: text('dialect').notNull().default('mandarin'),
     sourceFileName: text('source_file_name'),
     isFavorited: boolean('is_favorited').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -197,14 +204,19 @@ export const customWordSets = pgTable(
 export const userProfiles = pgTable(
   'user_profiles',
   {
-    userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .primaryKey()
+      .references(() => users.id, { onDelete: 'cascade' }),
     username: text('username').notNull().unique(),
     displayName: text('display_name').notNull(),
     bio: text('bio'),
     // false until the user explicitly picks a username (triggers first-login setup)
     usernameConfirmed: boolean('username_confirmed').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [index('user_profiles_username_idx').on(table.username)],
 )
@@ -215,12 +227,21 @@ export const friendships = pgTable(
   'friendships',
   {
     id: text('id').primaryKey(),
-    senderId: text('sender_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    receiverId: text('receiver_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    senderId: text('sender_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    receiverId: text('receiver_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
     // pending → accepted | declined | canceled
-    status: text('status').notNull().$type<'pending' | 'accepted' | 'declined' | 'canceled'>(),
+    status: text('status')
+      .notNull()
+      .$type<'pending' | 'accepted' | 'declined' | 'canceled'>(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()).notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [
     index('friendships_sender_idx').on(table.senderId),

@@ -32,7 +32,11 @@ export const distractorsRouter = createTRPCRouter({
         const distractors = JSON.parse(row.distractorsJson) as string[]
         return { distractors, source: row.source, cached: true }
       }
-      const word = { char: input.char, pinyin: input.pinyin, english: input.correctAnswer }
+      const word = {
+        char: input.char,
+        pinyin: input.pinyin,
+        english: input.correctAnswer,
+      }
       const { distractors, source } = await generateDistractors(word, allVocab)
       await db.insert(distractorSets).values({
         id: crypto.randomUUID(),
@@ -54,7 +58,11 @@ export const distractorsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const word = { char: input.char, pinyin: input.pinyin, english: input.english }
+      const word = {
+        char: input.char,
+        pinyin: input.pinyin,
+        english: input.english,
+      }
       const { distractors, source } = await generateDistractors(word, allVocab)
       await db.insert(distractorSets).values({
         id: crypto.randomUUID(),

@@ -2,7 +2,10 @@ export interface Word {
   char: string
   pinyin: string
   english: string
+  jyutping?: string
 }
+
+export type { Dialect } from '../lib/dialect'
 
 export interface UnitData {
   unit: number

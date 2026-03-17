@@ -11,9 +11,9 @@ export function AnswerChoices({
 }) {
   return (
     <div className="fc-choices">
-      {choices.map((choice) => (
+      {choices.map((choice, i) => (
         <button
-          key={choice}
+          key={`${i}-${choice}`}
           className={`fc-choice-btn${choiceStates[choice] ? ` ${choiceStates[choice]}` : ''}`}
           disabled={answered}
           onClick={() => onChoose(choice)}

@@ -19,7 +19,9 @@ const RATE_LIMIT_MAX = 20
 
 function checkRateLimit(key: string): boolean {
   const now = Date.now()
-  const prev = (rateLimitMap.get(key) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS)
+  const prev = (rateLimitMap.get(key) ?? []).filter(
+    (t) => now - t < RATE_LIMIT_WINDOW_MS,
+  )
   if (prev.length >= RATE_LIMIT_MAX) return false
   rateLimitMap.set(key, [...prev, now])
   return true
@@ -86,7 +88,10 @@ export const chatRouter = createTRPCRouter({
           model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: systemPrompt },
-            ...input.messages.map((m) => ({ role: m.role, content: m.content })),
+            ...input.messages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
           ],
           temperature: 0.7,
           max_tokens: 600,
@@ -101,7 +106,9 @@ export const chatRouter = createTRPCRouter({
       // Save to DB for logged-in users
       if (ctx.session?.user.id) {
         const userId = ctx.session.user.id
-        const contextJson = input.cardContext ? JSON.stringify(input.cardContext) : null
+        const contextJson = input.cardContext
+          ? JSON.stringify(input.cardContext)
+          : null
         const userMessage = input.messages[input.messages.length - 1]!
         await db.insert(chatMessages).values([
           {
@@ -157,9 +164,15 @@ export const chatRouter = createTRPCRouter({
       const raw = completion.choices[0]?.message?.content?.trim() ?? ''
       try {
         const parsed = JSON.parse(raw)
-        return { char: String(parsed.char ?? ''), pinyin: String(parsed.pinyin ?? '') }
+        return {
+          char: String(parsed.char ?? ''),
+          pinyin: String(parsed.pinyin ?? ''),
+        }
       } catch {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Translation failed.' })
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Translation failed.',
+        })
       }
     }),
 })
