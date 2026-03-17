@@ -3040,35 +3040,6 @@ function WordSetPage({
                 </button>
               </div>
               <div className="fc-ws-list">
-                {authPending || (isSignedIn && progressPending) ? (
-                  <div
-                    className="fc-ws-btn"
-                    aria-hidden="true"
-                    style={{ pointerEvents: 'none', cursor: 'default' }}
-                  >
-                    <Skeleton width={36} height={36} style={{ borderRadius: 6 }} />
-                    <Skeleton height={14} width="48%" style={{ marginTop: 4 }} />
-                    <Skeleton height={11} width="68%" style={{ marginTop: 4 }} />
-                    <Skeleton height={10} width="82%" style={{ marginTop: 4 }} />
-                  </div>
-                ) : lastSession && lastSession.dialect === dialectTab ? (
-                  <button
-                    className={`fc-ws-btn${selectedWordSet === 'last' ? ' selected' : ''}`}
-                    onClick={() =>
-                      setSelectedWordSet(
-                        selectedWordSet === 'last' ? null : 'last',
-                      )
-                    }
-                  >
-                    <span className="fc-ws-char">上次</span>
-                    <span className="fc-ws-label">Last Session</span>
-                    <span className="fc-ws-count">{lastSession.desc}</span>
-                    <span className="fc-ws-desc">
-                      Continue where you left off
-                    </span>
-                  </button>
-                ) : null}
-
                 {authPending ? (
                   <div
                     className="fc-ws-btn"
@@ -3098,6 +3069,35 @@ function WordSetPage({
                             (s) => s.id === selectedWordSet.slice(7),
                           )?.name ?? 'Custom set selected')
                         : 'Upload a document or paste text'}
+                    </span>
+                  </button>
+                ) : null}
+
+                {authPending || (isSignedIn && progressPending) ? (
+                  <div
+                    className="fc-ws-btn"
+                    aria-hidden="true"
+                    style={{ pointerEvents: 'none', cursor: 'default' }}
+                  >
+                    <Skeleton width={36} height={36} style={{ borderRadius: 6 }} />
+                    <Skeleton height={14} width="48%" style={{ marginTop: 4 }} />
+                    <Skeleton height={11} width="68%" style={{ marginTop: 4 }} />
+                    <Skeleton height={10} width="82%" style={{ marginTop: 4 }} />
+                  </div>
+                ) : lastSession && lastSession.dialect === dialectTab ? (
+                  <button
+                    className={`fc-ws-btn${selectedWordSet === 'last' ? ' selected' : ''}`}
+                    onClick={() =>
+                      setSelectedWordSet(
+                        selectedWordSet === 'last' ? null : 'last',
+                      )
+                    }
+                  >
+                    <span className="fc-ws-char">上次</span>
+                    <span className="fc-ws-label">Last Session</span>
+                    <span className="fc-ws-count">{lastSession.desc}</span>
+                    <span className="fc-ws-desc">
+                      Continue where you left off
                     </span>
                   </button>
                 ) : null}
