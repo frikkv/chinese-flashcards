@@ -1,19 +1,14 @@
 @import 'tailwindcss';
 
 /*
- * Metrically-adjusted fallback for Lora.
+ * Metrically-adjusted fallback for Lora (display=swap).
  *
  * Georgia and Lora are both oldstyle serifs but Georgia's glyphs are ~2%
- * wider on average. Without size-adjust, a line that fits in Lora may wrap
- * one word earlier in Georgia, causing a brief text-reflow shift during the
- * ~100 ms optional window where the browser may swap to the web font.
+ * wider on average. Without size-adjust, text reflows when Lora swaps in.
  *
  * size-adjust: 97.8%  — scales Georgia down to match Lora's glyph widths
  * ascent/descent/line-gap: match Lora's vertical metrics (TypoAscender 800,
  *   TypoDescender 200, LineGap 0 at 1000 upem) so line-height is stable.
- *
- * This font name is only used in the stack below; the real Georgia is still
- * the visible fallback — we just adjust its metrics before the name resolves.
  */
 @font-face {
   font-family: 'Lora Fallback';
@@ -53,8 +48,8 @@ body {
   --fc-surface: #ffffff;
   --fc-border: #e4e0d8;
   --fc-text: #1a1814;
-  --fc-muted: #8c8880;
-  --fc-light: #b8b4ac;
+  --fc-muted: #6b6864;
+  --fc-light: #706e6b;
   --fc-red: #c0392b;
   --fc-red-dark: #a93226;
   --fc-red-light: #fdf0ee;
@@ -155,11 +150,11 @@ body {
   padding-bottom: 0;
 }
 .fc-ws-brand-title {
-  font-family: 'Noto Serif SC', serif;
+  font-family: 'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'NSimSun', serif;
   font-size: 2.2rem;
   color: var(--fc-red);
   line-height: 1;
-  margin-bottom: 5px;
+  margin-bottom: 2px;
 }
 .fc-ws-brand-sub {
   font-size: 0.88rem;
@@ -186,7 +181,7 @@ body {
 .fc-dialect-tabs {
   display: flex;
   gap: 4px;
-  margin-bottom: 10px;
+  margin-bottom: 0;
   background: var(--fc-surface);
   border-radius: 10px;
   padding: 3px;
@@ -247,6 +242,7 @@ body {
 
 .fc-ws-list .fc-ws-btn {
   padding: 16px 18px;
+  min-height: 108px;
 }
 
 .fc-ws-list .fc-ws-char {
@@ -352,6 +348,20 @@ body {
 .fc-ws-lb-add-link:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.fc-ws-lb-show-more {
+  display: block;
+  padding: 9px 14px;
+  font-size: 0.78rem;
+  color: var(--fc-muted);
+  text-decoration: none;
+  border-top: 1px solid var(--fc-border);
+  text-align: center;
+}
+.fc-ws-lb-show-more:hover {
+  color: var(--fc-text);
+  background: var(--fc-bg);
 }
 
 .fc-ws-lb-row {

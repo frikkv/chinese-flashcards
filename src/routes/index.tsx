@@ -2389,7 +2389,9 @@ function InlineLeaderboard() {
   // Hide entirely once we know the user is not signed in
   if (!authPending && !isSignedIn) return null
 
-  const entries = lbQuery.data?.entries ?? []
+  const allEntries = lbQuery.data?.entries ?? []
+  const entries = allEntries.slice(0, 5)
+  const hasMore = allEntries.length > 5
   const hasFriends = lbQuery.data?.hasFriends ?? false
   const isPending = authPending || lbQuery.isPending
 
@@ -2452,6 +2454,12 @@ function InlineLeaderboard() {
             </span>
           </div>
         ))}
+
+      {!isPending && hasMore && (
+        <Link to="/leaderboard" className="fc-ws-lb-show-more">
+          Show more →
+        </Link>
+      )}
     </div>
   )
 }
@@ -2966,7 +2974,7 @@ function WordSetPage({
           </Link>
         )}
       </div>
-      <div className="fc-wordset-container">
+      <main className="fc-wordset-container">
         <div className="fc-ws-outer-row">
           <div className="fc-ws-layout">
             {/* Left: brand + stats + word set buttons */}
@@ -2975,25 +2983,6 @@ function WordSetPage({
                 <div className="fc-ws-brand-title">学中文</div>
                 <div className="fc-ws-brand-sub">
                   Choose a word set to study.
-                </div>
-              </div>
-              {/* Always rendered so the layout below doesn't shift when stats arrive */}
-              <div
-                className="fc-stats-bar fc-stats-bar--compact"
-                style={allTimeStats.sessions === 0 ? { visibility: 'hidden' } : undefined}
-                aria-hidden={allTimeStats.sessions === 0}
-              >
-                <div className="fc-stat">
-                  <div className="fc-stat-num">{allTimeStats.studied}</div>
-                  <div className="fc-stat-label">Words Studied</div>
-                </div>
-                <div className="fc-stat">
-                  <div className="fc-stat-num">{allTimeStats.correct}</div>
-                  <div className="fc-stat-label">Correct</div>
-                </div>
-                <div className="fc-stat">
-                  <div className="fc-stat-num">{allTimeStats.sessions}</div>
-                  <div className="fc-stat-label">Sessions</div>
                 </div>
               </div>
               <div className="fc-dialect-tabs">
@@ -3051,7 +3040,18 @@ function WordSetPage({
                   </button>
                 ) : null}
 
-                {isSignedIn && (
+                {authPending ? (
+                  <div
+                    className="fc-ws-btn"
+                    aria-hidden="true"
+                    style={{ pointerEvents: 'none', cursor: 'default' }}
+                  >
+                    <Skeleton width={36} height={36} style={{ borderRadius: 6 }} />
+                    <Skeleton height={14} width="44%" style={{ marginTop: 4 }} />
+                    <Skeleton height={11} width="28%" style={{ marginTop: 4 }} />
+                    <Skeleton height={10} width="66%" style={{ marginTop: 4 }} />
+                  </div>
+                ) : isSignedIn ? (
                   <button
                     className={`fc-ws-btn${selectedWordSet?.startsWith('custom:') ? ' selected' : ''}`}
                     onClick={() => setShowCustomModal(true)}
@@ -3071,7 +3071,7 @@ function WordSetPage({
                         : 'Upload a document or paste text'}
                     </span>
                   </button>
-                )}
+                ) : null}
 
                 {dialectTab === 'mandarin' && (
                   <>
@@ -3126,6 +3126,24 @@ function WordSetPage({
                 )}
               </div>
               {/* end fc-ws-list */}
+
+              {/* Stats bar — below the list so it never shifts the buttons when it appears */}
+              {allTimeStats.sessions > 0 && (
+                <div className="fc-stats-bar fc-stats-bar--compact">
+                  <div className="fc-stat">
+                    <div className="fc-stat-num">{allTimeStats.studied}</div>
+                    <div className="fc-stat-label">Words Studied</div>
+                  </div>
+                  <div className="fc-stat">
+                    <div className="fc-stat-num">{allTimeStats.correct}</div>
+                    <div className="fc-stat-label">Correct</div>
+                  </div>
+                  <div className="fc-stat">
+                    <div className="fc-stat-num">{allTimeStats.sessions}</div>
+                    <div className="fc-stat-label">Sessions</div>
+                  </div>
+                </div>
+              )}
             </div>
             {/* end fc-ws-left */}
 
@@ -3550,7 +3568,7 @@ function WordSetPage({
           <InlineLeaderboard />
         </div>
         {/* end fc-ws-outer-row */}
-      </div>
+      </main>
 
       {/* ── CUSTOM WORD SETS MODAL ────────────────────────────────── */}
       {showCustomModal && (
