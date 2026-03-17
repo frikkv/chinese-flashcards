@@ -6,6 +6,15 @@ import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
 import type { Word } from '../data/vocabulary'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
+import { speakHanzi } from '#/lib/tts'
+import { type CardContent, charFontStyle, CardFace } from '#/components/flashcard/CardFace'
+import { type ProgressCard, WordSetDashboard } from '#/components/flashcard/WordSetDashboard'
+import { ResultsPage } from '#/components/flashcard/ResultsPage'
+import { StudyHeader } from '#/components/flashcard/StudyHeader'
+import { NextButton } from '#/components/flashcard/NextButton'
+import { StageDots } from '#/components/flashcard/StageDots'
+import { SessionCompleteScreen } from '#/components/flashcard/SessionCompleteScreen'
+import { AnswerChoices } from '#/components/flashcard/AnswerChoices'
 
 export const Route = createFileRoute('/')({ component: AuthGate })
 
@@ -47,60 +56,7 @@ interface CustomWordSet {
 }
 
 // ── PROGRESS / MASTERY ────────────────────────────────────────────
-type ProgressCard = {
-  cardId: string
-  timesCorrect: number
-  timesAttempted: number
-}
-
-type MasteryStats = {
-  new: number
-  learning: number
-  known: number
-  total: number
-  accuracy: number | null
-  totalReviews: number
-  hardest: string[]
-}
-
-// Known: ≥3 correct answers AND ≥80% recent accuracy
-// Learning: attempted but not yet Known
-// New: never attempted
-function computeWordSetMastery(vocab: Word[], cards: ProgressCard[]): MasteryStats {
-  const map = new Map(cards.map((c) => [c.cardId, c]))
-  let newCount = 0,
-    learning = 0,
-    known = 0
-  let totalCorrect = 0,
-    totalAttempted = 0
-  const hardest: Array<{ char: string; accuracy: number }> = []
-  for (const word of vocab) {
-    const p = map.get(word.char)
-    if (!p || p.timesAttempted === 0) {
-      newCount++
-    } else {
-      totalCorrect += p.timesCorrect
-      totalAttempted += p.timesAttempted
-      const accuracy = p.timesCorrect / p.timesAttempted
-      if (p.timesCorrect >= 3 && accuracy >= 0.8) {
-        known++
-      } else {
-        learning++
-        if (p.timesAttempted >= 2) hardest.push({ char: word.char, accuracy })
-      }
-    }
-  }
-  hardest.sort((a, b) => a.accuracy - b.accuracy)
-  return {
-    new: newCount,
-    learning,
-    known,
-    total: vocab.length,
-    accuracy: totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : null,
-    totalReviews: totalAttempted,
-    hardest: hardest.slice(0, 5).map((h) => h.char),
-  }
-}
+// ProgressCard, MasteryStats, computeWordSetMastery → WordSetDashboard.tsx
 
 interface AllTimeStats {
   studied: number
@@ -117,15 +73,7 @@ interface SoundSettings {
   stageCount?: 1 | 2
 }
 
-interface CardContent {
-  tag: string
-  char?: string
-  pinyin?: string
-  pinyinLarge?: boolean
-  english?: string
-  englishLarge?: boolean
-  isRecall?: boolean
-}
+// CardContent → src/components/flashcard/CardFace.tsx
 
 // ── HELPERS ──────────────────────────────────────────────────────
 function shuffle<T>(arr: T[]): T[] {
@@ -331,146 +279,10 @@ function getAnswerContent(
 }
 
 // ── TTS ──────────────────────────────────────────────────────────
-let _currentAudio: HTMLAudioElement | null = null
-
-// Fallback: Web Speech API for any word without a cached MP3
-let _zhVoice: SpeechSynthesisVoice | null = null
-
-function loadZhVoice() {
-  const voices = window.speechSynthesis.getVoices()
-  _zhVoice =
-    voices.find((v) => v.lang === 'zh-CN') ??
-    voices.find((v) => v.lang === 'zh-TW') ??
-    voices.find((v) => v.lang.startsWith('zh')) ??
-    null
-}
-
-if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-  window.speechSynthesis.addEventListener('voiceschanged', loadZhVoice)
-  loadZhVoice()
-}
-
-function speakFallback(hanzi: string) {
-  if (!('speechSynthesis' in window)) return
-  window.speechSynthesis.cancel()
-  setTimeout(() => {
-    const chars = [...hanzi]
-    const text =
-      chars.length > 1
-        ? chars.join('\u2009') + '\u2009，。'
-        : hanzi + '，。'
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'zh-CN'
-    utterance.rate = 0.65
-    if (_zhVoice) utterance.voice = _zhVoice
-    window.speechSynthesis.speak(utterance)
-  }, 80)
-}
-
-function speakHanzi(hanzi: string) {
-  if (!hanzi) return
-
-  // Stop any currently playing audio
-  if (_currentAudio) {
-    _currentAudio.pause()
-    _currentAudio.currentTime = 0
-    _currentAudio = null
-  }
-  window.speechSynthesis?.cancel()
-
-  const src = '/audio/' + encodeURIComponent(hanzi) + '.mp3'
-  const audio = new Audio(src)
-  _currentAudio = audio
-
-  function play() {
-    if (_currentAudio !== audio) return // superseded by a newer call
-    audio.play().catch(() => speakFallback(hanzi))
-  }
-
-  if (audio.readyState >= 3) {
-    play()
-  } else {
-    audio.addEventListener('canplaythrough', play, { once: true })
-    audio.addEventListener('error', () => speakFallback(hanzi), { once: true })
-  }
-}
+// speakHanzi → src/lib/tts.ts
 
 // ── CARD FACE ────────────────────────────────────────────────────
-// Card usable width ≈ 448px = 28rem (560px card – 56px padding each side).
-// Target 25rem so there's always a margin. Each CJK char is ~1em wide.
-function charFontStyle(
-  char: string,
-  compact: boolean,
-): React.CSSProperties | undefined {
-  const len = [...char].length
-  const cssMax = compact ? 6 : 10
-  const fitMax = 25 / len
-  if (fitMax >= cssMax) return undefined // CSS clamp handles it fine
-  return { fontSize: `${Math.max(1.5, fitMax).toFixed(2)}rem` }
-}
-
-function CardFace({
-  content,
-  isBack,
-  hanzi,
-}: {
-  content: CardContent | null
-  isBack?: boolean
-  hanzi: string
-}) {
-  return (
-    <div className={`fc-card-face${isBack ? ' back' : ''}`}>
-      {hanzi && (
-        <button
-          className="fc-speaker-btn"
-          onClick={(e) => {
-            e.stopPropagation()
-            speakHanzi(hanzi)
-          }}
-          aria-label="Play pronunciation"
-        >
-          <Volume2 size={16} />
-        </button>
-      )}
-      {content && (
-        <>
-          <div className="fc-card-tag">{content.tag}</div>
-          {content.char && (
-            <div
-              className={`fc-card-char${content.pinyin ? ' fc-card-char--compact' : ''}`}
-              style={charFontStyle(content.char, !!content.pinyin)}
-            >
-              {content.char}
-            </div>
-          )}
-          {content.pinyin && (
-            <div
-              className="fc-card-pinyin"
-              style={content.pinyinLarge ? { fontSize: '2rem' } : undefined}
-            >
-              {content.pinyin}
-            </div>
-          )}
-          {content.english && (
-            <div
-              className="fc-card-english"
-              style={
-                content.englishLarge
-                  ? { fontSize: '2rem', margin: '12px 0' }
-                  : undefined
-              }
-            >
-              {content.english}
-            </div>
-          )}
-          {content.isRecall && (
-            <div className="fc-flip-hint">↩ Click to reveal</div>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
+// CardContent, charFontStyle, CardFace → src/components/flashcard/CardFace.tsx
 
 // ── AUTH ──────────────────────────────────────────────────────────
 function AuthPage({ onSkip }: { onSkip: () => void }) {
@@ -1304,34 +1116,13 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       <div className="fc-study-workspace">
 
         {/* Progress header — spans both columns */}
-        <div className="fc-study-header">
-          <div style={{ flex: 1 }}>
-            <div className="fc-progress-label">
-              Card {qIdx + 1} of {queue.length}
-            </div>
-            <div className="fc-progress-bar">
-              <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-          <div className="fc-score-badge">
-            Score: <b style={{ color: '#27ae60' }}>{score}</b>
-          </div>
-        </div>
+        <StudyHeader current={qIdx + 1} total={queue.length} pct={pct} score={score} />
 
         {/* Two-column grid body */}
         <div className="fc-study-body">
 
           {/* Stage dots (grid row 1, col 1) */}
-          <div className="fc-stage-dots">
-            {sessionMode > 1 && currentItem
-              ? Array.from({ length: sessionMode }, (_, i) => i + 1).map((i) => (
-                  <div
-                    key={i}
-                    className={`fc-stage-dot${i === currentItem.stage ? ' active' : i < currentItem.stage ? ' done' : ''}`}
-                  />
-                ))
-              : null}
-          </div>
+          <StageDots stageCount={sessionMode} currentStage={currentItem?.stage ?? 0} />
 
           {/* Card + answers (grid row 2, col 1) */}
           <div className="fc-card-answers">
@@ -1405,18 +1196,12 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
               )}
 
               {cardMode === 'mc' && answerChoices.length > 0 && (
-                <div className="fc-choices">
-                  {answerChoices.map((choice) => (
-                    <button
-                      key={choice}
-                      className={`fc-choice-btn${choiceStates[choice] ? ` ${choiceStates[choice]}` : ''}`}
-                      disabled={answered}
-                      onClick={() => handleChoiceAnswer(choice)}
-                    >
-                      {choice}
-                    </button>
-                  ))}
-                </div>
+                <AnswerChoices
+                  choices={answerChoices}
+                  choiceStates={choiceStates}
+                  answered={answered}
+                  onChoose={handleChoiceAnswer}
+                />
               )}
 
               {cardMode === 'type' && (
@@ -1449,15 +1234,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
           </div>
 
           {/* Next button (grid row 3, col 1) */}
-          <div className="fc-study-next-area">
-            <button
-              className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
-              onClick={handleNext}
-            >
-              Next →
-            </button>
-            {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
-          </div>
+          <NextButton visible={nextBtnVisible} onClick={handleNext} />
 
           {/* RIGHT: inline AI chat (grid row 2, col 2) */}
           <div className="fc-study-right">
@@ -1928,47 +1705,14 @@ function SoundOnlyPage({
   const pct = queue.length > 0 ? Math.round((idx / queue.length) * 100) : 0
 
   if (done) {
-    const finalPct =
-      totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0
     return (
-      <div className="fc-app">
-        <div className="fc-results-container">
-          <div className="fc-results-char">好！</div>
-          <div>
-            <div className="fc-results-title">Session Complete</div>
-            <div className="fc-results-sub">
-              You practiced {queue.length} word{queue.length !== 1 ? 's' : ''} ·{' '}
-              {finalPct}% accuracy
-            </div>
-          </div>
-          <div className="fc-results-grid">
-            <div className="fc-result-stat">
-              <div className="fc-result-num" style={{ color: '#27ae60' }}>
-                {score}
-              </div>
-              <div className="fc-result-label">Correct</div>
-            </div>
-            <div className="fc-result-stat">
-              <div className="fc-result-num" style={{ color: '#e74c3c' }}>
-                {totalAttempts - score}
-              </div>
-              <div className="fc-result-label">Incorrect</div>
-            </div>
-            <div className="fc-result-stat">
-              <div className="fc-result-num">{finalPct}%</div>
-              <div className="fc-result-label">Accuracy</div>
-            </div>
-          </div>
-          <div className="fc-results-actions">
-            <button className="fc-start-btn" onClick={startSession}>
-              Study Again
-            </button>
-            <button className="fc-results-btn" onClick={onBack}>
-              Home
-            </button>
-          </div>
-        </div>
-      </div>
+      <SessionCompleteScreen
+        score={score}
+        totalAttempts={totalAttempts}
+        queueLength={queue.length}
+        onStudyAgain={startSession}
+        onBack={onBack}
+      />
     )
   }
 
@@ -1983,30 +1727,10 @@ function SoundOnlyPage({
       </button>
 
       <div className="fc-study-workspace">
-        <div className="fc-study-header">
-          <div style={{ flex: 1 }}>
-            <div className="fc-progress-label">
-              Card {idx + 1} of {queue.length}
-            </div>
-            <div className="fc-progress-bar">
-              <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-          <div className="fc-score-badge">
-            Score: <b style={{ color: '#27ae60' }}>{score}</b>
-          </div>
-        </div>
+        <StudyHeader current={idx + 1} total={queue.length} pct={pct} score={score} />
 
         <div className="fc-study-body">
-          <div className="fc-stage-dots">
-            {stageCount === 2 &&
-              [1, 2].map((s) => (
-                <div
-                  key={s}
-                  className={`fc-stage-dot${stage === s ? ' active' : stage > s ? ' done' : ''}`}
-                />
-              ))}
-          </div>
+          <StageDots stageCount={stageCount} currentStage={stage} />
 
           <div className="fc-card-answers">
             {/* Stage 1: audio card */}
@@ -2109,31 +1833,24 @@ function SoundOnlyPage({
 
               {/* Stage 2 answers: guess English meaning */}
               {stage === 2 && englishChoices.length > 0 && (
-                <div className="fc-choices">
-                  {englishChoices.map((w) => (
-                    <button
-                      key={w.char}
-                      className={`fc-choice-btn${englishChoiceStates[w.char] ? ` ${englishChoiceStates[w.char]}` : ''}`}
-                      disabled={answered}
-                      onClick={() => handleEnglishChoice(w)}
-                    >
-                      {w.english}
-                    </button>
-                  ))}
-                </div>
+                <AnswerChoices
+                  choices={englishChoices.map((w) => w.english)}
+                  choiceStates={Object.fromEntries(
+                    englishChoices
+                      .filter((w) => englishChoiceStates[w.char])
+                      .map((w) => [w.english, englishChoiceStates[w.char]]),
+                  )}
+                  answered={answered}
+                  onChoose={(english) => {
+                    const w = englishChoices.find((x) => x.english === english)
+                    if (w) handleEnglishChoice(w)
+                  }}
+                />
               )}
             </div>
           </div>
 
-          <div className="fc-study-next-area">
-            <button
-              className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
-              onClick={handleNext}
-            >
-              Next →
-            </button>
-            {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
-          </div>
+          <NextButton visible={nextBtnVisible} onClick={handleNext} />
 
           <div className="fc-study-right">
             <ChatPanel cardContext={soundChatCtx} inline />
@@ -2247,47 +1964,14 @@ function ToneQuizPage({
   const pct = queue.length > 0 ? Math.round((idx / queue.length) * 100) : 0
 
   if (done) {
-    const finalPct =
-      totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0
     return (
-      <div className="fc-app">
-        <div className="fc-results-container">
-          <div className="fc-results-char">好！</div>
-          <div>
-            <div className="fc-results-title">Session Complete</div>
-            <div className="fc-results-sub">
-              You practiced {queue.length} word{queue.length !== 1 ? 's' : ''} ·{' '}
-              {finalPct}% accuracy
-            </div>
-          </div>
-          <div className="fc-results-grid">
-            <div className="fc-result-stat">
-              <div className="fc-result-num" style={{ color: '#27ae60' }}>
-                {score}
-              </div>
-              <div className="fc-result-label">Correct</div>
-            </div>
-            <div className="fc-result-stat">
-              <div className="fc-result-num" style={{ color: '#e74c3c' }}>
-                {totalAttempts - score}
-              </div>
-              <div className="fc-result-label">Incorrect</div>
-            </div>
-            <div className="fc-result-stat">
-              <div className="fc-result-num">{finalPct}%</div>
-              <div className="fc-result-label">Accuracy</div>
-            </div>
-          </div>
-          <div className="fc-results-actions">
-            <button className="fc-start-btn" onClick={startSession}>
-              Study Again
-            </button>
-            <button className="fc-results-btn" onClick={onBack}>
-              Home
-            </button>
-          </div>
-        </div>
-      </div>
+      <SessionCompleteScreen
+        score={score}
+        totalAttempts={totalAttempts}
+        queueLength={queue.length}
+        onStudyAgain={startSession}
+        onBack={onBack}
+      />
     )
   }
 
@@ -2302,22 +1986,10 @@ function ToneQuizPage({
       </button>
 
       <div className="fc-study-workspace">
-        <div className="fc-study-header">
-          <div style={{ flex: 1 }}>
-            <div className="fc-progress-label">
-              Card {idx + 1} of {queue.length}
-            </div>
-            <div className="fc-progress-bar">
-              <div className="fc-progress-fill" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-          <div className="fc-score-badge">
-            Score: <b style={{ color: '#27ae60' }}>{score}</b>
-          </div>
-        </div>
+        <StudyHeader current={idx + 1} total={queue.length} pct={pct} score={score} />
 
         <div className="fc-study-body">
-          <div className="fc-stage-dots" />
+          <StageDots stageCount={1} currentStage={1} />
 
           <div className="fc-card-answers">
             <div className="fc-card-scene">
@@ -2349,30 +2021,16 @@ function ToneQuizPage({
             </div>
 
             <div className="fc-answer-area">
-              <div className="fc-choices">
-                {choices.map((choice) => (
-                  <button
-                    key={choice}
-                    className={`fc-choice-btn${choiceStates[choice] ? ` ${choiceStates[choice]}` : ''}`}
-                    disabled={answered}
-                    onClick={() => handleChoice(choice)}
-                  >
-                    {choice}
-                  </button>
-                ))}
-              </div>
+              <AnswerChoices
+                choices={choices}
+                choiceStates={choiceStates}
+                answered={answered}
+                onChoose={handleChoice}
+              />
             </div>
           </div>
 
-          <div className="fc-study-next-area">
-            <button
-              className={`fc-next-btn${nextBtnVisible ? ' visible' : ''}`}
-              onClick={handleNext}
-            >
-              Next →
-            </button>
-            {nextBtnVisible && <div className="fc-enter-hint">press Enter ↵</div>}
-          </div>
+          <NextButton visible={nextBtnVisible} onClick={handleNext} />
 
           <div className="fc-study-right">
             <ChatPanel cardContext={toneChatCtx} inline />
@@ -2385,92 +2043,10 @@ function ToneQuizPage({
 }
 
 // ── STREAK BANNER ─────────────────────────────────────────────────
-function StreakBanner({
-  streak,
-  thisWeekSessions,
-}: {
-  streak: number
-  thisWeekSessions: number
-}) {
-  if (streak === 0 && thisWeekSessions === 0) return null
-  return (
-    <div className="fc-streak-banner">
-      {streak > 0 && (
-        <div className="fc-streak-chip">
-          <span className="fc-streak-num">{streak}</span>
-          <span className="fc-streak-label">day streak</span>
-        </div>
-      )}
-      {thisWeekSessions > 0 && (
-        <div className="fc-streak-chip">
-          <span className="fc-streak-num">{thisWeekSessions}</span>
-          <span className="fc-streak-label">sessions this week</span>
-        </div>
-      )}
-    </div>
-  )
-}
+// StreakBanner → src/components/flashcard/StreakBanner.tsx
 
 // ── WORD SET DASHBOARD ────────────────────────────────────────────
-function WordSetDashboard({
-  vocab,
-  cardProgress,
-}: {
-  vocab: Word[]
-  cardProgress: ProgressCard[]
-}) {
-  const stats = computeWordSetMastery(vocab, cardProgress)
-  const knownPct = stats.total > 0 ? Math.round((stats.known / stats.total) * 100) : 0
-  return (
-    <div className="fc-mastery-dashboard">
-      <div className="fc-mastery-header">
-        <span className="fc-mastery-title">Your Progress</span>
-        <span className="fc-mastery-known-label">
-          {stats.known} / {stats.total} known
-        </span>
-      </div>
-      <div className="fc-mastery-bar-wrap">
-        <div className="fc-mastery-bar">
-          <div className="fc-mastery-bar-fill" style={{ width: `${knownPct}%` }} />
-        </div>
-        <span className="fc-mastery-pct">{knownPct}%</span>
-      </div>
-      <div className="fc-mastery-chips">
-        <div className="fc-mastery-chip fc-mastery-chip--new">
-          <span className="fc-mastery-chip-num">{stats.new}</span>
-          <span className="fc-mastery-chip-label">New</span>
-        </div>
-        <div className="fc-mastery-chip fc-mastery-chip--learning">
-          <span className="fc-mastery-chip-num">{stats.learning}</span>
-          <span className="fc-mastery-chip-label">Learning</span>
-        </div>
-        <div className="fc-mastery-chip fc-mastery-chip--known">
-          <span className="fc-mastery-chip-num">{stats.known}</span>
-          <span className="fc-mastery-chip-label">Known</span>
-        </div>
-      </div>
-      {(stats.accuracy !== null || stats.totalReviews > 0) && (
-        <div className="fc-mastery-meta">
-          {stats.accuracy !== null && <span>{stats.accuracy}% accuracy</span>}
-          {stats.accuracy !== null && stats.totalReviews > 0 && <span>·</span>}
-          {stats.totalReviews > 0 && <span>{stats.totalReviews} total reviews</span>}
-        </div>
-      )}
-      {stats.hardest.length > 0 && (
-        <div className="fc-mastery-hardest">
-          <span className="fc-mastery-hardest-label">Struggling with:</span>
-          <div className="fc-mastery-hardest-chars">
-            {stats.hardest.map((char) => (
-              <span key={char} className="fc-mastery-hardest-char">
-                {char}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+// WordSetDashboard, ProgressCard, MasteryStats, computeWordSetMastery → src/components/flashcard/WordSetDashboard.tsx
 
 // ── WORD SET PAGE ─────────────────────────────────────────────────
 // ── INLINE LEADERBOARD SIDEBAR ────────────────────────────────────
@@ -3583,129 +3159,4 @@ function WordSetPage({
 }
 
 // ── RESULTS PAGE ──────────────────────────────────────────────────
-function ResultsPage({
-  correct,
-  wrong,
-  pct,
-  words,
-  vocab,
-  cardProgress,
-  streak,
-  onStudyAgain,
-  onHome,
-}: {
-  correct: number
-  wrong: number
-  pct: number
-  words: number
-  vocab?: Word[]
-  cardProgress?: ProgressCard[]
-  streak?: number
-  onStudyAgain: () => void
-  onHome: () => void
-}) {
-  const mastery =
-    vocab && vocab.length > 0 && cardProgress
-      ? computeWordSetMastery(vocab, cardProgress)
-      : null
-  const knownPct =
-    mastery && mastery.total > 0
-      ? Math.round((mastery.known / mastery.total) * 100)
-      : 0
-
-  return (
-    <div className="fc-app">
-      <div className="fc-results-container">
-        <div className="fc-results-char">好！</div>
-        <div>
-          <div className="fc-results-title">Session Complete</div>
-          <div className="fc-results-sub">
-            You practiced {words} word{words !== 1 ? 's' : ''} · {pct}% accuracy
-          </div>
-        </div>
-        <div className="fc-results-grid">
-          <div className="fc-result-stat">
-            <div className="fc-result-num" style={{ color: '#27ae60' }}>
-              {correct}
-            </div>
-            <div className="fc-result-label">Correct</div>
-          </div>
-          <div className="fc-result-stat">
-            <div className="fc-result-num" style={{ color: '#e74c3c' }}>
-              {wrong}
-            </div>
-            <div className="fc-result-label">Incorrect</div>
-          </div>
-          <div className="fc-result-stat">
-            <div className="fc-result-num">{pct}%</div>
-            <div className="fc-result-label">Accuracy</div>
-          </div>
-        </div>
-
-        {mastery && (
-          <div className="fc-results-mastery">
-            <div className="fc-mastery-header">
-              <span className="fc-mastery-title">Word Set Progress</span>
-              <span className="fc-mastery-known-label">
-                {mastery.known} / {mastery.total} known
-              </span>
-            </div>
-            <div className="fc-mastery-bar-wrap">
-              <div className="fc-mastery-bar">
-                <div
-                  className="fc-mastery-bar-fill"
-                  style={{ width: `${knownPct}%` }}
-                />
-              </div>
-              <span className="fc-mastery-pct">{knownPct}%</span>
-            </div>
-            <div className="fc-mastery-chips">
-              <div className="fc-mastery-chip fc-mastery-chip--new">
-                <span className="fc-mastery-chip-num">{mastery.new}</span>
-                <span className="fc-mastery-chip-label">New</span>
-              </div>
-              <div className="fc-mastery-chip fc-mastery-chip--learning">
-                <span className="fc-mastery-chip-num">{mastery.learning}</span>
-                <span className="fc-mastery-chip-label">Learning</span>
-              </div>
-              <div className="fc-mastery-chip fc-mastery-chip--known">
-                <span className="fc-mastery-chip-num">{mastery.known}</span>
-                <span className="fc-mastery-chip-label">Known</span>
-              </div>
-            </div>
-            {mastery.hardest.length > 0 && (
-              <div className="fc-mastery-hardest">
-                <span className="fc-mastery-hardest-label">Keep practising:</span>
-                <div className="fc-mastery-hardest-chars">
-                  {mastery.hardest.map((char) => (
-                    <span key={char} className="fc-mastery-hardest-char">
-                      {char}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {streak !== undefined && streak > 0 && (
-          <div className="fc-results-streak">
-            <span className="fc-streak-num">{streak}</span>
-            <span className="fc-streak-label">
-              {streak === 1 ? 'day streak' : 'day streak — keep it up!'}
-            </span>
-          </div>
-        )}
-
-        <div className="fc-results-actions">
-          <button className="fc-start-btn" onClick={onStudyAgain}>
-            Study Again
-          </button>
-          <button className="fc-results-btn" onClick={onHome}>
-            Home
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
+// ResultsPage → src/components/flashcard/ResultsPage.tsx
