@@ -11,18 +11,13 @@ import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { speakHanzi } from '#/lib/tts'
 import { type CardContent, charFontStyle, CardFace } from '#/components/flashcard/CardFace'
-import type { ProgressCard } from '#/components/flashcard/WordSetDashboard'
+import { type ProgressCard, WordSetDashboard } from '#/components/flashcard/WordSetDashboard'
 import { StudyHeader } from '#/components/flashcard/StudyHeader'
 import { NextButton } from '#/components/flashcard/NextButton'
 import { StageDots } from '#/components/flashcard/StageDots'
 import { AnswerChoices } from '#/components/flashcard/AnswerChoices'
 
 // Lazy-loaded: not needed for the word-set selection screen (first paint)
-const WordSetDashboard = lazy(() =>
-  import('#/components/flashcard/WordSetDashboard').then((m) => ({
-    default: m.WordSetDashboard,
-  })),
-)
 const ResultsPage = lazy(() =>
   import('#/components/flashcard/ResultsPage').then((m) => ({
     default: m.ResultsPage,
@@ -555,7 +550,7 @@ function wordSetDetailOf(session: LastSession | null): string {
 // ── MAIN APP ─────────────────────────────────────────────────────
 function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   const trpc = useTRPC()
-  const { data: authSession } = authClient.useSession()
+  const { data: authSession, isPending: authPending } = authClient.useSession()
   const isSignedIn = !!authSession?.user
 
   // Load per-user progress (only when signed in)
@@ -1171,6 +1166,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
         cardProgress={progressQuery.data?.cards}
         customWordSets={customWordSetsQuery.data ?? []}
         isSignedIn={isSignedIn}
+        authPending={authPending}
         progressPending={progressQuery.isPending}
         onContinue={(v, mode, s, session) => {
           setVocab(v)
@@ -1644,7 +1640,7 @@ function ChatPanel({
         <textarea
           ref={inputRef}
           className="fc-chat-input"
-          rows={1}
+          rows={2}
           placeholder="Ask about Chinese…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -2382,13 +2378,20 @@ function ToneQuizPage({
 // ── INLINE LEADERBOARD SIDEBAR ────────────────────────────────────
 function InlineLeaderboard() {
   const trpc = useTRPC()
+  const { data: authSession, isPending: authPending } = authClient.useSession()
+  const isSignedIn = !!authSession?.user
   const lbQuery = useQuery({
     ...trpc.social.getWeeklyLeaderboard.queryOptions(),
+    enabled: isSignedIn,
     staleTime: 60_000,
   })
 
+  // Hide entirely once we know the user is not signed in
+  if (!authPending && !isSignedIn) return null
+
   const entries = lbQuery.data?.entries ?? []
   const hasFriends = lbQuery.data?.hasFriends ?? false
+  const isPending = authPending || lbQuery.isPending
 
   return (
     <div className="fc-ws-lb">
@@ -2399,7 +2402,7 @@ function InlineLeaderboard() {
         </Link>
       </div>
 
-      {lbQuery.isPending && (
+      {isPending && (
         <div className="fc-ws-lb-loading">
           {[0, 1, 2].map((i) => (
             <div key={i} className="fc-ws-lb-row">
@@ -2411,7 +2414,7 @@ function InlineLeaderboard() {
         </div>
       )}
 
-      {!lbQuery.isPending && !hasFriends && (
+      {!isPending && !hasFriends && (
         <div className="fc-ws-lb-empty">
           <Link to="/friends" className="fc-ws-lb-add-link">
             Add friends to compete →
@@ -2419,11 +2422,11 @@ function InlineLeaderboard() {
         </div>
       )}
 
-      {!lbQuery.isPending && hasFriends && entries.every((e) => e.xp === 0) && (
+      {!isPending && hasFriends && entries.every((e) => e.xp === 0) && (
         <div className="fc-ws-lb-empty">No activity yet this week.</div>
       )}
 
-      {!lbQuery.isPending &&
+      {!isPending &&
         entries.map((entry) => (
           <div
             key={entry.userId}
@@ -2460,6 +2463,7 @@ function WordSetPage({
   cardProgress,
   customWordSets,
   isSignedIn,
+  authPending,
   progressPending,
   onContinue,
   onStartSoundOnly,
@@ -2472,6 +2476,7 @@ function WordSetPage({
   cardProgress?: ProgressCard[]
   customWordSets: CustomWordSet[]
   isSignedIn: boolean
+  authPending: boolean
   progressPending: boolean
   onContinue: (
     vocab: Word[],
@@ -3017,58 +3022,7 @@ function WordSetPage({
                 </button>
               </div>
               <div className="fc-ws-list">
-                {dialectTab === 'mandarin' && (
-                  <>
-                    <button
-                      className={`fc-ws-btn${selectedWordSet === 'hsk' ? ' selected' : ''}`}
-                      onClick={() =>
-                        setSelectedWordSet(selectedWordSet === 'hsk' ? null : 'hsk')
-                      }
-                    >
-                      <span className="fc-ws-char">汉语</span>
-                      <span className="fc-ws-label">HSK</span>
-                      <span className="fc-ws-count">2 levels · 300 words</span>
-                      <span className="fc-ws-desc">Official HSK vocabulary</span>
-                    </button>
-                    <button
-                      className={`fc-ws-btn${selectedWordSet === 'lang1511' ? ' selected' : ''}`}
-                      onClick={() =>
-                        setSelectedWordSet(
-                          selectedWordSet === 'lang1511' ? null : 'lang1511',
-                        )
-                      }
-                    >
-                      <span className="fc-ws-char">课程</span>
-                      <span className="fc-ws-label">LANG 1511</span>
-                      <span className="fc-ws-count">10 units · 123 words</span>
-                      <span className="fc-ws-desc">
-                        University course vocabulary
-                      </span>
-                    </button>
-                  </>
-                )}
-                {dialectTab === 'cantonese' && (
-                  <button
-                    className={`fc-ws-btn${selectedWordSet === 'cantonese_basics' ? ' selected' : ''}`}
-                    onClick={() =>
-                      setSelectedWordSet(
-                        selectedWordSet === 'cantonese_basics'
-                          ? null
-                          : 'cantonese_basics',
-                      )
-                    }
-                  >
-                    <span className="fc-ws-char">粵語</span>
-                    <span className="fc-ws-label">Cantonese Basics</span>
-                    <span className="fc-ws-count">
-                      {cantoneseBasicsWords.length} words
-                    </span>
-                    <span className="fc-ws-desc">
-                      Common Cantonese words &amp; phrases
-                    </span>
-                  </button>
-                )}
-                {isSignedIn && progressPending ? (
+                {authPending || (isSignedIn && progressPending) ? (
                   <div
                     className="fc-ws-btn"
                     aria-hidden="true"
@@ -3118,6 +3072,58 @@ function WordSetPage({
                     </span>
                   </button>
                 )}
+
+                {dialectTab === 'mandarin' && (
+                  <>
+                    <button
+                      className={`fc-ws-btn${selectedWordSet === 'lang1511' ? ' selected' : ''}`}
+                      onClick={() =>
+                        setSelectedWordSet(
+                          selectedWordSet === 'lang1511' ? null : 'lang1511',
+                        )
+                      }
+                    >
+                      <span className="fc-ws-char">课程</span>
+                      <span className="fc-ws-label">LANG 1511</span>
+                      <span className="fc-ws-count">10 units · 123 words</span>
+                      <span className="fc-ws-desc">
+                        University course vocabulary
+                      </span>
+                    </button>
+                    <button
+                      className={`fc-ws-btn${selectedWordSet === 'hsk' ? ' selected' : ''}`}
+                      onClick={() =>
+                        setSelectedWordSet(selectedWordSet === 'hsk' ? null : 'hsk')
+                      }
+                    >
+                      <span className="fc-ws-char">汉语</span>
+                      <span className="fc-ws-label">HSK</span>
+                      <span className="fc-ws-count">2 levels · 300 words</span>
+                      <span className="fc-ws-desc">Official HSK vocabulary</span>
+                    </button>
+                  </>
+                )}
+                {dialectTab === 'cantonese' && (
+                  <button
+                    className={`fc-ws-btn${selectedWordSet === 'cantonese_basics' ? ' selected' : ''}`}
+                    onClick={() =>
+                      setSelectedWordSet(
+                        selectedWordSet === 'cantonese_basics'
+                          ? null
+                          : 'cantonese_basics',
+                      )
+                    }
+                  >
+                    <span className="fc-ws-char">粵語</span>
+                    <span className="fc-ws-label">Cantonese Basics</span>
+                    <span className="fc-ws-count">
+                      {cantoneseBasicsWords.length} words
+                    </span>
+                    <span className="fc-ws-desc">
+                      Common Cantonese words &amp; phrases
+                    </span>
+                  </button>
+                )}
               </div>
               {/* end fc-ws-list */}
             </div>
@@ -3128,14 +3134,14 @@ function WordSetPage({
               <div className="fc-ws-right-scroll">
                 {selectedWordSet ? (
                   <>
-                    {/* Progress dashboard — always at top, updates with selection */}
-                    {dashVocab && cardProgress && (
-                      <Suspense fallback={null}>
-                        <WordSetDashboard
-                          vocab={dashVocab}
-                          cardProgress={cardProgress}
-                        />
-                      </Suspense>
+                    {/* Progress dashboard — rendered immediately with cardProgress ?? []
+                        so the section occupies space right away and updates in-place
+                        when the progress query resolves, without any layout jump */}
+                    {dashVocab && (
+                      <WordSetDashboard
+                        vocab={dashVocab}
+                        cardProgress={cardProgress ?? []}
+                      />
                     )}
 
                     {/* Session Settings */}
@@ -3541,7 +3547,7 @@ function WordSetPage({
           {/* end fc-ws-layout */}
 
           {/* Leaderboard sidebar — visible on large screens only, sibling to layout */}
-          {isSignedIn && <InlineLeaderboard />}
+          <InlineLeaderboard />
         </div>
         {/* end fc-ws-outer-row */}
       </div>

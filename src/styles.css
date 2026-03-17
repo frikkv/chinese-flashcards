@@ -145,14 +145,14 @@ body {
 .fc-ws-left {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   overflow: hidden;
   min-height: 0;
 }
 
 /* Left column brand (compact title) */
 .fc-ws-brand {
-  padding-bottom: 4px;
+  padding-bottom: 0;
 }
 .fc-ws-brand-title {
   font-family: 'Noto Serif SC', serif;
