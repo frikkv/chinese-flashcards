@@ -36,16 +36,16 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       { title: '汉字 · Hànzì — Chinese Flashcards' },
     ],
     links: [
-      // Early connection to Google Fonts CDN — eliminates RTT when the async
-      // font script (in RootDocument) fires a few milliseconds later.
+      // Early connection to Google Fonts CDN.
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
       { rel: 'stylesheet', href: appCss },
-      // Google Fonts CSS is intentionally NOT a <link rel="stylesheet"> here.
-      // A render-blocking external stylesheet adds 1-2 RTTs before first paint.
-      // Instead, an inline <script> in RootDocument inserts the link dynamically
-      // (dynamic stylesheets are never render-blocking) so the page paints
-      // immediately with fallback fonts and swaps to web fonts when they arrive.
+      // Brand-mark font subset (学中文, ≈10 KB): render-blocking so the LCP
+      // element paints with the correct CJK glyph on first paint everywhere,
+      // including headless/Linux environments that have no CJK system fonts.
+      // Preconnect above means TCP/TLS is already open — added block time is
+      // only ≈1 RTT + transfer. Full body fonts remain async (see FONT_INJECT).
+      { rel: 'stylesheet', href: BRAND_FONT_URL, crossOrigin: 'anonymous' },
     ],
   }),
   component: RootLayout,
@@ -162,9 +162,17 @@ function RootLayout() {
 }
 
 // ── HTML SHELL ─────────────────────────────────────────────────────
-// Fonts loaded async so they never block first paint.
-// Variants: Lora 400/600 normal + 400 italic (500 unused); Noto Serif SC 400/700 (500 unused).
-// display=swap: fallback renders immediately, web font applies when the CSS + files arrive.
+// Brand-mark subset: only the three glyphs used in 学中文 (≈10 KB woff2).
+// Loaded as a render-blocking <link> in head() so the LCP element paints
+// with the correct CJK glyph immediately instead of as fallback tofu.
+// The preconnect hints above mean TCP/TLS is already done; the only added
+// latency is ≈1 RTT + ~10 KB transfer (≈200–300 ms on 4G).
+const BRAND_FONT_URL =
+  'https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400&text=%E5%AD%A6%E4%B8%AD%E6%96%87&display=swap'
+
+// Full typeface set (Lora + Noto Serif SC 400/700) loaded asynchronously —
+// never render-blocking. display=swap: fallback renders immediately for all
+// other text; web font applies when the CSS + files arrive.
 const FONT_URL =
   'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Noto+Serif+SC:wght@400;700&display=swap'
 const FONT_INJECT = `(function(){var l=document.createElement('link');l.rel='stylesheet';l.crossOrigin='anonymous';l.href='${FONT_URL}';document.head.appendChild(l);})()`
