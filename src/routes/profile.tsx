@@ -103,25 +103,39 @@ function formatWordSetKey(key: string, detail: string): string {
   return key
 }
 
-// ── STAT BOX ──────────────────────────────────────────────────────
-function StatBox({
+// ── STAT CARD ─────────────────────────────────────────────────────
+function StatCard({
   num,
   label,
+  sub,
   color,
+  featured,
+  tone,
+  wide,
 }: {
   num: string | number
   label: string
+  sub?: string
   color?: string
+  featured?: boolean
+  tone?: 'success' | 'warning' | 'streak' | 'blue'
+  wide?: boolean
 }) {
+  const cls = [
+    'fc-profile-stat',
+    featured && 'fc-profile-stat--featured',
+    tone && `fc-profile-stat--${tone}`,
+    wide && 'fc-profile-stat--wide',
+  ]
+    .filter(Boolean)
+    .join(' ')
   return (
-    <div className="fc-profile-stat">
-      <div
-        className="fc-profile-stat-num"
-        style={color ? { color } : undefined}
-      >
+    <div className={cls}>
+      <div className="fc-profile-stat-num" style={color ? { color } : undefined}>
         {num}
       </div>
       <div className="fc-profile-stat-label">{label}</div>
+      {sub && <div className="fc-profile-stat-sub">{sub}</div>}
     </div>
   )
 }
@@ -512,36 +526,75 @@ function ProfilePage() {
                 Learning Statistics
               </div>
               <div className="fc-profile-stat-grid">
-                <StatBox num={stats?.totalSessions ?? 0} label="Sessions" />
-                <StatBox num={stats?.totalReviews ?? 0} label="Total Reviews" />
-                <StatBox
+
+                {/* Sessions — sub line uses thisWeekSessions */}
+                <StatCard
+                  num={stats?.totalSessions ?? 0}
+                  label="Sessions"
+                  sub={stats ? `+${stats.thisWeekSessions} this week` : undefined}
+                />
+
+                {/* Total Reviews */}
+                <StatCard
+                  num={stats?.totalReviews ?? 0}
+                  label="Total Reviews"
+                  sub="All time"
+                />
+
+                {/* Words Known */}
+                <StatCard
                   num={allStats.known}
                   label="Words Known"
-                  color="#27ae60"
+                  sub={`${allStats.known} / ${allStats.total} total`}
+                  color="var(--fc-success)"
+                  tone="success"
                 />
-                <StatBox
+
+                {/* Overall Accuracy
+                    TODO: last-session accuracy not stored — would need per-session breakdown
+                    in userSessions table to show "Last session: X%" */}
+                <StatCard
                   num={overallAccuracy !== null ? `${overallAccuracy}%` : '—'}
-                  label="Overall Accuracy"
+                  label="Accuracy"
+                  sub="All time average"
+                  color={overallAccuracy !== null ? 'var(--fc-blue)' : undefined}
+                  tone={overallAccuracy !== null ? 'blue' : undefined}
                 />
-                <StatBox
-                  num={stats?.streak ?? 0}
-                  label="Day Streak"
-                  color={(stats?.streak ?? 0) > 0 ? '#e67e22' : undefined}
-                />
-                <StatBox num={stats?.bestStreak ?? 0} label="Best Streak" />
-                <StatBox
-                  num={stats?.thisWeekSessions ?? 0}
-                  label="Sessions This Week"
-                />
+
+                {/* TODO: Active Days this week — not stored; would need a per-day session log
+                    to compute distinct study days in the current week */}
+
+                {/* Last Studied — conditional on data existing */}
                 {stats?.lastSession && (
-                  <StatBox
+                  <StatCard
                     num={formatWordSetKey(
                       stats.lastSession.wordSetKey,
                       stats.lastSession.wordSetDetail,
                     )}
                     label="Last Studied"
+                    sub="Last activity"
+                    wide
                   />
                 )}
+
+                {/* Day Streak — bestStreak shown as sub, absorbing the old "Best Streak" card */}
+                <StatCard
+                  num={stats?.streak ?? 0}
+                  label="Day Streak"
+                  sub={`Best: ${stats?.bestStreak ?? 0} days`}
+                  color={(stats?.streak ?? 0) > 0 ? '#e67e22' : undefined}
+                  tone={(stats?.streak ?? 0) > 0 ? 'streak' : undefined}
+                />
+
+                {/* Needs Review — words attempted but not yet mastered (learning state) */}
+                <StatCard
+                  num={allStats.learning}
+                  label="Needs Review"
+                  sub="Review recommended"
+                  color={allStats.learning > 0 ? 'var(--fc-wrong)' : undefined}
+                  tone={allStats.learning > 0 ? 'warning' : undefined}
+                />
+
               </div>
             </div>
 

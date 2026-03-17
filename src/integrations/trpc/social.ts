@@ -21,6 +21,12 @@ import {
   studySessions,
   flashcardProgress,
 } from '#/db/schema'
+import { hsk1Words, hsk2Words, lang1511Units } from '#/data/vocabulary'
+
+const TOTAL_VOCAB =
+  hsk1Words.length +
+  hsk2Words.length +
+  lang1511Units.reduce((sum, u) => sum + u.words.length, 0)
 
 // ── HELPERS ────────────────────────────────────────────────────────
 
@@ -128,49 +134,103 @@ async function getFriendStatus(
 
 /**
  * Get public statistics for a user from existing session/progress tables.
- * Also returns weekly stats for future leaderboard use.
+ * Returns the same fields as getProfileStats so the public profile can render
+ * the same Learning Statistics section as the private profile.
  */
 async function getPublicStats(userId: string) {
-  const [totals] = await db
-    .select({
-      sessions: count(studySessions.id),
-      cardsReviewed: sql<string>`coalesce(sum(${studySessions.totalCount}), 0)`,
-      correctAnswers: sql<string>`coalesce(sum(${studySessions.correctCount}), 0)`,
-    })
-    .from(studySessions)
-    .where(eq(studySessions.userId, userId))
+  const [allSessions, cardRows] = await Promise.all([
+    db
+      .select()
+      .from(studySessions)
+      .where(eq(studySessions.userId, userId))
+      .orderBy(desc(studySessions.completedAt)),
+    db
+      .select()
+      .from(flashcardProgress)
+      .where(eq(flashcardProgress.userId, userId)),
+  ])
 
-  const [cardCount] = await db
-    .select({ unique: count(flashcardProgress.cardId) })
-    .from(flashcardProgress)
-    .where(eq(flashcardProgress.userId, userId))
+  // Aggregates
+  const totalSessions = allSessions.length
+  const totalCardsReviewed = allSessions.reduce((sum, s) => sum + s.totalCount, 0)
+  const totalCorrectAnswers = allSessions.reduce((sum, s) => sum + s.correctCount, 0)
+  const accuracy =
+    totalCardsReviewed > 0
+      ? Math.round((totalCorrectAnswers / totalCardsReviewed) * 100)
+      : null
+  const uniqueCardsStudied = cardRows.length
 
-  const weekAgo = new Date()
-  weekAgo.setDate(weekAgo.getDate() - 7)
-  const [weekly] = await db
-    .select({
-      sessions: count(studySessions.id),
-      cardsReviewed: sql<string>`coalesce(sum(${studySessions.totalCount}), 0)`,
-    })
-    .from(studySessions)
-    .where(
-      and(
-        eq(studySessions.userId, userId),
-        sql`${studySessions.completedAt} >= ${weekAgo}`,
-      ),
-    )
+  // Weekly
+  const todayMidnight = new Date()
+  todayMidnight.setHours(0, 0, 0, 0)
+  const todayTs = todayMidnight.getTime()
+  const weekAgoTs = todayTs - 7 * 86_400_000
+  const weeklySessions = allSessions.filter(
+    (s) => new Date(s.completedAt).getTime() >= weekAgoTs,
+  ).length
+  const weeklyCardsReviewed = allSessions
+    .filter((s) => new Date(s.completedAt).getTime() >= weekAgoTs)
+    .reduce((sum, s) => sum + s.totalCount, 0)
 
-  const totalCards = parseInt(totals?.cardsReviewed ?? '0')
-  const totalCorrect = parseInt(totals?.correctAnswers ?? '0')
+  // Streak + best streak (same logic as getProfileStats)
+  const dateTsSet = new Set(
+    allSessions.map((s) => {
+      const d = new Date(s.completedAt)
+      d.setHours(0, 0, 0, 0)
+      return d.getTime()
+    }),
+  )
+  let streak = 0
+  let cur = dateTsSet.has(todayTs) ? todayTs : todayTs - 86_400_000
+  while (dateTsSet.has(cur)) { streak++; cur -= 86_400_000 }
+  const sortedDates = [...dateTsSet].sort((a, b) => a - b)
+  let bestStreak = 0
+  let currentRun = 0
+  let prevTs: number | null = null
+  for (const ts of sortedDates) {
+    if (prevTs === null || ts - prevTs === 86_400_000) currentRun++
+    else currentRun = 1
+    if (currentRun > bestStreak) bestStreak = currentRun
+    prevTs = ts
+  }
+
+  // Last session (wordSetKey + wordSetDetail for the label)
+  const lastSessionRow = allSessions[0]
+  const lastSession = lastSessionRow
+    ? { wordSetKey: lastSessionRow.wordSetKey, wordSetDetail: lastSessionRow.wordSetDetail }
+    : null
+
+  // Words known + needs review (Known: ≥3 correct AND ≥80% accuracy)
+  let wordsKnown = 0
+  let needsReview = 0
+  for (const c of cardRows) {
+    if (c.timesAttempted > 0) {
+      const acc = c.timesCorrect / c.timesAttempted
+      if (c.timesCorrect >= 3 && acc >= 0.8) wordsKnown++
+      else needsReview++
+    }
+  }
+
   return {
-    totalSessions: totals?.sessions ?? 0,
-    totalCardsReviewed: totalCards,
-    totalCorrectAnswers: totalCorrect,
-    accuracy:
-      totalCards > 0 ? Math.round((totalCorrect / totalCards) * 100) : null,
-    uniqueCardsStudied: cardCount?.unique ?? 0,
-    weeklySessions: weekly?.sessions ?? 0,
-    weeklyCardsReviewed: parseInt(weekly?.cardsReviewed ?? '0'),
+    totalSessions,
+    totalCardsReviewed,
+    totalCorrectAnswers,
+    accuracy,
+    uniqueCardsStudied,
+    weeklySessions,
+    weeklyCardsReviewed,
+    streak,
+    bestStreak,
+    lastSession,
+    wordsKnown,
+    needsReview,
+    wordsTotal: TOTAL_VOCAB,
+    cards: cardRows.map((c) => ({
+      cardId: c.cardId,
+      timesCorrect: c.timesCorrect,
+      timesAttempted: c.timesAttempted,
+      lastSeenAt: c.lastSeenAt,
+    })),
   }
 }
 
