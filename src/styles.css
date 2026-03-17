@@ -332,8 +332,8 @@ body {
 
 .fc-ws-lb-loading {
   display: flex;
-  justify-content: center;
-  padding: 20px;
+  flex-direction: column;
+  gap: 0;
 }
 
 .fc-ws-lb-empty {
@@ -3540,6 +3540,12 @@ body {
   margin-bottom: 16px;
 }
 
+/* Reserve height for 3 skeleton rows so the page doesn't shrink when real
+   friend list (which may have fewer rows) replaces the skeleton */
+.fc-social-friends-section {
+  min-height: 220px;
+}
+
 .fc-social-section-title {
   font-size: 0.78rem;
   font-weight: 700;
@@ -4116,6 +4122,7 @@ body {
   flex-direction: column;
   gap: 0;
   border: 1px solid var(--fc-border);
+  min-height: 256px; /* 4 rows × ~60px + borders; prevents shift if fewer rows load */
   border-radius: 10px;
   overflow: hidden;
   background: var(--fc-surface);

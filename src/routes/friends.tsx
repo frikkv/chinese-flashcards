@@ -305,8 +305,7 @@ function FriendsPage() {
         )}
 
         {/* ── Friends list ───────────────────────────────────── */}
-        {/* min-height while loading so page doesn't jump when list appears */}
-        <div className="fc-social-section" style={friendsQuery.isPending ? { minHeight: 120 } : undefined}>
+        <div className="fc-social-section fc-social-friends-section">
           <div className="fc-social-section-title">
             Friends
             {friends.length > 0 && (

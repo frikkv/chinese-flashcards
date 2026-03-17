@@ -528,21 +528,55 @@ function ProfilePage() {
         </div>
 
         {isLoading ? (
-          /* Skeleton Learning Statistics section — matches real layout so page doesn't shift */
-          <div className="fc-profile-section">
-            <div className="fc-profile-section-title">
-              <Skeleton width={140} height={10} />
+          /* Skeleton sections — mirror real layout exactly so nothing shifts on load */
+          <>
+            {/* Learning Statistics skeleton */}
+            <div className="fc-profile-section">
+              <div className="fc-profile-section-title">
+                <Skeleton width={140} height={10} />
+              </div>
+              <div className="fc-profile-stat-grid">
+                {Array.from({ length: 7 }).map((_, i) => (
+                  <div key={i} className={`fc-profile-stat${i === 4 ? ' fc-profile-stat--wide' : ''}`}>
+                    <Skeleton height={28} width="52%" />
+                    <Skeleton height={10} width="72%" style={{ marginTop: 7 }} />
+                    <Skeleton height={9} width="48%" style={{ marginTop: 2 }} />
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="fc-profile-stat-grid">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className={`fc-profile-stat${i === 4 ? ' fc-profile-stat--wide' : ''}`}>
-                  <Skeleton height={28} width="52%" />
-                  <Skeleton height={10} width="72%" style={{ marginTop: 7 }} />
-                  <Skeleton height={9} width="48%" style={{ marginTop: 2 }} />
+
+            {/* Progress by Word Set skeleton */}
+            <div className="fc-profile-section">
+              <div className="fc-profile-section-title">
+                <Skeleton width={160} height={10} />
+              </div>
+              <div className="fc-profile-wordset-group">
+                <div className="fc-profile-wordset-group-title">
+                  <Skeleton width={40} height={12} />
                 </div>
-              ))}
+                {[0, 1].map((i) => (
+                  <div key={i} className="fc-profile-wordset-row">
+                    <Skeleton width={56} height={12} />
+                    <Skeleton height={8} style={{ borderRadius: 99 }} />
+                    <Skeleton width={32} height={12} />
+                  </div>
+                ))}
+              </div>
+              <div className="fc-profile-wordset-group">
+                <div className="fc-profile-wordset-group-title">
+                  <Skeleton width={72} height={12} />
+                </div>
+                {langUnitStats.map((u) => (
+                  <div key={u.unit} className="fc-profile-wordset-row">
+                    <Skeleton width={56} height={12} />
+                    <Skeleton height={8} style={{ borderRadius: 99 }} />
+                    <Skeleton width={32} height={12} />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </>
         ) : (
           <>
             {/* ── Learning Statistics ── */}
@@ -589,18 +623,20 @@ function ProfilePage() {
                 {/* TODO: Active Days this week — not stored; would need a per-day session log
                     to compute distinct study days in the current week */}
 
-                {/* Last Studied — conditional on data existing */}
-                {stats?.lastSession && (
-                  <StatCard
-                    num={formatWordSetKey(
-                      stats.lastSession.wordSetKey,
-                      stats.lastSession.wordSetDetail,
-                    )}
-                    label="Last Studied"
-                    sub="Last activity"
-                    wide
-                  />
-                )}
+                {/* Last Studied — always rendered so grid layout is stable */}
+                <StatCard
+                  num={
+                    stats?.lastSession
+                      ? formatWordSetKey(
+                          stats.lastSession.wordSetKey,
+                          stats.lastSession.wordSetDetail,
+                        )
+                      : '—'
+                  }
+                  label="Last Studied"
+                  sub={stats?.lastSession ? 'Last activity' : 'No sessions yet'}
+                  wide
+                />
 
                 {/* Day Streak — bestStreak shown as sub, absorbing the old "Best Streak" card */}
                 <StatCard

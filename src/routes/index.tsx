@@ -527,17 +527,19 @@ function AuthGate() {
   const { data: session, isPending } = authClient.useSession()
   const [skipped, setSkipped] = useState(false)
 
-  if (isPending) {
-    return (
-      <div className="fc-app fc-auth-loading">
-        <div className="fc-auth-spinner" />
-      </div>
-    )
+  // While pending we treat the user as unauthenticated but still render the
+  // full app immediately — this eliminates the spinner→content layout shift
+  // for returning logged-in users (by far the largest CLS contributor).
+  // For logged-out first-time users the AuthPage appears once isPending
+  // resolves, which is a very brief sub-200 ms transition.
+  if (!isPending && !session?.user && !skipped) {
+    return <AuthPage onSkip={() => setSkipped(true)} />
   }
 
-  if (!session && !skipped) return <AuthPage onSkip={() => setSkipped(true)} />
   return (
-    <FlashcardsApp onSignIn={session ? undefined : () => setSkipped(false)} />
+    <FlashcardsApp
+      onSignIn={!isPending && !session?.user ? () => setSkipped(false) : undefined}
+    />
   )
 }
 
@@ -2047,11 +2049,19 @@ function SoundOnlyPage({
                   </div>
                 )}
 
-              {/* Reveal character + romanization after answering in English format */}
-              {answerFormat === 'english' && answered && currentWord && (
-                <div className="fc-sound-reveal">
-                  <span className="fc-sound-reveal-char">{currentWord.char}</span>
-                  <span className="fc-sound-reveal-pinyin">{getRomanization(currentWord, dialect)}</span>
+              {/* Reveal character + romanization after answering in English format.
+                  Always rendered in english mode so the container height is stable;
+                  visibility:hidden keeps the space reserved before answering. */}
+              {answerFormat === 'english' && (
+                <div
+                  className="fc-sound-reveal"
+                  style={!answered ? { visibility: 'hidden' } : undefined}
+                  aria-hidden={!answered}
+                >
+                  <span className="fc-sound-reveal-char">{currentWord?.char ?? ''}</span>
+                  <span className="fc-sound-reveal-pinyin">
+                    {currentWord ? getRomanization(currentWord, dialect) : ''}
+                  </span>
                 </div>
               )}
 
@@ -2391,10 +2401,13 @@ function InlineLeaderboard() {
 
       {lbQuery.isPending && (
         <div className="fc-ws-lb-loading">
-          <div
-            className="fc-auth-spinner"
-            style={{ width: 20, height: 20, borderWidth: 2 }}
-          />
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="fc-ws-lb-row">
+              <Skeleton width={20} height={14} style={{ borderRadius: 4 }} />
+              <Skeleton height={12} width="65%" style={{ borderRadius: 4 }} />
+              <Skeleton height={12} width={36} style={{ borderRadius: 4 }} />
+            </div>
+          ))}
         </div>
       )}
 
@@ -2959,22 +2972,25 @@ function WordSetPage({
                   Choose a word set to study.
                 </div>
               </div>
-              {allTimeStats.sessions > 0 && (
-                <div className="fc-stats-bar fc-stats-bar--compact">
-                  <div className="fc-stat">
-                    <div className="fc-stat-num">{allTimeStats.studied}</div>
-                    <div className="fc-stat-label">Words Studied</div>
-                  </div>
-                  <div className="fc-stat">
-                    <div className="fc-stat-num">{allTimeStats.correct}</div>
-                    <div className="fc-stat-label">Correct</div>
-                  </div>
-                  <div className="fc-stat">
-                    <div className="fc-stat-num">{allTimeStats.sessions}</div>
-                    <div className="fc-stat-label">Sessions</div>
-                  </div>
+              {/* Always rendered so the layout below doesn't shift when stats arrive */}
+              <div
+                className="fc-stats-bar fc-stats-bar--compact"
+                style={allTimeStats.sessions === 0 ? { visibility: 'hidden' } : undefined}
+                aria-hidden={allTimeStats.sessions === 0}
+              >
+                <div className="fc-stat">
+                  <div className="fc-stat-num">{allTimeStats.studied}</div>
+                  <div className="fc-stat-label">Words Studied</div>
                 </div>
-              )}
+                <div className="fc-stat">
+                  <div className="fc-stat-num">{allTimeStats.correct}</div>
+                  <div className="fc-stat-label">Correct</div>
+                </div>
+                <div className="fc-stat">
+                  <div className="fc-stat-num">{allTimeStats.sessions}</div>
+                  <div className="fc-stat-label">Sessions</div>
+                </div>
+              </div>
               <div className="fc-dialect-tabs">
                 <button
                   className={`fc-dialect-tab${dialectTab === 'mandarin' ? ' active' : ''}`}
