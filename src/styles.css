@@ -1971,19 +1971,19 @@ body {
 .fc-profile-header-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   min-width: 0;
 }
 
 .fc-profile-name {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
   color: var(--fc-text);
   line-height: 1.2;
 }
 
 .fc-profile-email {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   color: var(--fc-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2024,22 +2024,56 @@ body {
 /* ── STAT GRID ───────────────────────────────────────────────────── */
 .fc-profile-stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 12px;
 }
 
 .fc-profile-stat {
   background: var(--fc-bg);
   border: 1px solid var(--fc-border);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 14px;
+  padding: 14px 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  justify-content: center;
+  cursor: default;
+}
+
+/* Wide stat — spans 2 grid columns */
+.fc-profile-stat--wide {
+  grid-column: span 2;
+}
+.fc-profile-stat--wide .fc-profile-stat-num {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Success tone — Words Known */
+.fc-profile-stat--success {
+  background: rgba(39, 174, 96, 0.05);
+  border-color: rgba(39, 174, 96, 0.22);
+}
+
+/* Blue tone — Accuracy */
+.fc-profile-stat--blue {
+  background: var(--fc-blue-tint);
+  border-color: rgba(44, 95, 138, 0.22);
+}
+
+/* Warning tone — Needs Review */
+.fc-profile-stat--warning {
+  background: var(--fc-wrong-light);
+  border-color: rgba(231, 76, 60, 0.22);
+}
+
+/* Streak tone — amber when streak is active */
+.fc-profile-stat--streak {
+  background: #fff8f2;
+  border-color: rgba(230, 126, 34, 0.25);
 }
 
 .fc-profile-stat-num {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--fc-text);
   font-variant-numeric: tabular-nums;
@@ -2051,6 +2085,14 @@ body {
   font-size: 0.72rem;
   color: var(--fc-muted);
   line-height: 1.3;
+  margin-top: 7px;
+}
+
+.fc-profile-stat-sub {
+  font-size: 0.68rem;
+  color: var(--fc-light);
+  line-height: 1.3;
+  margin-top: 1px;
 }
 
 /* ── WORD SET PROGRESS ───────────────────────────────────────────── */
@@ -3516,20 +3558,20 @@ body {
 .fc-profile-name-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .fc-level-badge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   flex-shrink: 0;
 }
 
@@ -3566,15 +3608,15 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 8px;
   margin-bottom: 2px;
 }
 
 .fc-level-progress-track {
-  width: 100px;
-  height: 5px;
+  width: 120px;
+  height: 7px;
   background: var(--fc-border);
-  border-radius: 3px;
+  border-radius: 99px;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -3582,12 +3624,12 @@ body {
 .fc-level-progress-fill {
   height: 100%;
   background: var(--fc-blue);
-  border-radius: 3px;
+  border-radius: 99px;
   transition: width 0.4s ease;
 }
 
 .fc-level-progress-label {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: var(--fc-muted);
   white-space: nowrap;
 }

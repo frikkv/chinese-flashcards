@@ -12,6 +12,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import TanStackQueryProvider from '../integrations/tanstack-query/root-provider'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import appCss from '../styles.css?url'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 
 import type { QueryClient } from '@tanstack/react-query'
 import type { TRPCRouter } from '#/integrations/trpc/router'
@@ -155,6 +157,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body>
         <TanStackQueryProvider>
           {children}
+          <Analytics />
+          <SpeedInsights />
           {import.meta.env.DEV && (
             <TanStackDevtools
               config={{ position: 'bottom-right' }}
