@@ -162,21 +162,6 @@ body {
   font-style: italic;
 }
 
-/* Stats bar inside left column: compact horizontal row */
-.fc-ws-left .fc-stats-bar {
-  gap: 0;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-radius: 10px;
-  margin-bottom: 0;
-}
-.fc-ws-left .fc-stat-num {
-  font-size: 1rem;
-}
-.fc-ws-left .fc-stat-label {
-  font-size: 0.7rem;
-}
-
 /* Dialect tabs */
 .fc-dialect-tabs {
   display: flex;
@@ -276,27 +261,34 @@ body {
 }
 .fc-ws-right .fc-start-btn {
   width: 100%;
+  max-width: 640px; /* match fc-settings-wrap so edges align on wide screens */
   flex-shrink: 0;
 }
 
-/* ── Leaderboard sidebar ── */
-.fc-ws-lb {
+/* ── Sidebar column (leaderboard + progress) ── */
+.fc-ws-sidebar {
   display: none; /* hidden by default; shown via media query below */
   flex-direction: column;
-  gap: 0;
+  gap: 12px;
   width: 220px;
   flex-shrink: 0;
-  background: var(--fc-surface);
-  border: 1px solid var(--fc-border);
-  border-radius: 12px;
-  overflow: hidden;
   align-self: start; /* don't stretch to full column height */
 }
 
 @media (min-width: 1100px) {
-  .fc-ws-lb {
+  .fc-ws-sidebar {
     display: flex;
   }
+}
+
+/* Leaderboard card inside sidebar */
+.fc-ws-lb {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .fc-ws-lb-header {
@@ -418,6 +410,74 @@ body {
 
 .fc-ws-lb-xp--zero {
   color: var(--fc-light);
+}
+
+/* ── Your Progress sidebar card ── */
+.fc-ws-progress {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.fc-ws-progress-header {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--fc-border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--fc-muted);
+}
+
+.fc-ws-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--fc-border);
+}
+
+.fc-ws-progress-row:last-child {
+  border-bottom: none;
+}
+
+.fc-ws-progress-label {
+  font-size: 0.82rem;
+  color: var(--fc-muted);
+}
+
+.fc-ws-progress-num {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+
+.fc-ws-progress-empty {
+  padding: 14px 14px;
+  font-size: 0.78rem;
+  color: var(--fc-muted);
+  line-height: 1.4;
+}
+
+/* ── Compact mastery card inside the sidebar ── */
+.fc-ws-sidebar .fc-mastery-dashboard {
+  max-width: 220px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  gap: 8px;
+}
+.fc-ws-sidebar .fc-mastery-chip {
+  padding: 7px 4px 5px;
+}
+.fc-ws-sidebar .fc-mastery-chip-num {
+  font-size: 1rem;
+}
+.fc-ws-sidebar .fc-mastery-hardest-char {
+  font-size: 0.95rem;
+}
+.fc-ws-sidebar .fc-mastery-hardest-chars .fc-mastery-hardest-char:nth-child(n+4) {
+  display: none;
 }
 
 /* Placeholder shown before any word set is selected */

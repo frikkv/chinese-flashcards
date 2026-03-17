@@ -2592,40 +2592,6 @@ function WordSetPage({
   })
   const [toneQuizOpen, setToneQuizOpen] = useState(false)
 
-  const dashVocab = useMemo(() => {
-    if (selectedWordSet === 'cantonese_basics') return cantoneseBasicsWords
-    if (selectedWordSet === 'hsk') {
-      if (selectedHSKLevels.size > 0) {
-        let v: Word[] = []
-        if (selectedHSKLevels.has(1)) v = v.concat(hsk1Words)
-        if (selectedHSKLevels.has(2)) v = v.concat(hsk2Words)
-        return v
-      }
-      return [...hsk1Words, ...hsk2Words]
-    }
-    if (selectedWordSet === 'lang1511') {
-      if (selectedUnits.size > 0) {
-        return lang1511Units
-          .filter((u) => selectedUnits.has(u.unit))
-          .flatMap((u) => u.words)
-      }
-      return lang1511Units.flatMap((u) => u.words)
-    }
-    if (selectedWordSet === 'temp' && tempStudyWords) return tempStudyWords
-    if (selectedWordSet === 'last' && lastSession) return lastSession.vocab
-    if (selectedWordSet?.startsWith('custom:')) {
-      const id = selectedWordSet.slice(7)
-      return customWordSets.find((s) => s.id === id)?.words ?? null
-    }
-    return null
-  }, [
-    selectedWordSet,
-    selectedHSKLevels,
-    selectedUnits,
-    lastSession,
-    customWordSets,
-    tempStudyWords,
-  ])
 
   // Derive the active dialect from the selected word set
   const activeDialect: Dialect = useMemo(() => {
@@ -2639,6 +2605,39 @@ function WordSetPage({
     if (selectedWordSet === 'last' && lastSession) return lastSession.dialect
     return 'mandarin'
   }, [selectedWordSet, customWordSets, lastSession])
+
+  // Aggregate stats from DB card progress — used by sidebar fallback when no word set selected
+  const dashStats = useMemo(() => {
+    if (!cardProgress || cardProgress.length === 0) return null
+    const studied = cardProgress.filter((c) => c.timesAttempted > 0).length
+    if (studied === 0) return null
+    const correct = cardProgress.reduce((s, c) => s + c.timesCorrect, 0)
+    const reviews = cardProgress.reduce((s, c) => s + c.timesAttempted, 0)
+    return { studied, correct, reviews }
+  }, [cardProgress])
+
+  // Vocabulary for the currently-selected word set (no alerts — used by sidebar progress card)
+  const dashVocab = useMemo<Word[] | null>(() => {
+    if (selectedWordSet === 'cantonese_basics') return cantoneseBasicsWords
+    if (selectedWordSet === 'hsk') {
+      if (selectedHSKLevels.size === 0) return null
+      let v: Word[] = []
+      if (selectedHSKLevels.has(1)) v = v.concat(hsk1Words)
+      if (selectedHSKLevels.has(2)) v = v.concat(hsk2Words)
+      return v
+    }
+    if (selectedWordSet === 'lang1511') {
+      if (selectedUnits.size === 0) return null
+      return lang1511Units.filter((u) => selectedUnits.has(u.unit)).flatMap((u) => u.words)
+    }
+    if (selectedWordSet?.startsWith('custom:')) {
+      const id = selectedWordSet.slice(7)
+      const words = customWordSets.find((s) => s.id === id)?.words
+      return words && words.length > 0 ? (words as Word[]) : null
+    }
+    if (selectedWordSet === 'last' && lastSession) return lastSession.vocab
+    return null
+  }, [selectedWordSet, selectedHSKLevels, selectedUnits, customWordSets, lastSession])
 
   // Drag-select state
   const mouseIsDownRef = useRef(false)
@@ -3157,23 +3156,6 @@ function WordSetPage({
               </div>
               {/* end fc-ws-list */}
 
-              {/* Stats bar — below the list so it never shifts the buttons when it appears */}
-              {allTimeStats.sessions > 0 && (
-                <div className="fc-stats-bar fc-stats-bar--compact">
-                  <div className="fc-stat">
-                    <div className="fc-stat-num">{allTimeStats.studied}</div>
-                    <div className="fc-stat-label">Words Studied</div>
-                  </div>
-                  <div className="fc-stat">
-                    <div className="fc-stat-num">{allTimeStats.correct}</div>
-                    <div className="fc-stat-label">Correct</div>
-                  </div>
-                  <div className="fc-stat">
-                    <div className="fc-stat-num">{allTimeStats.sessions}</div>
-                    <div className="fc-stat-label">Sessions</div>
-                  </div>
-                </div>
-              )}
             </div>
             {/* end fc-ws-left */}
 
@@ -3182,16 +3164,6 @@ function WordSetPage({
               <div className="fc-ws-right-scroll">
                 {selectedWordSet ? (
                   <>
-                    {/* Progress dashboard — rendered immediately with cardProgress ?? []
-                        so the section occupies space right away and updates in-place
-                        when the progress query resolves, without any layout jump */}
-                    {dashVocab && (
-                      <WordSetDashboard
-                        vocab={dashVocab}
-                        cardProgress={cardProgress ?? []}
-                      />
-                    )}
-
                     {/* Session Settings */}
                     {selectedWordSet !== 'last' &&
                       !selectedWordSet.startsWith('custom') &&
@@ -3594,8 +3566,40 @@ function WordSetPage({
           </div>
           {/* end fc-ws-layout */}
 
-          {/* Leaderboard sidebar — visible on large screens only, sibling to layout */}
-          <InlineLeaderboard />
+          {/* Sidebar: leaderboard + Your Progress — visible on large screens only */}
+          <div className="fc-ws-sidebar">
+            <InlineLeaderboard />
+            {dashVocab ? (
+              <WordSetDashboard
+                vocab={dashVocab}
+                cardProgress={cardProgress ?? []}
+              />
+            ) : (
+              <div className="fc-ws-progress">
+                <div className="fc-ws-progress-header">Your Progress</div>
+                {dashStats ? (
+                  <>
+                    <div className="fc-ws-progress-row">
+                      <span className="fc-ws-progress-label">Words Studied</span>
+                      <span className="fc-ws-progress-num">{dashStats.studied}</span>
+                    </div>
+                    <div className="fc-ws-progress-row">
+                      <span className="fc-ws-progress-label">Correct</span>
+                      <span className="fc-ws-progress-num">{dashStats.correct}</span>
+                    </div>
+                    <div className="fc-ws-progress-row">
+                      <span className="fc-ws-progress-label">Total Reviews</span>
+                      <span className="fc-ws-progress-num">{dashStats.reviews}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="fc-ws-progress-empty">
+                    Start studying to track your progress.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         {/* end fc-ws-outer-row */}
       </main>
