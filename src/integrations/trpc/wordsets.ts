@@ -158,6 +158,7 @@ export const wordsetsRouter = createTRPCRouter({
       .from(customWordSets)
       .where(eq(customWordSets.userId, userId))
       .orderBy(desc(customWordSets.isFavorited), desc(customWordSets.createdAt))
+      
     return rows.map((row) => ({
       id: row.id,
       name: row.name,

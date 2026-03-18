@@ -41,6 +41,7 @@ export function getContext() {
       queries: {
         staleTime: 60_000,
         retry: 1,
+        refetchOnWindowFocus: false,
       },
       mutations: {
         retry: 0,

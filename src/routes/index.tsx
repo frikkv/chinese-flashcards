@@ -10,12 +10,24 @@ import { getRomanization, getRomanizationLabel } from '../lib/dialect'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { speakHanzi } from '#/lib/tts'
-import { type CardContent, charFontStyle, CardFace } from '#/components/flashcard/CardFace'
-import { type ProgressCard, WordSetDashboard } from '#/components/flashcard/WordSetDashboard'
+import {
+  type CardContent,
+  charFontStyle,
+  CardFace,
+} from '#/components/flashcard/CardFace'
+import {
+  type ProgressCard,
+  WordSetDashboard,
+} from '#/components/flashcard/WordSetDashboard'
 import { StudyHeader } from '#/components/flashcard/StudyHeader'
 import { NextButton } from '#/components/flashcard/NextButton'
 import { StageDots } from '#/components/flashcard/StageDots'
 import { AnswerChoices } from '#/components/flashcard/AnswerChoices'
+import {
+  ChatPanel,
+  type ChatCardContext,
+} from '#/components/flashcard/ChatPanel'
+import { PronunciationBox } from '#/components/flashcard/PronunciationBox'
 
 // Lazy-loaded: not needed for the word-set selection screen (first paint)
 const ResultsPage = lazy(() =>
@@ -563,7 +575,9 @@ function AuthGate() {
 
   return (
     <FlashcardsApp
-      onSignIn={!isPending && !session?.user ? () => setSkipped(false) : undefined}
+      onSignIn={
+        !isPending && !session?.user ? () => setSkipped(false) : undefined
+      }
     />
   )
 }
@@ -781,33 +795,17 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   const nextBtnVisibleRef = useRef(false)
   const handleNextRef = useRef<() => void>(() => {})
 
-  useEffect(() => {
-    queueRef.current = queue
-  }, [queue])
-  useEffect(() => {
-    vocabRef.current = vocab
-  }, [vocab])
-  useEffect(() => {
-    settingsRef.current = settings
-  }, [settings])
-  useEffect(() => {
-    sessionModeRef.current = sessionMode
-  }, [sessionMode])
-  useEffect(() => {
-    isFlippedRef.current = isFlipped
-  }, [isFlipped])
-  useEffect(() => {
-    nextBtnVisibleRef.current = nextBtnVisible
-  }, [nextBtnVisible])
-  useEffect(() => {
-    answeredRef.current = answered
-  }, [answered])
-  useEffect(() => {
-    showSelfRateRef.current = showSelfRate
-  }, [showSelfRate])
-  useEffect(() => {
-    cardModeRef.current = cardMode
-  }, [cardMode])
+  // Sync refs during render — these are only read in event handlers/callbacks,
+  // never during render output, so direct assignment is safe.
+  queueRef.current = queue
+  vocabRef.current = vocab
+  settingsRef.current = settings
+  sessionModeRef.current = sessionMode
+  isFlippedRef.current = isFlipped
+  nextBtnVisibleRef.current = nextBtnVisible
+  answeredRef.current = answered
+  showSelfRateRef.current = showSelfRate
+  cardModeRef.current = cardMode
 
   // Upgrade to AI distractors when they arrive (if same card, not yet answered)
   useEffect(() => {
@@ -875,16 +873,18 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
     // Cantonese mode 2 stage 2 = recall (like Mandarin stage 3)
     const isSelfRate =
-      stage === 3 ||
-      (dialect === 'cantonese' && mode === 2 && stage === 2)
+      stage === 3 || (dialect === 'cantonese' && mode === 2 && stage === 2)
     if (isSelfRate) {
       setCardMode('selfrate')
       setAnswerCorrect(word.char)
       setAnswerChoices([])
     } else {
       const target: 'english' | 'pinyin' =
-        mode === 1 || stage === 2 || dialect === 'cantonese' ? 'english' : 'pinyin'
-      const correct = target === 'english' ? word.english : getRomanization(word, dialect)
+        mode === 1 || stage === 2 || dialect === 'cantonese'
+          ? 'english'
+          : 'pinyin'
+      const correct =
+        target === 'english' ? word.english : getRomanization(word, dialect)
       setAnswerTarget(target)
       setAnswerCorrect(correct)
 
@@ -1347,12 +1347,20 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       {/* Study workspace: header spans full width, body is two-column grid */}
       <div className="fc-study-workspace">
         {/* Progress header — spans both columns */}
-        <StudyHeader current={qIdx + 1} total={queue.length} pct={pct} score={score} />
+        <StudyHeader
+          current={qIdx + 1}
+          total={queue.length}
+          pct={pct}
+          score={score}
+        />
 
         {/* Two-column grid body */}
         <div className="fc-study-body">
           {/* Stage dots (grid row 1, col 1) */}
-          <StageDots stageCount={sessionMode} currentStage={currentItem?.stage ?? 0} />
+          <StageDots
+            stageCount={sessionMode}
+            currentStage={currentItem?.stage ?? 0}
+          />
 
           {/* Card + answers (grid row 2, col 1) */}
           <div className="fc-card-answers">
@@ -1491,318 +1499,6 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   )
 }
 
-// ── CHAT PANEL ───────────────────────────────────────────────────
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-interface ChatCardContext {
-  char: string
-  pinyin: string
-  english: string
-  category?: string
-}
-
-const CHAT_SUGGESTIONS_DEFAULT = [
-  'How do I say "thank you" in Chinese?',
-  'Explain tones in Mandarin.',
-  'Give me 3 example sentences using 你好.',
-]
-
-function CHAT_SUGGESTIONS_FOR_CARD(ctx: ChatCardContext) {
-  return [
-    `Use ${ctx.char} in a sentence.`,
-    `What does ${ctx.char} mean exactly?`,
-    `How do I remember ${ctx.char}?`,
-  ]
-}
-
-function ChatPanel({
-  cardContext,
-  onClose,
-  inline = false,
-}: {
-  cardContext?: ChatCardContext
-  onClose?: () => void
-  inline?: boolean
-}) {
-  const trpc = useTRPC()
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [errorMsg, setErrorMsg] = useState('')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-
-  const sendMutation = useMutation(trpc.chat.sendMessage.mutationOptions())
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isLoading])
-
-  // Close on Escape (overlay mode only)
-  useEffect(() => {
-    if (inline) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose?.()
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [inline, onClose])
-
-  async function sendMessage(text: string) {
-    const userText = text.trim()
-    if (!userText || isLoading) return
-    setInput('')
-    setErrorMsg('')
-    const newMessages: ChatMessage[] = [
-      ...messages,
-      { role: 'user', content: userText },
-    ]
-    setMessages(newMessages)
-    setIsLoading(true)
-    try {
-      const result = await sendMutation.mutateAsync({
-        messages: newMessages,
-        cardContext,
-      })
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: result.content },
-      ])
-    } catch (err: unknown) {
-      const msg =
-        err && typeof err === 'object' && 'message' in err
-          ? String((err as { message: unknown }).message)
-          : 'Something went wrong. Please try again.'
-      setErrorMsg(msg)
-    } finally {
-      setIsLoading(false)
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage(input)
-    }
-  }
-
-  const suggestions = cardContext
-    ? CHAT_SUGGESTIONS_FOR_CARD(cardContext)
-    : CHAT_SUGGESTIONS_DEFAULT
-
-  const panel = (
-    <div
-      className={inline ? 'fc-chat-panel--inline' : 'fc-chat-panel--overlay'}
-    >
-      {/* Header */}
-      <div className="fc-chat-header">
-        <div className="fc-chat-header-left">
-          <span className="fc-chat-title">Ask AI</span>
-        </div>
-        {!inline && onClose && (
-          <button
-            className="fc-chat-close"
-            onClick={onClose}
-            aria-label="Close chat"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-
-      {/* Messages */}
-      <div className="fc-chat-messages">
-        {messages.length === 0 ? (
-          <div className="fc-chat-empty">
-            <div className="fc-chat-empty-char">
-              {cardContext ? cardContext.char : '问'}
-            </div>
-            <div>
-              {cardContext
-                ? `Ask anything about ${cardContext.char} or Chinese in general.`
-                : 'Ask me anything about Mandarin Chinese!'}
-            </div>
-          </div>
-        ) : (
-          messages.map((msg, i) => (
-            <div key={i} className={`fc-chat-msg ${msg.role}`}>
-              <div className="fc-chat-bubble">{msg.content}</div>
-            </div>
-          ))
-        )}
-        {/* Suggestions / typing indicator — fixed-height container prevents shift */}
-        <div className="fc-chat-bottom">
-          {!isLoading && (
-            <div className="fc-chat-suggestions">
-              {suggestions.map((s) => (
-                <button
-                  key={s}
-                  className="fc-chat-suggest-btn"
-                  onClick={() => sendMessage(s)}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
-          {isLoading && (
-            <div className="fc-chat-msg assistant">
-              <div className="fc-chat-bubble fc-chat-typing">
-                <span />
-                <span />
-                <span />
-              </div>
-            </div>
-          )}
-        </div>
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Error */}
-      {errorMsg && <div className="fc-chat-error">{errorMsg}</div>}
-
-      {/* Input */}
-      <div className="fc-chat-input-row">
-        <textarea
-          ref={inputRef}
-          className="fc-chat-input"
-          rows={2}
-          placeholder="Ask about Chinese…"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isLoading}
-        />
-        <button
-          className="fc-chat-send"
-          onClick={() => sendMessage(input)}
-          disabled={isLoading || !input.trim()}
-          aria-label="Send"
-        >
-          ↑
-        </button>
-      </div>
-    </div>
-  )
-
-  if (inline) return panel
-
-  return (
-    <div
-      className="fc-chat-overlay"
-      onClick={(e) => e.target === e.currentTarget && onClose?.()}
-    >
-      {panel}
-    </div>
-  )
-}
-
-// ── PRONUNCIATION BOX ─────────────────────────────────────────────
-const MAX_TRANSLATIONS = 5
-
-function isChineseText(text: string) {
-  return /[\u4e00-\u9fff]/.test(text)
-}
-
-function PronunciationBox() {
-  const trpc = useTRPC()
-  const [input, setInput] = useState('')
-  const [translationsLeft, setTranslationsLeft] = useState(MAX_TRANSLATIONS)
-  const [result, setResult] = useState<{ char: string; pinyin: string } | null>(
-    null,
-  )
-  const [isLoading, setIsLoading] = useState(false)
-  const [errorMsg, setErrorMsg] = useState('')
-
-  const translateMutation = useMutation(
-    trpc.chat.translateToZh.mutationOptions(),
-  )
-
-  const isChinese = isChineseText(input.trim())
-  const translationBlocked = !isChinese && translationsLeft <= 0
-
-  async function handlePlay() {
-    const text = input.trim()
-    if (!text || isLoading || translationBlocked) return
-    setErrorMsg('')
-    setIsLoading(true)
-
-    try {
-      if (isChinese) {
-        setResult(null)
-        speakHanzi(text)
-      } else {
-        const translated = await translateMutation.mutateAsync({ text })
-        setResult(translated)
-        speakHanzi(translated.char)
-        setTranslationsLeft((n) => n - 1)
-      }
-    } catch (err: unknown) {
-      const msg =
-        err && typeof err === 'object' && 'message' in err
-          ? String((err as { message: unknown }).message)
-          : 'Something went wrong.'
-      setErrorMsg(msg)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handlePlay()
-    }
-  }
-
-  return (
-    <div className="fc-pronbox">
-      <div className="fc-pronbox-header">
-        <span className="fc-pronbox-title">Pronunciation</span>
-        <span className="fc-pronbox-limit">
-          {translationsLeft > 0
-            ? `${translationsLeft} English translation${translationsLeft !== 1 ? 's' : ''} left`
-            : 'Translation limit reached'}
-        </span>
-      </div>
-      <div className="fc-pronbox-body">
-        <textarea
-          className="fc-pronbox-input"
-          rows={3}
-          placeholder="Type Chinese, pinyin, or English…"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isLoading}
-        />
-        <button
-          className="fc-pronbox-play"
-          onClick={handlePlay}
-          disabled={isLoading || !input.trim() || translationBlocked}
-          aria-label="Play pronunciation"
-        >
-          {isLoading ? (
-            <span className="fc-pronbox-spinner" />
-          ) : (
-            <Volume2 size={18} />
-          )}
-        </button>
-      </div>
-      {result && (
-        <div className="fc-pronbox-result">
-          <span className="fc-pronbox-result-char">{result.char}</span>
-          <span className="fc-pronbox-result-pinyin">{result.pinyin}</span>
-        </div>
-      )}
-      {errorMsg && <div className="fc-pronbox-error">{errorMsg}</div>}
-    </div>
-  )
-}
-
 // ── SOUND ONLY PAGE ───────────────────────────────────────────────
 function SoundOnlyPage({
   vocab,
@@ -1935,11 +1631,11 @@ function SoundOnlyPage({
     if (answered || !typeValue.trim() || !currentWord) return
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
-    const correctVal = answerFormat === 'english'
-      ? currentWord.english
-      : getRomanization(currentWord, dialect)
-    const isCorrect =
-      normalizeAnswer(typeValue) === normalizeAnswer(correctVal)
+    const correctVal =
+      answerFormat === 'english'
+        ? currentWord.english
+        : getRomanization(currentWord, dialect)
+    const isCorrect = normalizeAnswer(typeValue) === normalizeAnswer(correctVal)
     setTypeResult(isCorrect ? 'correct' : 'wrong')
     if (isCorrect) setScore((p) => p + 1)
     setNextBtnVisible(true)
@@ -2004,7 +1700,12 @@ function SoundOnlyPage({
       </button>
 
       <div className="fc-study-workspace">
-        <StudyHeader current={idx + 1} total={queue.length} pct={pct} score={score} />
+        <StudyHeader
+          current={idx + 1}
+          total={queue.length}
+          pct={pct}
+          score={score}
+        />
 
         <div className="fc-study-body">
           <StageDots stageCount={stageCount} currentStage={stage} />
@@ -2084,7 +1785,9 @@ function SoundOnlyPage({
                   style={!answered ? { visibility: 'hidden' } : undefined}
                   aria-hidden={!answered}
                 >
-                  <span className="fc-sound-reveal-char">{currentWord?.char ?? ''}</span>
+                  <span className="fc-sound-reveal-char">
+                    {currentWord?.char ?? ''}
+                  </span>
                   <span className="fc-sound-reveal-pinyin">
                     {currentWord ? getRomanization(currentWord, dialect) : ''}
                   </span>
@@ -2159,7 +1862,8 @@ function SoundOnlyPage({
                   />
                   {answered && typeResult === 'wrong' && currentWord && (
                     <div className="fc-type-correct">
-                      Correct: {answerFormat === 'english'
+                      Correct:{' '}
+                      {answerFormat === 'english'
                         ? currentWord.english
                         : `${getRomanization(currentWord, dialect)} (${currentWord.char})`}
                     </div>
@@ -2335,7 +2039,12 @@ function ToneQuizPage({
       </button>
 
       <div className="fc-study-workspace">
-        <StudyHeader current={idx + 1} total={queue.length} pct={pct} score={score} />
+        <StudyHeader
+          current={idx + 1}
+          total={queue.length}
+          pct={pct}
+          score={score}
+        />
 
         <div className="fc-study-body">
           <StageDots stageCount={1} currentStage={1} />
@@ -2558,7 +2267,9 @@ function WordSetPage({
   const [describeWordCount, setDescribeWordCount] = useState(0)
   const [editWords, setEditWords] = useState<Word[]>([])
   const [aiEditInstruction, setAiEditInstruction] = useState('')
-  const [editWordsBeforeAi, setEditWordsBeforeAi] = useState<Word[] | null>(null)
+  const [editWordsBeforeAi, setEditWordsBeforeAi] = useState<Word[] | null>(
+    null,
+  )
   const [addedChars, setAddedChars] = useState<Set<string>>(new Set())
   const [removedWords, setRemovedWords] = useState<Word[]>([])
   // Create/edit form state
@@ -2582,7 +2293,9 @@ function WordSetPage({
   )
   const [settings, setSettings] = useState<Settings>(initialSettings)
   const [dialectTab, setDialectTab] = useState<Dialect>(
-    () => (localStorage.getItem('preferred-dialect') as Dialect | null) ?? 'mandarin',
+    () =>
+      (localStorage.getItem('preferred-dialect') as Dialect | null) ??
+      'mandarin',
   )
   const [soundOnlyOpen, setSoundOnlyOpen] = useState(false)
   const [soundSettings, setSoundSettings] = useState<SoundSettings>({
@@ -2591,7 +2304,6 @@ function WordSetPage({
     sessionSize: 10,
   })
   const [toneQuizOpen, setToneQuizOpen] = useState(false)
-
 
   // Derive the active dialect from the selected word set
   const activeDialect: Dialect = useMemo(() => {
@@ -2628,7 +2340,9 @@ function WordSetPage({
     }
     if (selectedWordSet === 'lang1511') {
       if (selectedUnits.size === 0) return null
-      return lang1511Units.filter((u) => selectedUnits.has(u.unit)).flatMap((u) => u.words)
+      return lang1511Units
+        .filter((u) => selectedUnits.has(u.unit))
+        .flatMap((u) => u.words)
     }
     if (selectedWordSet?.startsWith('custom:')) {
       const id = selectedWordSet.slice(7)
@@ -2637,7 +2351,13 @@ function WordSetPage({
     }
     if (selectedWordSet === 'last' && lastSession) return lastSession.vocab
     return null
-  }, [selectedWordSet, selectedHSKLevels, selectedUnits, customWordSets, lastSession])
+  }, [
+    selectedWordSet,
+    selectedHSKLevels,
+    selectedUnits,
+    customWordSets,
+    lastSession,
+  ])
 
   // Drag-select state
   const mouseIsDownRef = useRef(false)
@@ -2773,11 +2493,19 @@ function WordSetPage({
     if (selectedWordSet === 'last') {
       if (!lastSession) return
       if (lastSession.soundSettings) {
-        onStartSoundOnly(lastSession.vocab, lastSession.soundSettings, lastSession)
+        onStartSoundOnly(
+          lastSession.vocab,
+          lastSession.soundSettings,
+          lastSession,
+        )
         return
       }
       if (lastSession.toneSessionSize !== undefined) {
-        onStartToneQuiz(lastSession.vocab, lastSession.toneSessionSize, lastSession)
+        onStartToneQuiz(
+          lastSession.vocab,
+          lastSession.toneSessionSize,
+          lastSession,
+        )
         return
       }
       onContinue(
@@ -3046,10 +2774,26 @@ function WordSetPage({
                     aria-hidden="true"
                     style={{ pointerEvents: 'none', cursor: 'default' }}
                   >
-                    <Skeleton width={36} height={36} style={{ borderRadius: 6 }} />
-                    <Skeleton height={14} width="44%" style={{ marginTop: 4 }} />
-                    <Skeleton height={11} width="28%" style={{ marginTop: 4 }} />
-                    <Skeleton height={10} width="66%" style={{ marginTop: 4 }} />
+                    <Skeleton
+                      width={36}
+                      height={36}
+                      style={{ borderRadius: 6 }}
+                    />
+                    <Skeleton
+                      height={14}
+                      width="44%"
+                      style={{ marginTop: 4 }}
+                    />
+                    <Skeleton
+                      height={11}
+                      width="28%"
+                      style={{ marginTop: 4 }}
+                    />
+                    <Skeleton
+                      height={10}
+                      width="66%"
+                      style={{ marginTop: 4 }}
+                    />
                   </div>
                 ) : isSignedIn ? (
                   <button
@@ -3059,7 +2803,9 @@ function WordSetPage({
                     <span className="fc-ws-char">自定</span>
                     <span className="fc-ws-label">My Word Sets</span>
                     <span className="fc-ws-count">
-                      {customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).length === 0
+                      {customWordSets.filter(
+                        (s) => (s.dialect ?? 'mandarin') === dialectTab,
+                      ).length === 0
                         ? 'No sets yet'
                         : `${customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).length} set${customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).length !== 1 ? 's' : ''}`}
                     </span>
@@ -3079,10 +2825,26 @@ function WordSetPage({
                     aria-hidden="true"
                     style={{ pointerEvents: 'none', cursor: 'default' }}
                   >
-                    <Skeleton width={36} height={36} style={{ borderRadius: 6 }} />
-                    <Skeleton height={14} width="48%" style={{ marginTop: 4 }} />
-                    <Skeleton height={11} width="68%" style={{ marginTop: 4 }} />
-                    <Skeleton height={10} width="82%" style={{ marginTop: 4 }} />
+                    <Skeleton
+                      width={36}
+                      height={36}
+                      style={{ borderRadius: 6 }}
+                    />
+                    <Skeleton
+                      height={14}
+                      width="48%"
+                      style={{ marginTop: 4 }}
+                    />
+                    <Skeleton
+                      height={11}
+                      width="68%"
+                      style={{ marginTop: 4 }}
+                    />
+                    <Skeleton
+                      height={10}
+                      width="82%"
+                      style={{ marginTop: 4 }}
+                    />
                   </div>
                 ) : lastSession && lastSession.dialect === dialectTab ? (
                   <button
@@ -3122,13 +2884,17 @@ function WordSetPage({
                     <button
                       className={`fc-ws-btn${selectedWordSet === 'hsk' ? ' selected' : ''}`}
                       onClick={() =>
-                        setSelectedWordSet(selectedWordSet === 'hsk' ? null : 'hsk')
+                        setSelectedWordSet(
+                          selectedWordSet === 'hsk' ? null : 'hsk',
+                        )
                       }
                     >
                       <span className="fc-ws-char">汉语</span>
                       <span className="fc-ws-label">HSK</span>
                       <span className="fc-ws-count">2 levels · 300 words</span>
-                      <span className="fc-ws-desc">Official HSK vocabulary</span>
+                      <span className="fc-ws-desc">
+                        Official HSK vocabulary
+                      </span>
                     </button>
                   </>
                 )}
@@ -3155,7 +2921,6 @@ function WordSetPage({
                 )}
               </div>
               {/* end fc-ws-list */}
-
             </div>
             {/* end fc-ws-left */}
 
@@ -3580,16 +3345,26 @@ function WordSetPage({
                 {dashStats ? (
                   <>
                     <div className="fc-ws-progress-row">
-                      <span className="fc-ws-progress-label">Words Studied</span>
-                      <span className="fc-ws-progress-num">{dashStats.studied}</span>
+                      <span className="fc-ws-progress-label">
+                        Words Studied
+                      </span>
+                      <span className="fc-ws-progress-num">
+                        {dashStats.studied}
+                      </span>
                     </div>
                     <div className="fc-ws-progress-row">
                       <span className="fc-ws-progress-label">Correct</span>
-                      <span className="fc-ws-progress-num">{dashStats.correct}</span>
+                      <span className="fc-ws-progress-num">
+                        {dashStats.correct}
+                      </span>
                     </div>
                     <div className="fc-ws-progress-row">
-                      <span className="fc-ws-progress-label">Total Reviews</span>
-                      <span className="fc-ws-progress-num">{dashStats.reviews}</span>
+                      <span className="fc-ws-progress-label">
+                        Total Reviews
+                      </span>
+                      <span className="fc-ws-progress-num">
+                        {dashStats.reviews}
+                      </span>
                     </div>
                   </>
                 ) : (
@@ -3667,33 +3442,37 @@ function WordSetPage({
             {createMode === null && (
               <>
                 <div className="fc-modal-scroll-body">
-                  {customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).length === 0 ? (
+                  {customWordSets.filter(
+                    (s) => (s.dialect ?? 'mandarin') === dialectTab,
+                  ).length === 0 ? (
                     <p className="fc-modal-empty">
                       No word sets yet. Create one below.
                     </p>
                   ) : (
                     <div className="fc-modal-set-list">
-                      {customWordSets.filter((s) => (s.dialect ?? 'mandarin') === dialectTab).map((cs) => (
-                        <button
-                          key={cs.id}
-                          className={`fc-modal-set-row${selectedModalSetId === cs.id ? ' selected' : ''}`}
-                          onClick={() =>
-                            setSelectedModalSetId(
-                              selectedModalSetId === cs.id ? null : cs.id,
-                            )
-                          }
-                        >
-                          <span className="fc-modal-set-name">
-                            {cs.isFavorited && (
-                              <span className="fc-modal-set-star">★ </span>
-                            )}
-                            {cs.name}
-                          </span>
-                          <span className="fc-modal-set-meta">
-                            {cs.wordCount} words
-                          </span>
-                        </button>
-                      ))}
+                      {customWordSets
+                        .filter((s) => (s.dialect ?? 'mandarin') === dialectTab)
+                        .map((cs) => (
+                          <button
+                            key={cs.id}
+                            className={`fc-modal-set-row${selectedModalSetId === cs.id ? ' selected' : ''}`}
+                            onClick={() =>
+                              setSelectedModalSetId(
+                                selectedModalSetId === cs.id ? null : cs.id,
+                              )
+                            }
+                          >
+                            <span className="fc-modal-set-name">
+                              {cs.isFavorited && (
+                                <span className="fc-modal-set-star">★ </span>
+                              )}
+                              {cs.name}
+                            </span>
+                            <span className="fc-modal-set-meta">
+                              {cs.wordCount} words
+                            </span>
+                          </button>
+                        ))}
                     </div>
                   )}
                 </div>
@@ -3778,7 +3557,9 @@ function WordSetPage({
                           className="fc-edit-word-undo"
                           title="Undo addition"
                           onClick={() => {
-                            setEditWords((prev) => prev.filter((_, j) => j !== i))
+                            setEditWords((prev) =>
+                              prev.filter((_, j) => j !== i),
+                            )
                             setAddedChars((prev) => {
                               const next = new Set(prev)
                               next.delete(w.char)
@@ -3819,7 +3600,9 @@ function WordSetPage({
                         title="Undo removal"
                         onClick={() => {
                           setEditWords((prev) => [...prev, w])
-                          setRemovedWords((prev) => prev.filter((_, j) => j !== i))
+                          setRemovedWords((prev) =>
+                            prev.filter((_, j) => j !== i),
+                          )
                         }}
                       >
                         <Undo2 size={14} />
@@ -3832,7 +3615,9 @@ function WordSetPage({
                     {editWords.length} word{editWords.length !== 1 ? 's' : ''}
                     {addedChars.size > 0 && (
                       <span className="fc-edit-diff-summary">
-                        {' '}(+{addedChars.size} added, -{removedWords.length} removed)
+                        {' '}
+                        (+{addedChars.size} added, -{removedWords.length}{' '}
+                        removed)
                       </span>
                     )}
                   </span>
@@ -3878,12 +3663,13 @@ function WordSetPage({
                 <button
                   className="fc-upload-save-btn"
                   disabled={
-                    editWords.length === 0 ||
-                    replaceWordsMutation.isPending
+                    editWords.length === 0 || replaceWordsMutation.isPending
                   }
                   onClick={() => void handleSaveEdit()}
                 >
-                  {replaceWordsMutation.isPending ? 'Saving…' : 'Save Changes →'}
+                  {replaceWordsMutation.isPending
+                    ? 'Saving…'
+                    : 'Save Changes →'}
                 </button>
               </div>
             )}

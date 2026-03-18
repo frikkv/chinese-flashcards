@@ -152,8 +152,14 @@ async function getPublicStats(userId: string) {
 
   // Aggregates
   const totalSessions = allSessions.length
-  const totalCardsReviewed = allSessions.reduce((sum, s) => sum + s.totalCount, 0)
-  const totalCorrectAnswers = allSessions.reduce((sum, s) => sum + s.correctCount, 0)
+  const totalCardsReviewed = allSessions.reduce(
+    (sum, s) => sum + s.totalCount,
+    0,
+  )
+  const totalCorrectAnswers = allSessions.reduce(
+    (sum, s) => sum + s.correctCount,
+    0,
+  )
   const accuracy =
     totalCardsReviewed > 0
       ? Math.round((totalCorrectAnswers / totalCardsReviewed) * 100)
@@ -182,7 +188,10 @@ async function getPublicStats(userId: string) {
   )
   let streak = 0
   let cur = dateTsSet.has(todayTs) ? todayTs : todayTs - 86_400_000
-  while (dateTsSet.has(cur)) { streak++; cur -= 86_400_000 }
+  while (dateTsSet.has(cur)) {
+    streak++
+    cur -= 86_400_000
+  }
   const sortedDates = [...dateTsSet].sort((a, b) => a - b)
   let bestStreak = 0
   let currentRun = 0
@@ -197,7 +206,10 @@ async function getPublicStats(userId: string) {
   // Last session (wordSetKey + wordSetDetail for the label)
   const lastSessionRow = allSessions[0]
   const lastSession = lastSessionRow
-    ? { wordSetKey: lastSessionRow.wordSetKey, wordSetDetail: lastSessionRow.wordSetDetail }
+    ? {
+        wordSetKey: lastSessionRow.wordSetKey,
+        wordSetDetail: lastSessionRow.wordSetDetail,
+      }
     : null
 
   // Words known + needs review (Known: ≥3 correct AND ≥80% accuracy)
@@ -288,30 +300,35 @@ export const socialRouter = createTRPCRouter({
       if (!profile)
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found.' })
 
-      const [user] = await db
-        .select({ name: users.name, createdAt: users.createdAt })
-        .from(users)
-        .where(eq(users.id, profile.userId))
-        .limit(1)
-
-      const stats = await getPublicStats(profile.userId)
       const viewerId = ctx.session?.user.id
-      const friendStatus = viewerId
-        ? await getFriendStatus(viewerId, profile.userId)
-        : null
 
-      const [friendCountRow] = await db
-        .select({ c: count(friendships.id) })
-        .from(friendships)
-        .where(
-          and(
-            or(
-              eq(friendships.senderId, profile.userId),
-              eq(friendships.receiverId, profile.userId),
+      const [userRows, stats, friendCountRows, friendStatus] =
+        await Promise.all([
+          db
+            .select({ name: users.name, createdAt: users.createdAt })
+            .from(users)
+            .where(eq(users.id, profile.userId))
+            .limit(1),
+          getPublicStats(profile.userId),
+          db
+            .select({ c: count(friendships.id) })
+            .from(friendships)
+            .where(
+              and(
+                or(
+                  eq(friendships.senderId, profile.userId),
+                  eq(friendships.receiverId, profile.userId),
+                ),
+                eq(friendships.status, 'accepted'),
+              ),
             ),
-            eq(friendships.status, 'accepted'),
-          ),
-        )
+          viewerId
+            ? getFriendStatus(viewerId, profile.userId)
+            : Promise.resolve(null),
+        ])
+
+      const user = userRows[0]
+      const friendCountRow = friendCountRows[0]
 
       return {
         userId: profile.userId,
@@ -695,9 +712,10 @@ export const socialRouter = createTRPCRouter({
       .from(userProfiles)
       .where(inArray(userProfiles.userId, friendIds))
 
+    const profileMap = new Map(profiles.map((p) => [p.userId, p]))
     return rows.map((r) => {
       const friendId = r.senderId === userId ? r.receiverId : r.senderId
-      const profile = profiles.find((p) => p.userId === friendId)
+      const profile = profileMap.get(friendId)
       return {
         friendshipId: r.id,
         userId: friendId,
@@ -729,8 +747,9 @@ export const socialRouter = createTRPCRouter({
       .from(userProfiles)
       .where(inArray(userProfiles.userId, senderIds))
 
+    const profileMap = new Map(profiles.map((p) => [p.userId, p]))
     return rows.map((r) => {
-      const profile = profiles.find((p) => p.userId === r.senderId)
+      const profile = profileMap.get(r.senderId)
       return {
         friendshipId: r.id,
         userId: r.senderId,
@@ -762,8 +781,9 @@ export const socialRouter = createTRPCRouter({
       .from(userProfiles)
       .where(inArray(userProfiles.userId, receiverIds))
 
+    const profileMap = new Map(profiles.map((p) => [p.userId, p]))
     return rows.map((r) => {
-      const profile = profiles.find((p) => p.userId === r.receiverId)
+      const profile = profileMap.get(r.receiverId)
       return {
         friendshipId: r.id,
         userId: r.receiverId,
@@ -823,9 +843,10 @@ export const socialRouter = createTRPCRouter({
       .from(userProfiles)
       .where(inArray(userProfiles.userId, participantIds))
 
+    const profileMap = new Map(profiles.map((p) => [p.userId, p]))
     return stats
       .map((s) => {
-        const profile = profiles.find((p) => p.userId === s.userId)
+        const profile = profileMap.get(s.userId)
         return {
           userId: s.userId,
           username: profile?.username ?? null,

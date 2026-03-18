@@ -19,7 +19,10 @@ export type MasteryStats = {
 // Known: ≥3 correct answers AND ≥80% recent accuracy
 // Learning: attempted but not yet Known
 // New: never attempted
-export function computeWordSetMastery(vocab: Word[], cards: ProgressCard[]): MasteryStats {
+export function computeWordSetMastery(
+  vocab: Word[],
+  cards: ProgressCard[],
+): MasteryStats {
   const map = new Map(cards.map((c) => [c.cardId, c]))
   let newCount = 0,
     learning = 0,
@@ -49,7 +52,10 @@ export function computeWordSetMastery(vocab: Word[], cards: ProgressCard[]): Mas
     learning,
     known,
     total: vocab.length,
-    accuracy: totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : null,
+    accuracy:
+      totalAttempted > 0
+        ? Math.round((totalCorrect / totalAttempted) * 100)
+        : null,
     totalReviews: totalAttempted,
     hardest: hardest.slice(0, 5).map((h) => h.char),
   }
@@ -63,7 +69,8 @@ export function WordSetDashboard({
   cardProgress: ProgressCard[]
 }) {
   const stats = computeWordSetMastery(vocab, cardProgress)
-  const knownPct = stats.total > 0 ? Math.round((stats.known / stats.total) * 100) : 0
+  const knownPct =
+    stats.total > 0 ? Math.round((stats.known / stats.total) * 100) : 0
   return (
     <div className="fc-mastery-dashboard">
       <div className="fc-mastery-header">
@@ -74,7 +81,10 @@ export function WordSetDashboard({
       </div>
       <div className="fc-mastery-bar-wrap">
         <div className="fc-mastery-bar">
-          <div className="fc-mastery-bar-fill" style={{ width: `${knownPct}%` }} />
+          <div
+            className="fc-mastery-bar-fill"
+            style={{ width: `${knownPct}%` }}
+          />
         </div>
         <span className="fc-mastery-pct">{knownPct}%</span>
       </div>
@@ -96,7 +106,9 @@ export function WordSetDashboard({
         <div className="fc-mastery-meta">
           {stats.accuracy !== null && <span>{stats.accuracy}% accuracy</span>}
           {stats.accuracy !== null && stats.totalReviews > 0 && <span>·</span>}
-          {stats.totalReviews > 0 && <span>{stats.totalReviews} total reviews</span>}
+          {stats.totalReviews > 0 && (
+            <span>{stats.totalReviews} total reviews</span>
+          )}
         </div>
       )}
       {stats.hardest.length > 0 && (

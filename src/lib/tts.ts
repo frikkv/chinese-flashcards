@@ -31,9 +31,7 @@ function speakFallback(hanzi: string, locale: 'zh-CN' | 'zh-HK' = 'zh-CN') {
   setTimeout(() => {
     const chars = [...hanzi]
     const text =
-      chars.length > 1
-        ? chars.join('\u2009') + '\u2009，。'
-        : hanzi + '，。'
+      chars.length > 1 ? chars.join('\u2009') + '\u2009，。' : hanzi + '，。'
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = locale
     utterance.rate = 0.65
