@@ -50,6 +50,11 @@ pnpm dlx shadcn@latest add <component>
 - `src/lib/auth.ts` — Better Auth server config (no `baseURL`; uses `BETTER_AUTH_URL` for `trustedOrigins`)
 - `src/lib/auth-client.ts` — Better Auth client config (no `baseURL`; uses relative paths)
 - `src/lib/levels.ts` — XP formula (`computeXP`) and level ladder (`getLevelInfo`): 7 levels from Beginner → Legend
+- `src/lib/flashcard-logic.ts` — Pure stateless helpers for the study engine: `QueueItem` type, `shuffle`, `normalizeAnswer`, `buildQueue`, `getQuestionContent`, `getAnswerContent`, `buildToneChoices`, `stripTones`, and tone-vowel utilities; no React or side effects
+- `src/lib/rate-limit.ts` — `createRateLimiter({ windowMs, max })` factory; used by `chat.ts` and `wordsets.ts` instead of ad-hoc per-file maps
+- `src/lib/time.ts` — `getWeekStartTs()`: returns Monday 00:00 UTC timestamp; single source of truth for week boundary used by `progress.ts`, `social.ts`
+- `src/components/AuthPage.tsx` — Sign-in/sign-up form (email+password + Google OAuth); props: `{ onSkip }`
+- `src/components/flashcard/InlineLeaderboard.tsx` — Self-contained leaderboard sidebar snippet; fetches `social.getWeeklyLeaderboard`, hides for unauthenticated users
 - `src/data/vocabulary.ts` — All flashcard data (HSK 1, HSK 2, LANG 1511 units)
 - `src/server/ai/generateDistractors.ts` — GPT-4o-mini logic for generating wrong answer choices
 - `src/server/ai/generateWordSet.ts` — GPT-4o-mini logic for extracting Chinese vocab from arbitrary text

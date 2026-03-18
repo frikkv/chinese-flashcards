@@ -6,10 +6,22 @@ import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
 import { cantoneseBasicsWords } from '../data/cantonese-vocabulary'
 import type { Word } from '../data/vocabulary'
 import type { Dialect } from '../lib/dialect'
-import { getRomanization, getRomanizationLabel } from '../lib/dialect'
+import { getRomanization } from '../lib/dialect'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { speakHanzi } from '#/lib/tts'
+import {
+  type QueueItem,
+  shuffle,
+  normalizeAnswer,
+  buildQueue,
+  getQuestionContent,
+  getAnswerContent,
+  buildToneChoices,
+  stripTones,
+} from '#/lib/flashcard-logic'
+import { AuthPage } from '#/components/AuthPage'
+import { InlineLeaderboard } from '#/components/flashcard/InlineLeaderboard'
 import {
   type CardContent,
   charFontStyle,
@@ -44,33 +56,16 @@ import { Skeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/')({
   component: AuthGate,
-  loader: async ({ context: { queryClient, trpc } }) => {
-    // Prefetch all auth-gated homepage queries in parallel, at route load time.
-    //
-    // SSR path: the server has the session cookie, so queries succeed and their
-    // results are dehydrated into the HTML payload. The client hydrates with a
-    // fully-populated QueryClient — no loading states at all on first paint.
-    //
-    // Client navigation path: queries are in-flight before the React auth hook
-    // resolves, so useQuery picks up cached results the moment isSignedIn
-    // becomes true instead of waiting an extra round-trip.
+  loader: ({ context: { queryClient, trpc } }) => {
+    // Fire prefetch queries without awaiting — the route renders immediately
+    // and components pick up in-flight queries via their useQuery hooks.
+    // Skeletons cover each section until data arrives.
     //
     // retry:false — skip the retry budget on 401s for unauthenticated users
-    // so the one wasted request resolves immediately and doesn't add latency.
-    await Promise.all([
-      queryClient.prefetchQuery({
-        ...trpc.progress.getProgress.queryOptions(),
-        retry: false,
-      }),
-      queryClient.prefetchQuery({
-        ...trpc.wordsets.list.queryOptions(),
-        retry: false,
-      }),
-      queryClient.prefetchQuery({
-        ...trpc.social.getWeeklyLeaderboard.queryOptions(),
-        retry: false,
-      }),
-    ])
+    // so the one wasted request resolves quickly and doesn't add latency.
+    void queryClient.prefetchQuery({ ...trpc.progress.getProgress.queryOptions(), retry: false })
+    void queryClient.prefetchQuery({ ...trpc.wordsets.list.queryOptions(), retry: false })
+    void queryClient.prefetchQuery({ ...trpc.social.getWeeklyLeaderboard.queryOptions(), retry: false })
   },
 })
 
@@ -82,11 +77,6 @@ interface Settings {
   answerStyle: AnswerStyle
   defaultMode: 1 | 2 | 3
   sessionSize: 10 | 20 | 30
-}
-
-interface QueueItem {
-  word: Word
-  stage: 1 | 2 | 3
 }
 
 interface LastSession {
@@ -129,435 +119,6 @@ interface SoundSettings {
   answerStyle: AnswerStyle
   sessionSize: 10 | 20 | 30
   stageCount?: 1 | 2
-}
-
-// CardContent → src/components/flashcard/CardFace.tsx
-
-// ── HELPERS ──────────────────────────────────────────────────────
-function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5)
-}
-
-function normalizeAnswer(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[āáǎà]/g, 'a')
-    .replace(/[ēéěè]/g, 'e')
-    .replace(/[īíǐì]/g, 'i')
-    .replace(/[ōóǒò]/g, 'o')
-    .replace(/[ūúǔùǖ]/g, 'u')
-    .trim()
-}
-
-// ── TONE HELPERS ─────────────────────────────────────────────────
-const TONE_VOWELS: Record<string, string[]> = {
-  a: ['a', 'ā', 'á', 'ǎ', 'à'],
-  e: ['e', 'ē', 'é', 'ě', 'è'],
-  i: ['i', 'ī', 'í', 'ǐ', 'ì'],
-  o: ['o', 'ō', 'ó', 'ǒ', 'ò'],
-  u: ['u', 'ū', 'ú', 'ǔ', 'ù'],
-  ü: ['ü', 'ǖ', 'ǘ', 'ǚ', 'ǜ'],
-}
-
-function stripTones(s: string): string {
-  return s
-    .replace(/[āáǎà]/g, 'a')
-    .replace(/[ēéěè]/g, 'e')
-    .replace(/[īíǐì]/g, 'i')
-    .replace(/[ōóǒò]/g, 'o')
-    .replace(/[ūúǔù]/g, 'u')
-    .replace(/[ǖǘǚǜ]/g, 'ü')
-}
-
-function getSyllableTone(syllable: string): number {
-  if (/[āēīōūǖ]/.test(syllable)) return 1
-  if (/[áéíóúǘ]/.test(syllable)) return 2
-  if (/[ǎěǐǒǔǚ]/.test(syllable)) return 3
-  if (/[àèìòùǜ]/.test(syllable)) return 4
-  return 0
-}
-
-function applyToneToSyllable(syllable: string, tone: number): string {
-  if (tone === 0) return syllable
-  for (const v of ['a', 'e']) {
-    if (syllable.includes(v)) return syllable.replace(v, TONE_VOWELS[v][tone])
-  }
-  if (syllable.includes('ou'))
-    return syllable.replace('o', TONE_VOWELS['o'][tone])
-  let lastIdx = -1
-  let lastVowel = ''
-  for (const v of ['i', 'o', 'u', 'ü']) {
-    const idx = syllable.lastIndexOf(v)
-    if (idx > lastIdx) {
-      lastIdx = idx
-      lastVowel = v
-    }
-  }
-  if (lastIdx !== -1)
-    return (
-      syllable.slice(0, lastIdx) +
-      TONE_VOWELS[lastVowel][tone] +
-      syllable.slice(lastIdx + 1)
-    )
-  return syllable
-}
-
-function buildToneChoices(word: Word, vocab: Word[]): string[] {
-  const syllables = word.pinyin.split(' ')
-  const correctTones = syllables.map(getSyllableTone)
-  const stripped = syllables.map(stripTones)
-  const distractors = new Set<string>()
-
-  if (syllables.length === 1) {
-    shuffle([1, 2, 3, 4].filter((t) => t !== correctTones[0]))
-      .slice(0, 3)
-      .forEach((t) => distractors.add(applyToneToSyllable(stripped[0], t)))
-  } else {
-    let attempts = 0
-    while (distractors.size < 3 && attempts < 200) {
-      attempts++
-      const newTones = [...correctTones]
-      const numChanges = Math.min(
-        1 + Math.floor(Math.random() * 2),
-        syllables.length,
-      )
-      shuffle(syllables.map((_, i) => i))
-        .slice(0, numChanges)
-        .forEach((i) => {
-          const others = [0, 1, 2, 3, 4].filter((t) => t !== newTones[i])
-          newTones[i] = others[Math.floor(Math.random() * others.length)]
-        })
-      if (newTones.every((t, i) => t === correctTones[i])) continue
-      const variant = stripped
-        .map((s, i) => applyToneToSyllable(s, newTones[i]))
-        .join(' ')
-      if (variant !== word.pinyin) distractors.add(variant)
-    }
-  }
-
-  if (distractors.size < 3) {
-    shuffle(vocab.filter((w) => w.char !== word.char))
-      .slice(0, 3 - distractors.size)
-      .forEach((w) => distractors.add(w.pinyin))
-  }
-
-  return shuffle([word.pinyin, ...Array.from(distractors).slice(0, 3)])
-}
-
-function buildQueue(
-  vocab: Word[],
-  mode: 1 | 2 | 3,
-  size: number,
-  dialect: Dialect = 'mandarin',
-): QueueItem[] {
-  const count = Math.min(
-    size >= vocab.length ? vocab.length : size,
-    vocab.length,
-  )
-  const words = shuffle(vocab).slice(0, count)
-
-  if (dialect === 'cantonese') {
-    // Cantonese mode 1: stages [1] — char+jyutping → english
-    if (mode === 1) {
-      return words.map((w) => ({ word: w, stage: 1 as const }))
-    }
-    // Cantonese mode 2: interleave stage 1 (char+jyutping→english) and stage 2 (english→recall)
-    // Uses same interleaving logic as Mandarin mode 3
-    const studiedSet = new Set<Word>()
-    const pendingRecalls: QueueItem[] = shuffle(words).map((w) => ({
-      word: w,
-      stage: 2 as const,
-    }))
-    const result: QueueItem[] = []
-    let pairsSinceLastRecall = 0
-    for (let i = 0; i < words.length; i++) {
-      const w = words[i]
-      result.push({ word: w, stage: 1 })
-      studiedSet.add(w)
-      pairsSinceLastRecall++
-      const eligibleIdx = pendingRecalls.findIndex(
-        (r) => studiedSet.has(r.word) && r.word !== w,
-      )
-      if (eligibleIdx !== -1) {
-        const remainingPairs = words.length - i - 1
-        const forceInsert = pendingRecalls.length > remainingPairs + 1
-        const insertProb =
-          0.5 + Math.min((pairsSinceLastRecall - 1) * 0.15, 0.35)
-        if (forceInsert || Math.random() < insertProb) {
-          const [recall] = pendingRecalls.splice(eligibleIdx, 1)
-          result.push(recall)
-          pairsSinceLastRecall = 0
-        }
-      }
-    }
-    result.push(...pendingRecalls)
-    return result
-  }
-
-  if (mode !== 3) {
-    const stages = (mode === 1 ? [1] : [1, 2]) as (1 | 2 | 3)[]
-    return words.flatMap((w) => stages.map((s) => ({ word: w, stage: s })))
-  }
-
-  // Mode 3: interleave Anki recall cards (stage 3) between study pairs (stage 1+2).
-  // Rules:
-  //   - Recall for word X only appears after X's pair (1+2) has been seen
-  //   - Recall never immediately follows X's own pair
-  //   - At least one full pair separates any two recalls
-  const studiedSet = new Set<Word>()
-  const pendingRecalls: QueueItem[] = shuffle(words).map((w) => ({
-    word: w,
-    stage: 3 as const,
-  }))
-
-  const result: QueueItem[] = []
-  let pairsSinceLastRecall = 0
-
-  for (let i = 0; i < words.length; i++) {
-    const w = words[i]
-    result.push({ word: w, stage: 1 })
-    result.push({ word: w, stage: 2 })
-    studiedSet.add(w)
-    pairsSinceLastRecall++
-
-    // Find an eligible recall: studied already, not the word we just finished
-    const eligibleIdx = pendingRecalls.findIndex(
-      (r) => studiedSet.has(r.word) && r.word !== w,
-    )
-
-    if (eligibleIdx !== -1) {
-      // Force insert if we have more recalls than remaining pair slots
-      const remainingPairs = words.length - i - 1
-      const forceInsert = pendingRecalls.length > remainingPairs + 1
-      // Probability rises the longer we go without a recall
-      const insertProb = 0.2 + Math.min((pairsSinceLastRecall - 1) * 0.1, 0.4)
-
-      if (forceInsert || Math.random() < insertProb) {
-        const [recall] = pendingRecalls.splice(eligibleIdx, 1)
-        result.push(recall)
-        pairsSinceLastRecall = 0
-      }
-    }
-  }
-
-  // Any recalls that couldn't be placed earlier (e.g. the last word's own recall)
-  result.push(...pendingRecalls)
-
-  return result
-}
-
-function getQuestionContent(
-  word: Word,
-  stage: 1 | 2 | 3,
-  mode: 1 | 2 | 3,
-  dialect: Dialect = 'mandarin',
-): CardContent {
-  const romanization = getRomanization(word, dialect)
-  const romanLabel = getRomanizationLabel(dialect)
-
-  if (dialect === 'cantonese') {
-    // Cantonese mode 1: char + jyutping → english
-    if (mode === 1 || stage === 1) {
-      return {
-        tag: 'What does this mean?',
-        char: word.char,
-        pinyin: romanization,
-      }
-    }
-    // Cantonese mode 2 stage 2: english → recall char + jyutping
-    return {
-      tag: 'Recall the character',
-      english: word.english,
-      englishLarge: true,
-      isRecall: true,
-    }
-  }
-
-  // Mandarin (unchanged)
-  if (mode === 1 || stage === 2) {
-    return { tag: 'What does this mean?', char: word.char, pinyin: word.pinyin }
-  }
-  if (stage === 1) {
-    return { tag: `What is the ${romanLabel.toLowerCase()}?`, char: word.char }
-  }
-  // stage 3
-  return {
-    tag: 'Recall the character',
-    english: word.english,
-    englishLarge: true,
-    isRecall: true,
-  }
-}
-
-function getAnswerContent(
-  word: Word,
-  stage: 1 | 2 | 3,
-  mode: 1 | 2 | 3,
-  dialect: Dialect = 'mandarin',
-): CardContent {
-  const romanization = getRomanization(word, dialect)
-  const romanLabel = getRomanizationLabel(dialect)
-
-  if (dialect === 'cantonese') {
-    // Cantonese mode 1: answer is english
-    if (mode === 1 || stage === 1) {
-      return { tag: 'English', english: word.english }
-    }
-    // Cantonese mode 2 stage 2: answer is char + jyutping
-    return { tag: 'Character', char: word.char, pinyin: romanization }
-  }
-
-  // Mandarin (unchanged)
-  if (mode === 1 || stage === 2) {
-    return { tag: 'English', english: word.english }
-  }
-  if (stage === 1) {
-    return { tag: romanLabel, pinyin: word.pinyin, pinyinLarge: true }
-  }
-  return { tag: 'Character', char: word.char, pinyin: word.pinyin }
-}
-
-// ── TTS ──────────────────────────────────────────────────────────
-// speakHanzi → src/lib/tts.ts
-
-// ── CARD FACE ────────────────────────────────────────────────────
-// CardContent, charFontStyle, CardFace → src/components/flashcard/CardFace.tsx
-
-// ── AUTH ──────────────────────────────────────────────────────────
-function AuthPage({ onSkip }: { onSkip: () => void }) {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [googleLoading, setGoogleLoading] = useState(false)
-
-  async function handleGoogleSignIn() {
-    setGoogleLoading(true)
-    setError('')
-    try {
-      await authClient.signIn.social({ provider: 'google', callbackURL: '/' })
-    } catch {
-      setError('Google sign-in failed. Please try again.')
-      setGoogleLoading(false)
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    try {
-      if (mode === 'signup') {
-        const res = await authClient.signUp.email({ email, password, name })
-        if (res.error) setError(res.error.message ?? 'Sign up failed')
-      } else {
-        const res = await authClient.signIn.email({ email, password })
-        if (res.error) setError(res.error.message ?? 'Sign in failed')
-      }
-    } catch {
-      setError('Something went wrong. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="fc-app">
-      <div className="fc-auth-container">
-        <h1 className="fc-hero-title">学中文</h1>
-        <form className="fc-auth-form" onSubmit={handleSubmit}>
-          <h2 className="fc-auth-title">
-            {mode === 'signin' ? 'Sign In' : 'Create Account'}
-          </h2>
-          {mode === 'signup' && (
-            <input
-              className="fc-type-input fc-auth-input"
-              type="text"
-              placeholder="Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoFocus
-            />
-          )}
-          <input
-            className="fc-type-input fc-auth-input"
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoFocus={mode === 'signin'}
-          />
-          <input
-            className="fc-type-input fc-auth-input"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          {error && <div className="fc-auth-error">{error}</div>}
-          <button className="fc-start-btn" type="submit" disabled={loading}>
-            {loading
-              ? 'Please wait…'
-              : mode === 'signin'
-                ? 'Sign In →'
-                : 'Create Account →'}
-          </button>
-        </form>
-        <div className="fc-auth-divider">
-          <span>or</span>
-        </div>
-        <button
-          className="fc-auth-google-btn"
-          type="button"
-          onClick={handleGoogleSignIn}
-          disabled={googleLoading || loading}
-        >
-          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-            <path
-              fill="#EA4335"
-              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-            />
-            <path
-              fill="#4285F4"
-              d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-            />
-            <path
-              fill="#34A853"
-              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-            />
-          </svg>
-          {googleLoading ? 'Redirecting…' : 'Continue with Google'}
-        </button>
-        <p className="fc-auth-switch">
-          {mode === 'signin'
-            ? "Don't have an account? "
-            : 'Already have an account? '}
-          <button
-            className="fc-auth-link"
-            type="button"
-            onClick={() => {
-              setMode(mode === 'signin' ? 'signup' : 'signin')
-              setError('')
-            }}
-          >
-            {mode === 'signin' ? 'Sign up' : 'Sign in'}
-          </button>
-        </p>
-        <button className="fc-auth-skip" type="button" onClick={onSkip}>
-          Continue without an account
-        </button>
-      </div>
-    </div>
-  )
 }
 
 function AuthGate() {
@@ -1202,6 +763,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
         isSignedIn={isSignedIn}
         authPending={authPending}
         progressPending={progressQuery.isPending}
+        customWordSetsPending={customWordSetsQuery.isPending}
         onContinue={(v, mode, s, session) => {
           setVocab(v)
           setSessionMode(mode)
@@ -1524,13 +1086,13 @@ function SoundOnlyPage({
     stageCount = 1,
   } = soundSettings
 
-  function buildQueue(): Word[] {
+  function buildSoundQueue(): Word[] {
     const count =
       sessionSize === 30 ? vocab.length : Math.min(sessionSize, vocab.length)
     return shuffle(vocab).slice(0, count)
   }
 
-  const [queue, setQueue] = useState<Word[]>(() => buildQueue())
+  const [queue, setQueue] = useState<Word[]>(() => buildSoundQueue())
   const [idx, setIdx] = useState(0)
   const [stage, setStage] = useState<1 | 2>(1)
   const [score, setScore] = useState(0)
@@ -1663,7 +1225,7 @@ function SoundOnlyPage({
   handleNextRef.current = handleNext
 
   function startSession() {
-    const newQ = buildQueue()
+    const newQ = buildSoundQueue()
     setQueue(newQ)
     setIdx(0)
     setStage(1)
@@ -1925,13 +1487,13 @@ function ToneQuizPage({
   onBack: () => void
   onSessionComplete?: (stats: { correct: number; total: number }) => void
 }) {
-  function buildQueue(): Word[] {
+  function buildToneQueue(): Word[] {
     const count =
       sessionSize === 30 ? vocab.length : Math.min(sessionSize, vocab.length)
     return shuffle(vocab).slice(0, count)
   }
 
-  const [queue, setQueue] = useState<Word[]>(() => buildQueue())
+  const [queue, setQueue] = useState<Word[]>(() => buildToneQueue())
   const [idx, setIdx] = useState(0)
   const [score, setScore] = useState(0)
   const [totalAttempts, setTotalAttempts] = useState(0)
@@ -2003,7 +1565,7 @@ function ToneQuizPage({
   handleNextRef.current = handleNext
 
   function startSession() {
-    const newQ = buildQueue()
+    const newQ = buildToneQueue()
     setQueue(newQ)
     setIdx(0)
     setScore(0)
@@ -2118,94 +1680,6 @@ function ToneQuizPage({
 // WordSetDashboard, ProgressCard, MasteryStats, computeWordSetMastery → src/components/flashcard/WordSetDashboard.tsx
 
 // ── WORD SET PAGE ─────────────────────────────────────────────────
-// ── INLINE LEADERBOARD SIDEBAR ────────────────────────────────────
-function InlineLeaderboard() {
-  const trpc = useTRPC()
-  const { data: authSession, isPending: authPending } = authClient.useSession()
-  const isSignedIn = !!authSession?.user
-  const lbQuery = useQuery({
-    ...trpc.social.getWeeklyLeaderboard.queryOptions(),
-    enabled: isSignedIn,
-    staleTime: 60_000,
-  })
-
-  // Hide entirely once we know the user is not signed in
-  if (!authPending && !isSignedIn) return null
-
-  const allEntries = lbQuery.data?.entries ?? []
-  const entries = allEntries.slice(0, 5)
-  const hasMore = allEntries.length > 5
-  const hasFriends = lbQuery.data?.hasFriends ?? false
-  const isPending = authPending || lbQuery.isPending
-
-  return (
-    <div className="fc-ws-lb">
-      <div className="fc-ws-lb-header">
-        <span className="fc-ws-lb-title">This Week</span>
-        <Link to="/leaderboard" className="fc-ws-lb-fulllink">
-          Full view →
-        </Link>
-      </div>
-
-      {isPending && (
-        <div className="fc-ws-lb-loading">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="fc-ws-lb-row">
-              <Skeleton width={20} height={14} style={{ borderRadius: 4 }} />
-              <Skeleton height={12} width="65%" style={{ borderRadius: 4 }} />
-              <Skeleton height={12} width={36} style={{ borderRadius: 4 }} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!isPending && !hasFriends && (
-        <div className="fc-ws-lb-empty">
-          <Link to="/friends" className="fc-ws-lb-add-link">
-            Add friends to compete →
-          </Link>
-        </div>
-      )}
-
-      {!isPending && hasFriends && entries.every((e) => e.xp === 0) && (
-        <div className="fc-ws-lb-empty">No activity yet this week.</div>
-      )}
-
-      {!isPending &&
-        entries.map((entry) => (
-          <div
-            key={entry.userId}
-            className={`fc-ws-lb-row${entry.isMe ? ' fc-ws-lb-row--me' : ''}`}
-          >
-            <span className="fc-ws-lb-rank">
-              {entry.rank === 1
-                ? '🥇'
-                : entry.rank === 2
-                  ? '🥈'
-                  : entry.rank === 3
-                    ? '🥉'
-                    : `#${entry.rank}`}
-            </span>
-            <span className="fc-ws-lb-name">
-              {entry.displayName}
-              {entry.isMe && <span className="fc-ws-lb-you">you</span>}
-            </span>
-            <span
-              className={`fc-ws-lb-xp${entry.xp === 0 ? ' fc-ws-lb-xp--zero' : ''}`}
-            >
-              {entry.xp > 0 ? `${entry.xp} XP` : '—'}
-            </span>
-          </div>
-        ))}
-
-      {!isPending && hasMore && (
-        <Link to="/leaderboard" className="fc-ws-lb-show-more">
-          Show more →
-        </Link>
-      )}
-    </div>
-  )
-}
 
 function WordSetPage({
   lastSession,
@@ -2220,6 +1694,7 @@ function WordSetPage({
   isSignedIn,
   authPending,
   progressPending,
+  customWordSetsPending,
   onContinue,
   onStartSoundOnly,
   onStartToneQuiz,
@@ -2237,6 +1712,7 @@ function WordSetPage({
   isSignedIn: boolean
   authPending: boolean
   progressPending: boolean
+  customWordSetsPending: boolean
   onContinue: (
     vocab: Word[],
     mode: 1 | 2 | 3,
@@ -2774,7 +2250,7 @@ function WordSetPage({
                 </button>
               </div>
               <div className="fc-ws-list">
-                {authPending ? (
+                {authPending || (isSignedIn && customWordSetsPending) ? (
                   <div
                     className="fc-ws-btn"
                     aria-hidden="true"
@@ -3378,38 +2854,58 @@ function WordSetPage({
                       <span className="fc-ws-weekly-sub">{sub}</span>
                     </div>
                     {isSignedIn && (
-                      <>
-                        {/* XP section */}
-                        <div className="fc-ws-weekly-section">
-                          <span className="fc-ws-weekly-section-label">⚡ XP</span>
-                          <div className="fc-ws-weekly-xp-bar-wrap">
-                            <div className="fc-ws-weekly-xp-bar">
-                              <div className="fc-ws-weekly-xp-bar-fill" style={{ width: `${fillPct}%` }} />
+                      progressPending ? (
+                        <>
+                          {/* XP section skeleton */}
+                          <div className="fc-ws-weekly-section">
+                            <Skeleton height={10} width="28%" style={{ borderRadius: 4 }} />
+                            <div className="fc-ws-weekly-xp-bar-wrap">
+                              <Skeleton height={5} style={{ flex: 1, borderRadius: 99 }} />
+                              <Skeleton height={11} width={52} style={{ borderRadius: 4 }} />
                             </div>
-                            <span className="fc-ws-weekly-xp-nums">{thisWeekXP} / {xpTarget} XP</span>
                           </div>
-                          {xpHint && <span className="fc-ws-weekly-xp-hint">{xpHint}</span>}
-                        </div>
-                        {/* Streak section */}
-                        {streak > 0 && (
+                          {/* Streak/rank section skeleton */}
                           <div className="fc-ws-weekly-section">
                             <div className="fc-ws-weekly-rank-row">
-                              <span className="fc-ws-weekly-section-label">🔥 Streak</span>
-                              <span className="fc-ws-weekly-streak-val">{streak} day{streak !== 1 ? 's' : ''}</span>
+                              <Skeleton height={10} width="24%" style={{ borderRadius: 4 }} />
+                              <Skeleton height={11} width="38%" style={{ borderRadius: 4 }} />
                             </div>
                           </div>
-                        )}
-                        {/* Rank section */}
-                        {tier && (
+                        </>
+                      ) : (
+                        <>
+                          {/* XP section */}
                           <div className="fc-ws-weekly-section">
-                            <div className="fc-ws-weekly-rank-row">
-                              <span className="fc-ws-weekly-section-label">🏆 Rank</span>
-                              <span className="fc-ws-weekly-rank-label">🌍 {tier}</span>
-                              {trendStatus && <span className="fc-ws-weekly-rank-status">{trendStatus}</span>}
+                            <span className="fc-ws-weekly-section-label">⚡ XP</span>
+                            <div className="fc-ws-weekly-xp-bar-wrap">
+                              <div className="fc-ws-weekly-xp-bar">
+                                <div className="fc-ws-weekly-xp-bar-fill" style={{ width: `${fillPct}%` }} />
+                              </div>
+                              <span className="fc-ws-weekly-xp-nums">{thisWeekXP} / {xpTarget} XP</span>
                             </div>
+                            {xpHint && <span className="fc-ws-weekly-xp-hint">{xpHint}</span>}
                           </div>
-                        )}
-                      </>
+                          {/* Streak section */}
+                          {streak > 0 && (
+                            <div className="fc-ws-weekly-section">
+                              <div className="fc-ws-weekly-rank-row">
+                                <span className="fc-ws-weekly-section-label">🔥 Streak</span>
+                                <span className="fc-ws-weekly-streak-val">{streak} day{streak !== 1 ? 's' : ''}</span>
+                              </div>
+                            </div>
+                          )}
+                          {/* Rank section */}
+                          {tier && (
+                            <div className="fc-ws-weekly-section">
+                              <div className="fc-ws-weekly-rank-row">
+                                <span className="fc-ws-weekly-section-label">🏆 Rank</span>
+                                <span className="fc-ws-weekly-rank-label">🌍 {tier}</span>
+                                {trendStatus && <span className="fc-ws-weekly-rank-status">{trendStatus}</span>}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )
                     )}
                     <div className="fc-ws-weekly-motivation">{motivation}</div>
                   </>

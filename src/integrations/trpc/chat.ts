@@ -5,21 +5,10 @@ import { TRPCError } from '@trpc/server'
 import { createTRPCRouter, publicProcedure } from './init'
 import { db } from '#/db'
 import { chatMessages } from '#/db/schema'
+import { createRateLimiter } from '#/lib/rate-limit'
 
-// ── RATE LIMITER (in-memory, best-effort for serverless) ──────────
-const rateLimitMap = new Map<string, number[]>()
-const RATE_LIMIT_WINDOW_MS = 60_000
-const RATE_LIMIT_MAX = 20
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now()
-  const prev = (rateLimitMap.get(key) ?? []).filter(
-    (t) => now - t < RATE_LIMIT_WINDOW_MS,
-  )
-  if (prev.length >= RATE_LIMIT_MAX) return false
-  rateLimitMap.set(key, [...prev, now])
-  return true
-}
+// In-memory, best-effort for serverless (resets on cold start)
+const chatLimiter = createRateLimiter({ windowMs: 60_000, max: 20 })
 
 // ── SYSTEM PROMPT ─────────────────────────────────────────────────
 const BASE_SYSTEM_PROMPT = `You are a helpful Mandarin Chinese learning tutor. Your role is exclusively to help learners understand Chinese vocabulary, grammar, pronunciation, tones, usage, sentence structure, and related cultural context.
@@ -57,7 +46,7 @@ export const chatRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       // Rate limit by userId or a fixed anonymous key
       const rateLimitKey = ctx.session?.user.id ?? 'anonymous'
-      if (!checkRateLimit(rateLimitKey)) {
+      if (!chatLimiter.check(rateLimitKey)) {
         throw new TRPCError({
           code: 'TOO_MANY_REQUESTS',
           message: 'Too many messages. Please wait a moment before continuing.',
@@ -126,7 +115,7 @@ export const chatRouter = createTRPCRouter({
     .input(z.object({ text: z.string().min(1).max(300) }))
     .mutation(async ({ ctx, input }) => {
       const rateLimitKey = (ctx.session?.user.id ?? 'anonymous') + ':translate'
-      if (!checkRateLimit(rateLimitKey)) {
+      if (!chatLimiter.check(rateLimitKey)) {
         throw new TRPCError({
           code: 'TOO_MANY_REQUESTS',
           message: 'Too many requests. Please wait a moment.',

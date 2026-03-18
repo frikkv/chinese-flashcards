@@ -10,11 +10,10 @@ import {
   generateWordSetFromPrompt,
   editWordSetWithAI,
 } from '#/server/ai/generateWordSet'
+import { createRateLimiter } from '#/lib/rate-limit'
 
-// In-memory rate limit: max 5 AI generations per 10 minutes per user
-const generateRateLimit = new Map<string, number[]>()
-const RATE_WINDOW_MS = 10 * 60 * 1000
-const RATE_LIMIT = 5
+// In-memory, best-effort: max 5 AI generations per 10 minutes per user
+const generateLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 5 })
 
 const WordSchema = z.object({
   char: z.string().min(1),
@@ -49,19 +48,12 @@ export const wordsetsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
 
-      // Rate limit check
-      const now = Date.now()
-      const times = (generateRateLimit.get(userId) ?? []).filter(
-        (t) => now - t < RATE_WINDOW_MS,
-      )
-      if (times.length >= RATE_LIMIT) {
+      if (!generateLimiter.check(userId)) {
         throw new TRPCError({
           code: 'TOO_MANY_REQUESTS',
           message: 'Rate limit: 5 document generations per 10 minutes.',
         })
       }
-      times.push(now)
-      generateRateLimit.set(userId, times)
 
       // AI prompt-based generation (no source text needed)
       if (input.promptText) {
@@ -294,18 +286,12 @@ export const wordsetsRouter = createTRPCRouter({
       const userId = ctx.session.user.id
 
       // Rate limit (shares the same pool as generate)
-      const now = Date.now()
-      const times = (generateRateLimit.get(userId) ?? []).filter(
-        (t) => now - t < RATE_WINDOW_MS,
-      )
-      if (times.length >= RATE_LIMIT) {
+      if (!generateLimiter.check(userId)) {
         throw new TRPCError({
           code: 'TOO_MANY_REQUESTS',
           message: 'Rate limit: 5 AI generations per 10 minutes.',
         })
       }
-      times.push(now)
-      generateRateLimit.set(userId, times)
 
       const words = await editWordSetWithAI(
         input.words,

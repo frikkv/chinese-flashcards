@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { eq, desc, sql } from 'drizzle-orm'
 import { createTRPCRouter, protectedProcedure } from './init'
+import { getWeekStartTs } from '#/lib/time'
 import { db } from '#/db'
 import {
   flashcardProgress,
@@ -59,12 +60,7 @@ export const progressRouter = createTRPCRouter({
       cur -= 86_400_000
     }
     // Week boundaries: Monday 00:00 UTC — matches leaderboard exactly
-    const now = new Date()
-    const dayOfWeek = now.getUTCDay() // 0=Sun … 6=Sat
-    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-    const weekStartTs = Date.UTC(
-      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysFromMonday,
-    )
+    const weekStartTs = getWeekStartTs()
     const lastWeekStartTs = weekStartTs - 7 * 86_400_000
 
     const thisWeekSessions = sessionDates.filter(

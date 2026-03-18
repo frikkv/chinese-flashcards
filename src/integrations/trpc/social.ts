@@ -13,6 +13,7 @@ import {
 } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { createTRPCRouter, protectedProcedure, publicProcedure } from './init'
+import { getWeekStartTs } from '#/lib/time'
 import { db } from '#/db'
 import {
   userProfiles,
@@ -244,22 +245,6 @@ async function getPublicStats(userId: string) {
       lastSeenAt: c.lastSeenAt,
     })),
   }
-}
-
-// ── WEEK HELPER ────────────────────────────────────────────────────
-/**
- * Returns Monday 00:00:00 UTC of the current week.
- * The leaderboard always resets at the start of Monday UTC so the boundary
- * is stable, server-side, and the same for every user.
- */
-function getWeekStart(): Date {
-  const now = new Date()
-  const dayOfWeek = now.getUTCDay() // 0=Sun, 1=Mon … 6=Sat
-  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-  const monday = new Date(now)
-  monday.setUTCDate(now.getUTCDate() - daysFromMonday)
-  monday.setUTCHours(0, 0, 0, 0)
-  return monday
 }
 
 // ── ROUTER ────────────────────────────────────────────────────────
@@ -883,7 +868,7 @@ export const socialRouter = createTRPCRouter({
    */
   getWeeklyLeaderboard: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id
-    const weekStart = getWeekStart()
+    const weekStart = new Date(getWeekStartTs())
 
     // 1. Accepted friends (either direction)
     const friendRows = await db
