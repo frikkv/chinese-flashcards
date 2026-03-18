@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
-import type { Word } from '../data/vocabulary'
 import { computeXP, getLevelInfo } from '#/lib/levels'
+import type { ProgressCard } from '#/lib/mastery'
+import { computeMastery } from '#/lib/mastery'
 import { Pencil } from 'lucide-react'
 const FriendsModal = lazy(() =>
   import('#/components/FriendsModal').then((m) => ({
@@ -13,80 +14,10 @@ const FriendsModal = lazy(() =>
   })),
 )
 import { Skeleton } from '#/components/Skeleton'
+import { StatCard } from '#/components/profile/StatCard'
+import { WordSetRow } from '#/components/profile/WordSetRow'
 
 export const Route = createFileRoute('/profile')({ component: ProfilePage })
-
-// ── TYPES ─────────────────────────────────────────────────────────
-type ProgressCard = {
-  cardId: string
-  timesCorrect: number
-  timesAttempted: number
-  lastSeenAt: Date
-}
-
-type MasteryStats = {
-  new: number
-  learning: number
-  known: number
-  total: number
-  accuracy: number | null
-  totalReviews: number
-  hardest: string[]
-  recentlyMastered: string[]
-}
-
-// ── MASTERY HELPER ─────────────────────────────────────────────────
-// Known: ≥3 correct AND ≥80% accuracy
-function computeMastery(vocab: Word[], cards: ProgressCard[]): MasteryStats {
-  const map = new Map(cards.map((c) => [c.cardId, c]))
-  let newCount = 0,
-    learning = 0,
-    known = 0
-  let totalCorrect = 0,
-    totalAttempted = 0
-  const hardest: Array<{ char: string; accuracy: number }> = []
-  const recentlyMastered: Array<{ char: string; lastSeenAt: Date }> = []
-
-  for (const word of vocab) {
-    const p = map.get(word.char)
-    if (!p || p.timesAttempted === 0) {
-      newCount++
-    } else {
-      totalCorrect += p.timesCorrect
-      totalAttempted += p.timesAttempted
-      const acc = p.timesCorrect / p.timesAttempted
-      if (p.timesCorrect >= 3 && acc >= 0.8) {
-        known++
-        recentlyMastered.push({
-          char: word.char,
-          lastSeenAt: new Date(p.lastSeenAt),
-        })
-      } else {
-        learning++
-        if (p.timesAttempted >= 2)
-          hardest.push({ char: word.char, accuracy: acc })
-      }
-    }
-  }
-  hardest.sort((a, b) => a.accuracy - b.accuracy)
-  recentlyMastered.sort(
-    (a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime(),
-  )
-
-  return {
-    new: newCount,
-    learning,
-    known,
-    total: vocab.length,
-    accuracy:
-      totalAttempted > 0
-        ? Math.round((totalCorrect / totalAttempted) * 100)
-        : null,
-    totalReviews: totalAttempted,
-    hardest: hardest.slice(0, 6).map((h) => h.char),
-    recentlyMastered: recentlyMastered.slice(0, 8).map((r) => r.char),
-  }
-}
 
 function formatDate(date: Date | string): string {
   return new Date(date).toLocaleDateString(undefined, {
@@ -106,82 +37,6 @@ function formatWordSetKey(key: string, detail: string): string {
     return `LANG 1511 · Unit${units.length > 1 ? 's' : ''} ${units.join(', ')}`
   }
   return key
-}
-
-// ── STAT CARD ─────────────────────────────────────────────────────
-function StatCard({
-  num,
-  label,
-  sub,
-  color,
-  featured,
-  tone,
-  wide,
-}: {
-  num: string | number
-  label: string
-  sub?: string
-  color?: string
-  featured?: boolean
-  tone?: 'success' | 'warning' | 'streak' | 'blue'
-  wide?: boolean
-}) {
-  const cls = [
-    'fc-profile-stat',
-    featured && 'fc-profile-stat--featured',
-    tone && `fc-profile-stat--${tone}`,
-    wide && 'fc-profile-stat--wide',
-  ]
-    .filter(Boolean)
-    .join(' ')
-  return (
-    <div className={cls}>
-      <div
-        className="fc-profile-stat-num"
-        style={color ? { color } : undefined}
-      >
-        {num}
-      </div>
-      <div className="fc-profile-stat-label">{label}</div>
-      {sub && <div className="fc-profile-stat-sub">{sub}</div>}
-    </div>
-  )
-}
-
-// ── WORD SET ROW ──────────────────────────────────────────────────
-function WordSetRow({ name, stats }: { name: string; stats: MasteryStats }) {
-  const knownPct =
-    stats.total > 0 ? Math.round((stats.known / stats.total) * 100) : 0
-  return (
-    <div className="fc-profile-wordset-row">
-      <div className="fc-profile-wordset-name">{name}</div>
-      <div className="fc-profile-wordset-bar-wrap">
-        <div className="fc-profile-wordset-bar">
-          <div
-            className="fc-profile-wordset-bar-fill"
-            style={{ width: `${knownPct}%` }}
-          />
-        </div>
-        <span className="fc-profile-wordset-pct">{knownPct}%</span>
-      </div>
-      <div className="fc-profile-wordset-chips">
-        <span className="fc-profile-chip fc-profile-chip--new">
-          {stats.new} new
-        </span>
-        <span className="fc-profile-chip fc-profile-chip--learning">
-          {stats.learning} learning
-        </span>
-        <span className="fc-profile-chip fc-profile-chip--known">
-          {stats.known} known
-        </span>
-        {stats.accuracy !== null && (
-          <span className="fc-profile-chip fc-profile-chip--acc">
-            {stats.accuracy}% acc
-          </span>
-        )}
-      </div>
-    </div>
-  )
 }
 
 // ── MAIN PAGE ─────────────────────────────────────────────────────

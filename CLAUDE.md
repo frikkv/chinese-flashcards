@@ -34,32 +34,68 @@ pnpm dlx shadcn@latest add <component>
 
 ### Key paths
 
-- `src/routes/` — File-based routing; `__root.tsx` is the root layout (brand font LCP optimisation: sync-loads a 3-char `text=` Google Fonts subset for 学中文), `index.tsx` is the entire flashcard app, `api.trpc.$.tsx` is the tRPC handler
-- `src/routes/profile.tsx` — Logged-in user's own profile (edit display name, username, bio; view stats and level)
+- `src/routes/` — File-based routing; `__root.tsx` is the root layout (brand font LCP optimisation: sync-loads a 3-char `text=` Google Fonts subset for 学中文), `index.tsx` is the study session orchestrator, `api.trpc.$.tsx` is the tRPC handler
+- `src/routes/index.tsx` — Thin orchestrator: auth gate, study session state/logic, page routing between wordset/study/sound/tone/results. The study page JSX lives here; other pages are imported components
+- `src/routes/profile.tsx` — Logged-in user's own profile (edit display name, username, bio; view stats and level). Imports `StatCard`, `WordSetRow` from `src/components/profile/`
 - `src/routes/u/$username.tsx` — Public profile page for any user (stats, friend button, friends modal)
 - `src/routes/friends.tsx` — Friends management (search users, incoming/outgoing requests, friends list)
 - `src/routes/leaderboard.tsx` — Weekly XP leaderboard for the user + their friends
-- `src/integrations/trpc/router.ts` — Root tRPC router; imports `chat`, `distractors`, `progress`, `wordsets`, `social` sub-routers
-- `src/integrations/trpc/chat.ts` — AI chat (`sendMessage`) and translation (`translateToZh`) procedures
-- `src/integrations/trpc/distractors.ts` — Fetches/generates wrong-answer choices (DB-cached, AI-generated via GPT-4o-mini)
-- `src/integrations/trpc/progress.ts` — Saves session results and per-card history for logged-in users; `getProgress` returns `thisWeekXP` and `lastWeekXP` using Monday 00:00 UTC week boundary (same as leaderboard)
-- `src/integrations/trpc/social.ts` — Social features: profiles, friend requests, leaderboard, user search
-- `src/integrations/trpc/wordsets.ts` — Custom word sets: AI extraction from uploaded files/text, save/list/update/delete/favorite
-- `src/integrations/tanstack-query/root-provider.tsx` — QueryClient + tRPC provider wiring
-- `src/db/schema.ts` — Drizzle schema (auth tables + `distractorSets`, `flashcardProgress`, `studySessions`, `chatMessages`, `userLastSession`, `customWordSets`, `userProfiles`, `friendships`)
-- `src/lib/auth.ts` — Better Auth server config (no `baseURL`; uses `BETTER_AUTH_URL` for `trustedOrigins`)
-- `src/lib/auth-client.ts` — Better Auth client config (no `baseURL`; uses relative paths)
-- `src/lib/levels.ts` — XP formula (`computeXP`) and level ladder (`getLevelInfo`): 7 levels from Beginner → Legend
-- `src/lib/flashcard-logic.ts` — Pure stateless helpers for the study engine: `QueueItem` type, `shuffle`, `normalizeAnswer`, `buildQueue`, `getQuestionContent`, `getAnswerContent`, `buildToneChoices`, `stripTones`, and tone-vowel utilities; no React or side effects
-- `src/lib/rate-limit.ts` — `createRateLimiter({ windowMs, max })` factory; used by `chat.ts` and `wordsets.ts` instead of ad-hoc per-file maps
-- `src/lib/time.ts` — `getWeekStartTs()`: returns Monday 00:00 UTC timestamp; single source of truth for week boundary used by `progress.ts`, `social.ts`
+
+**Flashcard UI components** (`src/components/flashcard/`):
+
+- `types.ts` — Shared types: `Page`, `Settings`, `LastSession`, `CustomWordSet`, `AllTimeStats`, `SoundSettings`, `SoundAnswerFormat`, `AnswerStyle`
+- `SoundOnlyPage.tsx` — Sound Only study mode (audio → guess char/pinyin/english, 1- or 2-stage)
+- `ToneQuizPage.tsx` — Tone Quiz study mode (stripped pinyin → pick correct tones)
+- `wordset/WordSetPage.tsx` — Word set selection page orchestrator (state, derived data, session builders); renders the four sub-components below
+- `wordset/LeftSidebar.tsx` — Dialect tabs (Mandarin/Cantonese) + word set list buttons (My Word Sets, Last Session, LANG 1511, HSK, Cantonese Basics)
+- `wordset/CenterSettings.tsx` — Study settings panel (HSK/unit pickers with drag-select, study mode, answer style, session size, sound-only, tone quiz) + Start button
+- `wordset/RightSidebar.tsx` — Leaderboard snippet, "This Week" XP/streak/rank card, mastery progress card
+- `wordset/CustomWordSetModal.tsx` — Custom word set CRUD modal (list/create/edit views, upload/paste/AI-generate, AI edit). Owns its own tRPC mutations
+- `InlineLeaderboard.tsx` — Self-contained leaderboard sidebar snippet; fetches `social.getWeeklyLeaderboard`, hides for unauthenticated users
+- `CardFace.tsx`, `StudyHeader.tsx`, `NextButton.tsx`, `StageDots.tsx`, `AnswerChoices.tsx` — Small study page UI primitives
+- `ChatPanel.tsx` — Inline AI chat for study pages
+- `PronunciationBox.tsx` — Pronunciation input box below chat
+- `ResultsPage.tsx` — Session results summary (lazy-loaded)
+- `SessionCompleteScreen.tsx` — Completion screen for sound/tone modes (lazy-loaded)
+- `WordSetDashboard.tsx` — Mastery progress card (progress bar, chips, struggling words)
+
+**Profile components** (`src/components/profile/`):
+
+- `StatCard.tsx` — Reusable stat display card (num, label, sub, tone variant)
+- `WordSetRow.tsx` — Word set progress row with bar and mastery chips
+
+**Other components**:
+
 - `src/components/AuthPage.tsx` — Sign-in/sign-up form (email+password + Google OAuth); props: `{ onSkip }`
-- `src/components/flashcard/InlineLeaderboard.tsx` — Self-contained leaderboard sidebar snippet; fetches `social.getWeeklyLeaderboard`, hides for unauthenticated users
+- `src/components/FriendsModal.tsx` — Modal showing a user's accepted friends list (used on public profiles)
+
+**tRPC / API layer** (`src/integrations/trpc/`):
+
+- `router.ts` — Root tRPC router; imports `chat`, `distractors`, `progress`, `wordsets`, `social` sub-routers
+- `chat.ts` — AI chat (`sendMessage`) and translation (`translateToZh`) procedures
+- `distractors.ts` — Fetches/generates wrong-answer choices (DB-cached, AI-generated via GPT-4o-mini)
+- `progress.ts` — Saves session results and per-card history for logged-in users; `getProgress` returns `thisWeekXP` and `lastWeekXP` using Monday 00:00 UTC week boundary (same as leaderboard)
+- `social.ts` — Social features: profiles, friend requests, leaderboard, user search
+- `wordsets.ts` — Custom word sets: AI extraction from uploaded files/text, save/list/update/delete/favorite
+- `src/integrations/tanstack-query/root-provider.tsx` — QueryClient + tRPC provider wiring
+
+**Libraries** (`src/lib/`):
+
+- `flashcard-logic.ts` — Pure stateless helpers for the study engine: `QueueItem` type, `shuffle`, `normalizeAnswer`, `buildQueue`, `getQuestionContent`, `getAnswerContent`, `buildToneChoices`, `stripTones`, and tone-vowel utilities; no React or side effects
+- `mastery.ts` — `computeMastery()` pure function + `ProgressCard`/`MasteryStats` types; used by profile page
+- `levels.ts` — XP formula (`computeXP`) and level ladder (`getLevelInfo`): 7 levels from Beginner → Legend
+- `rate-limit.ts` — `createRateLimiter({ windowMs, max })` factory; used by `chat.ts` and `wordsets.ts` instead of ad-hoc per-file maps
+- `time.ts` — `getWeekStartTs()`: returns Monday 00:00 UTC timestamp; single source of truth for week boundary used by `progress.ts`, `social.ts`
+- `auth.ts` — Better Auth server config (no `baseURL`; uses `BETTER_AUTH_URL` for `trustedOrigins`)
+- `auth-client.ts` — Better Auth client config (no `baseURL`; uses relative paths)
+
+**Data / Server / Other**:
+
+- `src/db/schema.ts` — Drizzle schema (auth tables + `distractorSets`, `flashcardProgress`, `studySessions`, `chatMessages`, `userLastSession`, `customWordSets`, `userProfiles`, `friendships`)
 - `src/data/vocabulary.ts` — All flashcard data (HSK 1, HSK 2, LANG 1511 units)
 - `src/server/ai/generateDistractors.ts` — GPT-4o-mini logic for generating wrong answer choices
 - `src/server/ai/generateWordSet.ts` — GPT-4o-mini logic for extracting Chinese vocab from arbitrary text
 - `src/server/extractors/index.ts` — File-to-text extraction (PDF, DOCX, plain text) for custom word set uploads
-- `src/components/FriendsModal.tsx` — Modal showing a user's accepted friends list (used on public profiles)
 - `public/audio/` — Pre-generated MP3s for every vocab word (percent-encoded filenames, e.g. `%E4%BD%A0.mp3`)
 - `scripts/generate-audio.ts` — Script that generates the MP3s via OpenAI TTS (`tts-1`, `shimmer` voice)
 - `vite.config.ts` — Vite + TanStack Start + Nitro config; `nitro({ preset: 'vercel' })` produces `.vercel/output/` on build
@@ -67,14 +103,15 @@ pnpm dlx shadcn@latest add <component>
 
 ### Homepage layout
 
-The `wordset` page (`fc-app--wordset`) uses an in-flow topbar (`fc-ws-topbar`) + three-column main grid (`fc-ws-outer-row`):
+The `wordset` page (`fc-app--wordset`) is rendered by `wordset/WordSetPage.tsx`, which composes four sub-components into an in-flow topbar (`fc-ws-topbar`) + three-column main grid (`fc-ws-outer-row`):
 
-- **Left column** (`fc-ws-left`, 260 px) — dialect tabs + word set list buttons
-- **Centre column** (`fc-ws-right`, 1fr) — study settings + Start Studying button
-- **Right sidebar** (`fc-ws-sidebar`, 220 px, hidden below 1100 px) — three stacked cards:
+- **Left column** (`wordset/LeftSidebar.tsx`, `fc-ws-left`, 260 px) — dialect tabs + word set list buttons
+- **Centre column** (`wordset/CenterSettings.tsx`, `fc-ws-right`, 1fr) — study settings + Start Studying button
+- **Right sidebar** (`wordset/RightSidebar.tsx`, `fc-ws-sidebar`, 220 px, hidden below 1100 px) — three stacked cards:
   1. `InlineLeaderboard` — weekly XP leaderboard snippet
-  2. **"This Week" card** (`fc-ws-weekly-placeholder`) — XP progress bar vs last week's XP, 🔥 streak, 🏆 global tier (signed-in only); motivation text always shown
+  2. **"This Week" card** (`fc-ws-weekly-placeholder`) — XP progress bar vs last week's XP, streak, global tier (signed-in only); motivation text always shown
   3. **Mastery card** (`fc-ws-progress-placeholder`) — shows `WordSetDashboard` (progress bar, New/Learning/Known chips, accuracy, struggling words) when a word set is selected via `dashVocab`
+- **Custom Word Sets modal** (`wordset/CustomWordSetModal.tsx`) — self-contained modal with list/create/edit views; owns its own tRPC mutations
 
 The "This Week" card weekly XP uses Monday 00:00 UTC as the week boundary (matching the leaderboard). Global tier is derived client-side from `thisWeekXP` thresholds (Top 50 → Top 5000). The `--fc-accent` CSS variable is defined as `var(--fc-blue)` and used for the XP bar fill and rank status badge.
 
@@ -86,13 +123,13 @@ On Vercel: Nitro bundles the TanStack Start SSR server and emits `.vercel/output
 
 ### Flashcard app — page states
 
-`src/routes/index.tsx` is a large single-file app with five `Page` states:
+`src/routes/index.tsx` orchestrates five `Page` states, delegating to focused components:
 
-- `wordset` — word set selection (My Word Sets, Last Session, LANG 1511, HSK — in that order in the left column)
-- `study` — standard flashcard study session
-- `sound` — Sound Only mode (audio → guess char/pinyin, optionally 2-stage)
-- `tone` — Tone Quiz mode (character → guess correct tone)
-- `results` — session results summary
+- `wordset` → `wordset/WordSetPage.tsx` — word set selection (My Word Sets, Last Session, LANG 1511, HSK — in that order in the left column)
+- `study` → inline in `index.tsx` — standard flashcard study session (card rendering, distractor management, answer handlers)
+- `sound` → `SoundOnlyPage.tsx` — Sound Only mode (audio → guess char/pinyin, optionally 2-stage)
+- `tone` → `ToneQuizPage.tsx` — Tone Quiz mode (character → guess correct tone)
+- `results` → `ResultsPage.tsx` (lazy-loaded) — session results summary
 
 ### Standard study modes (inside `study` page)
 
@@ -112,7 +149,7 @@ English wrong-answer choices are fetched from the DB (`distractorSets` table). T
 
 ### TTS / Audio
 
-`speakHanzi(hanzi)` in `index.tsx`:
+`speakHanzi(hanzi)` in `src/lib/tts.ts`:
 
 1. Tries `new Audio('/audio/' + encodeURIComponent(hanzi) + '.mp3')` — waits for `canplaythrough` before playing to avoid first-play choppiness
 2. Falls back to `speakFallback()` (Web Speech API, `zh-CN`, rate 0.65) on error
@@ -156,3 +193,21 @@ Better Auth with Drizzle adapter. Sign-in/sign-out is integrated in the UI. Auth
 ### TypeScript path aliases
 
 `@/*` and `#/*` both map to `./src/*`.
+
+### Editing guide — which file to change
+
+| To change… | Edit |
+|---|---|
+| Leaderboard / weekly stats / streak sidebar | `src/components/flashcard/wordset/RightSidebar.tsx` |
+| Study settings (mode, answer style, session size, sound-only, tone quiz) | `src/components/flashcard/wordset/CenterSettings.tsx` |
+| Word set list (left sidebar, dialect tabs) | `src/components/flashcard/wordset/LeftSidebar.tsx` |
+| Custom word set modal (upload/paste/edit/AI) | `src/components/flashcard/wordset/CustomWordSetModal.tsx` |
+| Word set page layout / state / orchestration | `src/components/flashcard/wordset/WordSetPage.tsx` |
+| Sound Only mode gameplay | `src/components/flashcard/SoundOnlyPage.tsx` |
+| Tone Quiz mode gameplay | `src/components/flashcard/ToneQuizPage.tsx` |
+| Standard study mode / card logic / distractor flow | `src/routes/index.tsx` (FlashcardsApp) |
+| Shared types (Settings, LastSession, SoundSettings, etc.) | `src/components/flashcard/types.ts` |
+| Mastery calculation (known/learning/new thresholds) | `src/lib/mastery.ts` |
+| Profile stats cards | `src/components/profile/StatCard.tsx` |
+| Profile word set progress rows | `src/components/profile/WordSetRow.tsx` |
+| Profile page layout / data flow | `src/routes/profile.tsx` |
