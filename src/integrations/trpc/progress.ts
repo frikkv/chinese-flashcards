@@ -31,9 +31,9 @@ export const progressRouter = createTRPCRouter({
           .where(eq(studySessions.userId, userId))
           .orderBy(desc(studySessions.completedAt))
           .limit(1),
-        // Session dates for streak calculation (last 90 days)
+        // Session dates + scores for streak / weekly XP (last 90 days)
         db
-          .select({ completedAt: studySessions.completedAt })
+          .select({ completedAt: studySessions.completedAt, correctCount: studySessions.correctCount })
           .from(studySessions)
           .where(eq(studySessions.userId, userId))
           .orderBy(desc(studySessions.completedAt))
@@ -58,11 +58,28 @@ export const progressRouter = createTRPCRouter({
       streak++
       cur -= 86_400_000
     }
-    // Sessions this week
-    const weekAgoTs = todayTs - 7 * 86_400_000
+    // Week boundaries: Monday 00:00 UTC — matches leaderboard exactly
+    const now = new Date()
+    const dayOfWeek = now.getUTCDay() // 0=Sun … 6=Sat
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+    const weekStartTs = Date.UTC(
+      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysFromMonday,
+    )
+    const lastWeekStartTs = weekStartTs - 7 * 86_400_000
+
     const thisWeekSessions = sessionDates.filter(
-      (s) => new Date(s.completedAt).getTime() >= weekAgoTs,
+      (s) => new Date(s.completedAt).getTime() >= weekStartTs,
     ).length
+    // XP formula: correctCount + 5 per completed session (same as leaderboard)
+    const thisWeekXP = sessionDates
+      .filter((s) => new Date(s.completedAt).getTime() >= weekStartTs)
+      .reduce((sum, s) => sum + s.correctCount + 5, 0)
+    const lastWeekXP = sessionDates
+      .filter((s) => {
+        const t = new Date(s.completedAt).getTime()
+        return t >= lastWeekStartTs && t < weekStartTs
+      })
+      .reduce((sum, s) => sum + s.correctCount + 5, 0)
 
     return {
       cards,
@@ -70,6 +87,8 @@ export const progressRouter = createTRPCRouter({
       lastCompletedSession: recentSessionRows[0] ?? null,
       streak,
       thisWeekSessions,
+      thisWeekXP,
+      lastWeekXP,
     }
   }),
 
