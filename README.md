@@ -25,7 +25,7 @@ A full-stack web app for studying Mandarin Chinese vocabulary. Covers HSK 1, HSK
 | Database      | PostgreSQL + [Drizzle ORM](https://orm.drizzle.team)                                     |
 | Auth          | [Better Auth](https://www.better-auth.com) (Google OAuth + email/password)               |
 | AI            | [OpenAI](https://platform.openai.com) GPT-4o-mini (chat, distractors, translation) + TTS |
-| Deployment    | [Netlify](https://netlify.com) (static client + Netlify Functions for SSR)               |
+| Deployment    | [Vercel](https://vercel.com) (Nitro SSR, Vercel Build Output API)                        |
 
 ## Word Sets
 
@@ -46,7 +46,7 @@ Requires a `.env.local` with the following variables:
 | ---------------------- | --------------------------------------------------------- |
 | `DATABASE_URL`         | PostgreSQL connection string                              |
 | `BETTER_AUTH_SECRET`   | Random secret for Better Auth                             |
-| `BETTER_AUTH_URL`      | Your app's base URL (local dev URL or Netlify deploy URL) |
+| `BETTER_AUTH_URL`      | Your app's base URL (local dev URL or Vercel deploy URL)  |
 | `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                    |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                |
 | `OPENAI_API_KEY`       | OpenAI API key                                            |

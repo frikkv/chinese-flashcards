@@ -63,6 +63,7 @@ body {
   --fc-text-hover: #333333;
   --fc-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
   --fc-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.12);
+  --fc-accent: var(--fc-blue);
   /* top bar height = button (top:16px + ~33px height) + breathing room */
   --fc-header-h: 52px;
 
@@ -87,13 +88,6 @@ body {
   line-height: 1;
   margin-bottom: 8px;
   text-align: center;
-}
-.fc-hero-sub {
-  font-size: 1.2rem;
-  color: var(--fc-muted);
-  font-style: italic;
-  text-align: center;
-  margin-bottom: 0;
 }
 
 /* ── WORDSET PAGE: in-flow top bar ── */
@@ -153,9 +147,6 @@ body {
 }
 
 /* Left column brand (compact title) */
-.fc-ws-brand {
-  padding-bottom: 0;
-}
 .fc-ws-brand-title {
   font-family:
     'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'NSimSun',
@@ -165,12 +156,6 @@ body {
   line-height: 1;
   margin-bottom: 2px;
 }
-.fc-ws-brand-sub {
-  font-size: 0.88rem;
-  color: var(--fc-muted);
-  font-style: italic;
-}
-
 /* Dialect tabs */
 .fc-dialect-tabs {
   display: flex;
@@ -529,54 +514,6 @@ body {
   color: var(--fc-light);
 }
 
-/* ── Your Progress sidebar card ── */
-.fc-ws-progress {
-  background: var(--fc-surface);
-  border: 1px solid var(--fc-border);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.fc-ws-progress-header {
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--fc-border);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--fc-muted);
-}
-
-.fc-ws-progress-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 14px;
-  border-bottom: 1px solid var(--fc-border);
-}
-
-.fc-ws-progress-row:last-child {
-  border-bottom: none;
-}
-
-.fc-ws-progress-label {
-  font-size: 0.82rem;
-  color: var(--fc-muted);
-}
-
-.fc-ws-progress-num {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--fc-text);
-}
-
-.fc-ws-progress-empty {
-  padding: 14px 14px;
-  font-size: 0.78rem;
-  color: var(--fc-muted);
-  line-height: 1.4;
-}
-
 /* ── Compact mastery card inside the sidebar ── */
 .fc-ws-sidebar .fc-mastery-dashboard {
   max-width: 220px;
@@ -629,14 +566,6 @@ body {
   }
 }
 
-/* Legacy grid (unused but kept for safety) */
-.fc-ws-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  width: 100%;
-  margin-bottom: 28px;
-}
 .fc-ws-btn {
   background: var(--fc-surface);
   border: 1.5px solid var(--fc-border);
@@ -824,39 +753,6 @@ body {
   color: var(--fc-text);
 }
 
-.fc-stats-bar {
-  display: flex;
-  gap: 40px;
-  padding: 24px 40px;
-  background: var(--fc-surface);
-  border-radius: 16px;
-  border: 1px solid var(--fc-border);
-}
-.fc-stat {
-  text-align: center;
-}
-.fc-stat-num {
-  font-size: 1.8rem;
-  font-weight: 600;
-  font-family: 'Noto Serif SC', serif;
-  color: var(--fc-red);
-}
-.fc-stat-label {
-  font-size: 0.82rem;
-  color: var(--fc-muted);
-  margin-top: 2px;
-}
-.fc-stats-bar--compact {
-  padding: 14px 28px;
-  gap: 28px;
-  margin-bottom: 20px;
-}
-.fc-stats-bar--compact .fc-stat-num {
-  font-size: 1.25rem;
-}
-.fc-stats-bar--compact .fc-stat-label {
-  font-size: 0.75rem;
-}
 .fc-wordset-container .fc-start-btn {
   margin-top: 0;
 }
@@ -950,9 +846,6 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-}
-.fc-progress-wrap {
-  flex: 1;
 }
 .fc-progress-label {
   font-size: 0.85rem;
@@ -1109,6 +1002,9 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+.fc-choices--loading {
+  pointer-events: none;
 }
 .fc-choice-btn {
   min-height: 58px;
@@ -1407,17 +1303,6 @@ body {
   border-color: var(--fc-muted);
   box-shadow: var(--fc-shadow);
 }
-.fc-results-btn--primary {
-  background: var(--fc-red);
-  border-color: var(--fc-red);
-  color: white;
-}
-.fc-results-btn--primary:hover {
-  background: var(--fc-red-dark);
-  border-color: var(--fc-red-dark);
-  box-shadow: var(--fc-shadow-lg);
-}
-
 /* ── SOUND ONLY ── */
 .fc-sound-play-btn {
   display: flex;
@@ -1558,13 +1443,6 @@ body {
     transform: rotate(360deg);
   }
 }
-.fc-last-session-hint {
-  font-size: 0.82rem;
-  color: var(--fc-light);
-  font-style: italic;
-  text-align: center;
-  margin-top: 6px;
-}
 .fc-auth-divider {
   display: flex;
   align-items: center;
@@ -1620,30 +1498,6 @@ body {
 .fc-auth-skip:hover {
   color: var(--fc-muted);
 }
-.fc-signout-btn {
-  background: var(--fc-surface);
-  border: 1px solid var(--fc-border);
-  border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 0.8rem;
-  color: var(--fc-muted);
-  cursor: pointer;
-  font-family: inherit;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  transition:
-    background 0.15s,
-    border-color 0.15s,
-    color 0.15s;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-.fc-signout-btn:hover {
-  background: var(--fc-red-light);
-  border-color: var(--fc-red);
-  color: var(--fc-red);
-}
-
 /* ── CHAT PANEL ── */
 
 /* Inline panel — lives inside .fc-study-right, fills the column height */
@@ -1726,19 +1580,6 @@ body {
   letter-spacing: 0.08em;
   color: var(--fc-light);
   white-space: nowrap;
-}
-.fc-chat-card-tag {
-  font-size: 0.85rem;
-  color: var(--fc-blue);
-  background: var(--fc-blue-tint);
-  border: 1px solid #d0e0ef;
-  border-radius: 8px;
-  padding: 2px 9px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
-  font-family: 'Noto Serif SC', serif;
 }
 .fc-chat-close {
   background: none;
@@ -2025,11 +1866,6 @@ body {
   border-top-color: white;
   border-radius: 50%;
   animation: fc-spin 0.7s linear infinite;
-}
-@keyframes fc-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 .fc-pronbox-result {
   display: flex;
@@ -2355,36 +2191,6 @@ body {
   white-space: nowrap;
 }
 
-.fc-profile-header-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-left: auto;
-  flex-shrink: 0;
-  padding-top: 2px;
-}
-
-.fc-profile-nav-link {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--fc-blue);
-  text-decoration: none;
-  padding: 5px 12px;
-  border: 1px solid var(--fc-border);
-  border-radius: 8px;
-  background: var(--fc-bg);
-  text-align: center;
-  transition:
-    background 0.12s,
-    border-color 0.12s;
-}
-
-.fc-profile-nav-link:hover {
-  background: var(--fc-surface);
-  border-color: var(--fc-blue);
-}
-
 .fc-profile-meta {
   display: flex;
   align-items: center;
@@ -2441,30 +2247,6 @@ body {
 .fc-profile-stat--wide .fc-profile-stat-num {
   font-size: 1.1rem;
   font-weight: 600;
-}
-
-/* Success tone — Words Known */
-.fc-profile-stat--success {
-  background: rgba(39, 174, 96, 0.05);
-  border-color: rgba(39, 174, 96, 0.22);
-}
-
-/* Blue tone — Accuracy */
-.fc-profile-stat--blue {
-  background: var(--fc-blue-tint);
-  border-color: rgba(44, 95, 138, 0.22);
-}
-
-/* Warning tone — Needs Review */
-.fc-profile-stat--warning {
-  background: var(--fc-wrong-light);
-  border-color: rgba(231, 76, 60, 0.22);
-}
-
-/* Streak tone — amber when streak is active */
-.fc-profile-stat--streak {
-  background: #fff8f2;
-  border-color: rgba(230, 126, 34, 0.25);
 }
 
 .fc-profile-stat-num {
@@ -2880,29 +2662,7 @@ body {
   max-width: 340px;
 }
 
-/* ── LOADING STATE ───────────────────────────────────────────────── */
-.fc-profile-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 32px;
-  color: var(--fc-muted);
-  font-size: 0.9rem;
-  min-height: 420px; /* reserve space so stats sections don't jump in */
-}
-
 /* ── NAV HEADER (sign in/out + profile) ─────────────────────────── */
-.fc-nav-btns {
-  position: fixed;
-  top: 16px;
-  right: 24px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 100;
-}
-
 /* Text "Sign in" button (shown when logged out) */
 .fc-profile-nav-btn {
   background: var(--fc-surface);
@@ -2962,12 +2722,6 @@ body {
     padding: 20px;
   }
 
-  .fc-profile-header-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin-left: 0;
-  }
-
   .fc-profile-section {
     padding: 20px;
   }
@@ -2988,29 +2742,6 @@ body {
 }
 
 /* ── UPLOAD PANEL ──────────────────────────────────────────────── */
-.fc-upload-panel {
-  background: var(--fc-surface);
-  border: 1.5px solid var(--fc-border);
-  border-radius: 16px;
-  padding: 20px 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.fc-upload-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--fc-text);
-}
-
-.fc-upload-hint {
-  font-size: 0.82rem;
-  color: var(--fc-muted);
-  margin: 0;
-  line-height: 1.5;
-}
-
 .fc-upload-label {
   display: flex;
   flex-direction: column;
