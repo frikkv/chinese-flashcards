@@ -1,5 +1,5 @@
 import type { Word } from '#/data/vocabulary'
-import type { ProgressCard } from '#/components/flashcard/WordSetDashboard'
+import type { ProgressCard } from '#/lib/mastery'
 import { WordSetDashboard } from '#/components/flashcard/WordSetDashboard'
 import { InlineLeaderboard } from '#/components/flashcard/InlineLeaderboard'
 import { Skeleton } from '#/components/Skeleton'

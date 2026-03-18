@@ -18,6 +18,54 @@ export type MasteryStats = {
   recentlyMastered: string[]
 }
 
+export function formatWordSetKey(key: string, detail: string): string {
+  if (key === 'hsk') {
+    const levels = detail.split(',').filter(Boolean)
+    return `HSK ${levels.join(' + ')}`
+  }
+  if (key === 'lang1511') {
+    const units = detail.split(',').filter(Boolean)
+    return `LANG 1511 · Unit${units.length > 1 ? 's' : ''} ${units.join(', ')}`
+  }
+  return key
+}
+
+/** Cross-set hardest words: attempted >=2 and not yet mastered, sorted by accuracy ascending. */
+export function getHardestWords(
+  cards: ProgressCard[],
+  limit = 8,
+): Array<{ char: string; acc: number }> {
+  const result: Array<{ char: string; acc: number }> = []
+  for (const c of cards) {
+    if (c.timesAttempted >= 2) {
+      const acc = c.timesCorrect / c.timesAttempted
+      if (c.timesCorrect < 3 || acc < 0.8) {
+        result.push({ char: c.cardId, acc })
+      }
+    }
+  }
+  result.sort((a, b) => a.acc - b.acc)
+  return result.slice(0, limit)
+}
+
+/** Cross-set recently mastered words: >=3 correct AND >=80% accuracy, sorted by lastSeenAt descending. */
+export function getRecentlyMastered(
+  cards: ProgressCard[],
+  limit = 8,
+): Array<{ char: string }> {
+  const result: Array<{ char: string; lastSeenAt: Date }> = []
+  for (const c of cards) {
+    if (c.timesAttempted > 0) {
+      const acc = c.timesCorrect / c.timesAttempted
+      if (c.timesCorrect >= 3 && acc >= 0.8) {
+        result.push({ char: c.cardId, lastSeenAt: c.lastSeenAt })
+      }
+    }
+  }
+  result.sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+  return result.slice(0, limit).map((r) => ({ char: r.char }))
+}
+
 // Known: ≥3 correct AND ≥80% accuracy
 export function computeMastery(vocab: Word[], cards: ProgressCard[]): MasteryStats {
   const map = new Map(cards.map((c) => [c.cardId, c]))

@@ -20,7 +20,7 @@ import {
 import { AuthPage } from '#/components/AuthPage'
 import type { CardContent } from '#/components/flashcard/CardFace'
 import { CardFace } from '#/components/flashcard/CardFace'
-import type { ProgressCard } from '#/components/flashcard/WordSetDashboard'
+import type { ProgressCard } from '#/lib/mastery'
 import { StudyHeader } from '#/components/flashcard/StudyHeader'
 import { NextButton } from '#/components/flashcard/NextButton'
 import { StageDots } from '#/components/flashcard/StageDots'

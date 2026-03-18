@@ -1,12 +1,8 @@
 import type { Word } from '#/data/vocabulary'
+import type { ProgressCard } from '#/lib/mastery'
+export type { ProgressCard }
 
-export type ProgressCard = {
-  cardId: string
-  timesCorrect: number
-  timesAttempted: number
-}
-
-export type MasteryStats = {
+type MasteryStats = {
   new: number
   learning: number
   known: number

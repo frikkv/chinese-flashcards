@@ -4,117 +4,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { computeXP, getLevelInfo } from '#/lib/levels'
+import type { ProgressCard } from '#/lib/mastery'
+import { computeMastery, formatWordSetKey, getHardestWords, getRecentlyMastered } from '#/lib/mastery'
 import { FriendsModal } from '#/components/FriendsModal'
 import { hsk1Words, hsk2Words, lang1511Units } from '#/data/vocabulary'
-import type { Word } from '#/data/vocabulary'
+import { StatCard } from '#/components/profile/StatCard'
+import { PerformanceInsights } from '#/components/profile/PerformanceInsights'
 
 export const Route = createFileRoute('/u/$username')({
   component: PublicProfilePage,
 })
-
-function formatWordSetKey(key: string, detail: string): string {
-  if (key === 'hsk') {
-    const levels = detail.split(',').filter(Boolean)
-    return `HSK ${levels.join(' + ')}`
-  }
-  if (key === 'lang1511') {
-    const units = detail.split(',').filter(Boolean)
-    return `LANG 1511 · Unit${units.length > 1 ? 's' : ''} ${units.join(', ')}`
-  }
-  return key
-}
-
-// ── MASTERY HELPER ────────────────────────────────────────────────
-type ProgressCard = {
-  cardId: string
-  timesCorrect: number
-  timesAttempted: number
-  lastSeenAt: Date
-}
-
-function computeMastery(vocab: Word[], cards: ProgressCard[]) {
-  const map = new Map(cards.map((c) => [c.cardId, c]))
-  let learning = 0,
-    known = 0
-  let totalCorrect = 0,
-    totalAttempted = 0
-  const hardest: Array<{ char: string; accuracy: number }> = []
-  const recentlyMastered: Array<{ char: string; lastSeenAt: Date }> = []
-
-  for (const word of vocab) {
-    const p = map.get(word.char)
-    if (p && p.timesAttempted > 0) {
-      totalCorrect += p.timesCorrect
-      totalAttempted += p.timesAttempted
-      const acc = p.timesCorrect / p.timesAttempted
-      if (p.timesCorrect >= 3 && acc >= 0.8) {
-        known++
-        recentlyMastered.push({
-          char: word.char,
-          lastSeenAt: new Date(p.lastSeenAt),
-        })
-      } else {
-        learning++
-        if (p.timesAttempted >= 2)
-          hardest.push({ char: word.char, accuracy: acc })
-      }
-    }
-  }
-  hardest.sort((a, b) => a.accuracy - b.accuracy)
-  recentlyMastered.sort(
-    (a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime(),
-  )
-
-  return {
-    known,
-    learning,
-    total: vocab.length,
-    accuracy:
-      totalAttempted > 0
-        ? Math.round((totalCorrect / totalAttempted) * 100)
-        : null,
-    totalReviews: totalAttempted,
-    hardest: hardest.slice(0, 6).map((h) => h.char),
-    recentlyMastered: recentlyMastered.slice(0, 8).map((r) => r.char),
-  }
-}
-
-// ── STAT CARD ─────────────────────────────────────────────────────
-function StatCard({
-  num,
-  label,
-  sub,
-  color,
-  tone,
-  wide,
-}: {
-  num: string | number
-  label: string
-  sub?: string
-  color?: string
-  tone?: 'success' | 'warning' | 'streak' | 'blue'
-  wide?: boolean
-}) {
-  const cls = [
-    'fc-profile-stat',
-    tone && `fc-profile-stat--${tone}`,
-    wide && 'fc-profile-stat--wide',
-  ]
-    .filter(Boolean)
-    .join(' ')
-  return (
-    <div className={cls}>
-      <div
-        className="fc-profile-stat-num"
-        style={color ? { color } : undefined}
-      >
-        {num}
-      </div>
-      <div className="fc-profile-stat-label">{label}</div>
-      {sub && <div className="fc-profile-stat-sub">{sub}</div>}
-    </div>
-  )
-}
 
 function PublicProfilePage() {
   const { username } = Route.useParams()
@@ -290,29 +189,8 @@ function PublicProfilePage() {
         )
       : null
 
-  const allHardest: Array<{ char: string; acc: number }> = []
-  for (const c of cards) {
-    if (c.timesAttempted >= 2) {
-      const acc = c.timesCorrect / c.timesAttempted
-      if (c.timesCorrect < 3 || acc < 0.8)
-        allHardest.push({ char: c.cardId, acc })
-    }
-  }
-  allHardest.sort((a, b) => a.acc - b.acc)
-  const topHardest = allHardest.slice(0, 8)
-
-  const allRecentlyMastered: Array<{ char: string; lastSeenAt: Date }> = []
-  for (const c of cards) {
-    if (c.timesAttempted > 0) {
-      const acc = c.timesCorrect / c.timesAttempted
-      if (c.timesCorrect >= 3 && acc >= 0.8)
-        allRecentlyMastered.push({ char: c.cardId, lastSeenAt: c.lastSeenAt })
-    }
-  }
-  allRecentlyMastered.sort(
-    (a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime(),
-  )
-  const topRecentMastered = allRecentlyMastered.slice(0, 8)
+  const topHardest = getHardestWords(cards)
+  const topRecentMastered = getRecentlyMastered(cards)
 
   const allTimeXP = computeXP(stats.totalCorrectAnswers, stats.totalSessions)
   const levelInfo = getLevelInfo(allTimeXP)
@@ -455,100 +333,12 @@ function PublicProfilePage() {
         </div>
 
         {/* Performance Insights */}
-        {(topHardest.length > 0 ||
-          topRecentMastered.length > 0 ||
-          strongest ||
-          weakest) && (
-          <div className="fc-profile-section">
-            <div className="fc-profile-section-title">Performance Insights</div>
-            <div className="fc-profile-insights-grid">
-              {(strongest || weakest) && (
-                <div className="fc-profile-insight-card">
-                  {strongest && (
-                    <div className="fc-profile-insight-row">
-                      <span className="fc-profile-insight-icon">🏆</span>
-                      <div>
-                        <div className="fc-profile-insight-label">
-                          Strongest set
-                        </div>
-                        <div className="fc-profile-insight-val">
-                          {strongest.name}
-                          {strongest.stats.accuracy !== null && (
-                            <span className="fc-profile-insight-sub">
-                              {' '}
-                              · {strongest.stats.accuracy}% accuracy
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  {weakest && weakest.name !== strongest?.name && (
-                    <div className="fc-profile-insight-row">
-                      <span className="fc-profile-insight-icon">📈</span>
-                      <div>
-                        <div className="fc-profile-insight-label">
-                          Needs work
-                        </div>
-                        <div className="fc-profile-insight-val">
-                          {weakest.name}
-                          {weakest.stats.accuracy !== null && (
-                            <span className="fc-profile-insight-sub">
-                              {' '}
-                              · {weakest.stats.accuracy}% accuracy
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {topHardest.length > 0 && (
-                <div className="fc-profile-insight-card">
-                  <div
-                    className="fc-profile-insight-label"
-                    style={{ marginBottom: 10 }}
-                  >
-                    Struggling with
-                  </div>
-                  <div className="fc-profile-char-grid">
-                    {topHardest.map(({ char, acc }) => (
-                      <div key={char} className="fc-profile-char-item">
-                        <span className="fc-profile-char">{char}</span>
-                        <span className="fc-profile-char-acc">
-                          {Math.round(acc * 100)}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {topRecentMastered.length > 0 && (
-                <div className="fc-profile-insight-card">
-                  <div
-                    className="fc-profile-insight-label"
-                    style={{ marginBottom: 10 }}
-                  >
-                    Recently mastered
-                  </div>
-                  <div className="fc-profile-char-grid">
-                    {topRecentMastered.map(({ char }) => (
-                      <div
-                        key={char}
-                        className="fc-profile-char-item fc-profile-char-item--known"
-                      >
-                        <span className="fc-profile-char">{char}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <PerformanceInsights
+          strongest={strongest}
+          weakest={weakest}
+          topHardest={topHardest}
+          topRecentMastered={topRecentMastered}
+        />
       </div>
 
       {showFriendsModal && (
