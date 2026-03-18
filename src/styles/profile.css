@@ -1,0 +1,755 @@
+/* ── PROFILE PAGE ───────────────────────────────────────────────── */
+.fc-profile-container {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: relative;
+}
+
+.fc-profile-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: var(--fc-shadow);
+}
+
+.fc-profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--fc-red);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.fc-profile-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.fc-profile-name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--fc-text);
+  line-height: 1.2;
+}
+
+.fc-profile-email {
+  font-size: 0.88rem;
+  color: var(--fc-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fc-profile-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--fc-light);
+  margin-top: 2px;
+}
+
+.fc-profile-dot {
+  opacity: 0.5;
+}
+
+/* ── SECTION ─────────────────────────────────────────────────────── */
+.fc-profile-section {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: var(--fc-shadow);
+}
+
+.fc-profile-section-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fc-muted);
+  margin-bottom: 18px;
+}
+
+/* ── STAT GRID ───────────────────────────────────────────────────── */
+.fc-profile-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.fc-profile-stat {
+  background: var(--fc-bg);
+  border: 1px solid var(--fc-border);
+  border-radius: 14px;
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  cursor: default;
+}
+
+/* Wide stat — spans 2 grid columns */
+.fc-profile-stat--wide {
+  grid-column: span 2;
+}
+.fc-profile-stat--wide .fc-profile-stat-num {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.fc-profile-stat-num {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--fc-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  word-break: break-word;
+}
+
+.fc-profile-stat-label {
+  font-size: 0.72rem;
+  color: var(--fc-muted);
+  line-height: 1.3;
+  margin-top: 7px;
+}
+
+.fc-profile-stat-sub {
+  font-size: 0.68rem;
+  color: var(--fc-light);
+  line-height: 1.3;
+  margin-top: 1px;
+}
+
+/* ── WORD SET PROGRESS ───────────────────────────────────────────── */
+.fc-profile-wordset-group {
+  margin-bottom: 20px;
+}
+
+.fc-profile-wordset-group:last-child {
+  margin-bottom: 0;
+}
+
+.fc-profile-wordset-group-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-text);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fc-profile-wordset-group-known {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--fc-muted);
+}
+
+.fc-profile-wordset-row {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--fc-border);
+}
+
+.fc-profile-wordset-row:first-of-type {
+  border-top: none;
+}
+
+.fc-profile-wordset-name {
+  font-size: 0.82rem;
+  color: var(--fc-text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fc-profile-wordset-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fc-profile-wordset-bar {
+  flex: 1;
+  height: 6px;
+  background: #edeae4;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fc-profile-wordset-bar-fill {
+  height: 100%;
+  background: var(--fc-success);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.fc-profile-wordset-pct {
+  font-size: 0.72rem;
+  color: var(--fc-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  text-align: right;
+}
+
+.fc-profile-wordset-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.fc-profile-chip {
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.fc-profile-chip--new {
+  background: #edeae4;
+  color: var(--fc-muted);
+}
+
+.fc-profile-chip--learning {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.fc-profile-chip--known {
+  background: #edfbf3;
+  color: #1a7a45;
+}
+
+.fc-profile-chip--acc {
+  background: #e8f0fa;
+  color: #2c5f8a;
+}
+
+/* ── INSIGHTS ────────────────────────────────────────────────────── */
+.fc-profile-insights-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.fc-profile-insight-card {
+  background: var(--fc-bg);
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.fc-profile-insight-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.fc-profile-insight-row:last-child {
+  margin-bottom: 0;
+}
+
+.fc-profile-insight-icon {
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+.fc-profile-insight-label {
+  font-size: 0.72rem;
+  color: var(--fc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.fc-profile-insight-val {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+
+.fc-profile-insight-sub {
+  font-weight: 400;
+  color: var(--fc-muted);
+}
+
+/* ── CHAR GRIDS ──────────────────────────────────────────────────── */
+.fc-profile-char-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fc-profile-char-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--fc-wrong-light);
+  border: 1px solid #f5c6c2;
+  border-radius: 8px;
+  padding: 6px 10px;
+  min-width: 44px;
+}
+
+.fc-profile-char-item--known {
+  background: var(--fc-success-light);
+  border-color: #a8e6c5;
+}
+
+.fc-profile-char {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.3rem;
+  line-height: 1.2;
+  color: var(--fc-text);
+}
+
+.fc-profile-char-acc {
+  font-size: 0.62rem;
+  color: var(--fc-red);
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+/* ── FOOTER / ACTIONS ────────────────────────────────────────────── */
+.fc-profile-footer {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+.fc-profile-signout-btn {
+  background: transparent;
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-size: 0.85rem;
+  color: var(--fc-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.fc-profile-signout-btn:hover {
+  background: var(--fc-red-light);
+  border-color: var(--fc-red);
+  color: var(--fc-red);
+}
+
+/* ── FRIEND COUNT BUTTON ─────────────────────────────────────────── */
+.fc-profile-friend-count-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--fc-blue);
+  transition: opacity 0.15s;
+}
+.fc-profile-friend-count-btn:hover {
+  opacity: 0.75;
+}
+
+/* ── FRIENDS MODAL ───────────────────────────────────────────────── */
+.fc-friends-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.fc-friends-modal {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.fc-friends-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--fc-border);
+}
+.fc-friends-modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fc-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fc-friends-modal-count {
+  background: var(--fc-border);
+  color: var(--fc-muted);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 20px;
+  padding: 1px 8px;
+}
+.fc-friends-modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--fc-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.fc-friends-modal-close:hover {
+  background: var(--fc-border);
+  color: var(--fc-text);
+}
+.fc-friends-modal-body {
+  overflow-y: auto;
+  padding: 8px 0;
+  flex: 1;
+  min-height: 160px; /* reserve space while friends list loads */
+}
+.fc-friends-modal-loading,
+.fc-friends-modal-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  color: var(--fc-muted);
+  font-size: 14px;
+}
+.fc-friends-modal-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  text-decoration: none;
+  color: var(--fc-text);
+  transition: background 0.15s;
+}
+.fc-friends-modal-row:hover {
+  background: var(--fc-bg);
+}
+.fc-friends-modal-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--fc-border);
+  color: var(--fc-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.fc-friends-modal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.fc-friends-modal-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--fc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc-friends-modal-handle {
+  font-size: 12px;
+  color: var(--fc-muted);
+}
+
+/* ── NOT AUTHENTICATED ───────────────────────────────────────────── */
+.fc-profile-noauth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.fc-profile-noauth-char {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 4rem;
+  color: var(--fc-red);
+  opacity: 0.6;
+}
+
+.fc-profile-noauth-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+
+.fc-profile-noauth-sub {
+  font-size: 0.9rem;
+  color: var(--fc-muted);
+  max-width: 340px;
+}
+
+@media (max-width: 560px) {
+  .fc-profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 20px;
+  }
+
+  .fc-profile-section {
+    padding: 20px;
+  }
+
+  .fc-profile-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fc-profile-wordset-row {
+    grid-template-columns: 70px 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .fc-profile-wordset-chips {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+/* ── USERNAME SETUP GATE ─────────────────────────────────────────── */
+.fc-username-gate-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.fc-username-gate-modal {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 14px;
+  padding: 40px 36px;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.fc-username-gate-char {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 2.8rem;
+  color: var(--fc-red);
+  opacity: 0.75;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.fc-username-gate-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--fc-text);
+  margin: 0;
+}
+
+.fc-username-gate-sub {
+  font-size: 0.88rem;
+  color: var(--fc-muted);
+  line-height: 1.5;
+  margin: 0 0 8px;
+}
+
+.fc-username-gate-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.fc-username-gate-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 0 12px;
+  background: var(--fc-bg);
+  transition: border-color 0.15s;
+}
+
+.fc-username-gate-input-wrap:focus-within {
+  border-color: var(--fc-blue);
+}
+
+.fc-username-gate-at {
+  font-size: 1rem;
+  color: var(--fc-muted);
+  user-select: none;
+}
+
+.fc-username-gate-input {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  color: var(--fc-text);
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.fc-username-gate-error {
+  font-size: 0.82rem;
+  color: var(--fc-red);
+  align-self: flex-start;
+}
+
+.fc-username-gate-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--fc-red);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity 0.15s;
+  margin-top: 4px;
+}
+
+.fc-username-gate-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── LEVEL BADGE ─────────────────────────────────────────────────── */
+
+/* Row that holds name + badge side by side */
+.fc-profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fc-level-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border: 1.5px solid transparent;
+  flex-shrink: 0;
+}
+
+/* Tier 1 — Lv 1-2: neutral slate */
+.fc-level-badge--tier1 {
+  background: #f2f2f0;
+  color: #5a5a55;
+  border-color: #d8d8d2;
+}
+
+/* Tier 2 — Lv 3-4: blue */
+.fc-level-badge--tier2 {
+  background: #e8f0f8;
+  color: #2c5f8a;
+  border-color: #b8d0e8;
+}
+
+/* Tier 3 — Lv 5-6: indigo/purple */
+.fc-level-badge--tier3 {
+  background: #ede8f8;
+  color: #5b3ea6;
+  border-color: #c8b8ec;
+}
+
+/* Tier 4 — Lv 7: gold */
+.fc-level-badge--tier4 {
+  background: #fef8e6;
+  color: #8a6010;
+  border-color: #e8c84a;
+}
+
+/* Progress bar shown on own profile only */
+.fc-level-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 2px;
+}
+
+.fc-level-progress-track {
+  width: 120px;
+  height: 7px;
+  background: var(--fc-border);
+  border-radius: 99px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.fc-level-progress-fill {
+  height: 100%;
+  background: var(--fc-blue);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.fc-level-progress-label {
+  font-size: 0.75rem;
+  color: var(--fc-muted);
+  white-space: nowrap;
+}
+

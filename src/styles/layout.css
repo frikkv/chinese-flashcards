@@ -1,0 +1,472 @@
+/* ── WORDSET PAGE: in-flow top bar ── */
+.fc-app--wordset {
+  padding-top: 0;
+}
+
+.fc-ws-topbar {
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 32px;
+  border-bottom: 1px solid var(--fc-border);
+  box-sizing: border-box;
+}
+
+/* ── WORD SET PAGE ── */
+.fc-wordset-container {
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100dvh - 136px); /* 60px topbar + 28px gap + 48px bottom padding */
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: 0;
+}
+
+/* Expand container to fit 3-column layout */
+@media (min-width: 1100px) {
+  .fc-wordset-container {
+    max-width: 1200px;
+  }
+}
+
+/* ── THREE-COLUMN WORD SET LAYOUT ── */
+.fc-ws-outer-row {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 260px 1fr 220px;
+  gap: 24px;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Left column: dialect selector + word set buttons */
+.fc-ws-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Left column brand (compact title) */
+.fc-ws-brand-title {
+  font-family:
+    'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'NSimSun',
+    serif;
+  font-size: 2.2rem;
+  color: var(--fc-red);
+  line-height: 1;
+  margin-bottom: 2px;
+}
+/* Dialect tabs */
+.fc-dialect-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  background: var(--fc-surface);
+  border-radius: 10px;
+  padding: 3px;
+  border: 1px solid var(--fc-border);
+}
+.fc-dialect-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fc-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.fc-dialect-tab:hover {
+  color: var(--fc-text);
+  background: var(--fc-bg);
+}
+.fc-dialect-tab.active {
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.fc-dialect-tab-flag {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Word set buttons stacked vertically */
+.fc-ws-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-top: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fc-border) transparent;
+}
+.fc-ws-list::-webkit-scrollbar {
+  width: 2px;
+}
+.fc-ws-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.fc-ws-list::-webkit-scrollbar-thumb {
+  background-color: var(--fc-border);
+  border-radius: 4px;
+}
+
+.fc-ws-list .fc-ws-btn {
+  padding: 16px 18px;
+  min-height: 108px;
+}
+
+.fc-ws-list .fc-ws-char {
+  font-size: 2rem;
+  margin-bottom: 6px;
+}
+
+/* Right column: scrollable content + pinned start button */
+.fc-ws-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Scrollable area (dashboard + settings) */
+.fc-ws-right-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-right: 2px; /* prevent scrollbar from clipping border */
+}
+
+.fc-ws-right .fc-settings-wrap {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.fc-ws-right .fc-start-btn {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* ── Sidebar column (leaderboard + right cards) ── */
+.fc-ws-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-self: start;
+  min-width: 0;
+}
+
+/* Hide sidebar + collapse to 2-column grid below 1100px */
+@media (max-width: 1099px) {
+  .fc-ws-outer-row {
+    grid-template-columns: 260px 1fr;
+  }
+  .fc-ws-sidebar {
+    display: none;
+  }
+}
+
+/* ── BUTTONS ── */
+.fc-start-btn {
+  background: var(--fc-red);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  padding: 18px 52px;
+  font-family: 'Lora', serif;
+  font-size: 1.08rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    box-shadow 0.2s;
+  letter-spacing: 0.03em;
+}
+.fc-start-btn:hover {
+  background: var(--fc-red-dark);
+  box-shadow: var(--fc-shadow-lg);
+}
+.fc-util-btn {
+  background: none;
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: 'Lora', serif;
+  font-size: 0.85rem;
+  color: var(--fc-muted);
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+.fc-util-btn:hover {
+  border-color: var(--fc-muted);
+  color: var(--fc-text);
+}
+
+.fc-wordset-container .fc-start-btn {
+  margin-top: 0;
+}
+
+/* ── STUDY WORKSPACE ── */
+
+/* Outer column: full-width header, then the two-column body */
+.fc-study-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1000px;
+  min-height: 0;
+}
+
+/*
+ * Two-column grid.
+ * Left column (560px): row 1 = dots, row 2 = card+answers, row 3 = next-btn
+ * Right column (1fr):  row 2 = chat  ← shares exactly the same grid row as card+answers
+ * CSS grid stretch means the chat is automatically the same height as the left row-2 block.
+ */
+.fc-study-body {
+  display: grid;
+  grid-template-columns: 560px 1fr;
+  row-gap: 16px;
+  column-gap: 28px;
+  width: 100%;
+  min-height: 0;
+}
+
+/* Explicit grid placement so auto-placement doesn't scramble the order */
+.fc-study-body > .fc-stage-dots {
+  grid-column: 1;
+  grid-row: 1;
+  min-height: 9px;
+  justify-content: center;
+}
+.fc-study-body > .fc-card-answers {
+  grid-column: 1;
+  grid-row: 2;
+}
+.fc-study-body > .fc-study-next-area {
+  grid-column: 1;
+  grid-row: 3;
+}
+.fc-study-body > .fc-study-right {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Card + answer wrapper — flex column, defines the shared row height */
+.fc-card-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+}
+
+/* ── STUDY PAGE ── */
+.fc-back-btn {
+  position: fixed;
+  top: 16px;
+  left: 24px;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-family: 'Lora', serif;
+  font-size: 0.8rem;
+  color: var(--fc-muted);
+  cursor: pointer;
+  z-index: 50;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition:
+    border-color 0.2s,
+    color 0.2s,
+    background 0.15s;
+}
+.fc-back-btn:hover {
+  border-color: var(--fc-muted);
+  color: var(--fc-text);
+  background: var(--fc-bg);
+}
+.fc-study-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.fc-progress-label {
+  font-size: 0.85rem;
+  color: var(--fc-muted);
+  margin-bottom: 6px;
+}
+.fc-progress-bar {
+  height: 6px;
+  background: var(--fc-border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.fc-progress-fill {
+  height: 100%;
+  background: var(--fc-red);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.fc-score-badge {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 99px;
+  padding: 7px 18px;
+  font-size: 0.88rem;
+  color: var(--fc-muted);
+  white-space: nowrap;
+}
+
+
+/* ── RESPONSIVE ── */
+
+/* Desktop: lock card + answer heights so both columns stay the same size */
+@media (min-width: 901px) {
+  /* Minimum card height keeps the grid row stable; content clips rather than reflowing */
+  .fc-card-face {
+    min-height: 320px;
+    overflow: hidden;
+    contain: layout;
+  }
+
+  /* Reserve consistent space for the answer area regardless of which mode is active */
+  .fc-answer-area {
+    min-height: 136px;
+  }
+
+  /* Fix the right column (chat + pronbox) to a stable height.
+     Without this, CSS grid auto-sizes the rows from the right column's
+     content, so every new chat message makes the whole layout taller.
+     560px = card-face(320) + gap(20) + answer-area(136) + row-gap(16) + next-btn(~48) + buffer.
+     The chat messages area scrolls within this fixed height. */
+  .fc-study-body > .fc-study-right {
+    height: 560px;
+  }
+}
+
+/* Tablet: stack the study layout vertically */
+@media (max-width: 900px) {
+  .fc-study-workspace {
+    max-width: 560px;
+  }
+  .fc-study-body {
+    grid-template-columns: 1fr;
+  }
+  .fc-study-body > .fc-stage-dots {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .fc-study-body > .fc-card-answers {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .fc-study-body > .fc-study-next-area {
+    grid-column: 1;
+    grid-row: 3;
+  }
+  .fc-study-body > .fc-study-right {
+    grid-column: 1;
+    grid-row: 4;
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 560px) {
+  .fc-app {
+    padding: calc(var(--fc-header-h) + 8px) 16px 32px;
+    gap: 20px;
+  }
+  .fc-choices {
+    grid-template-columns: 1fr;
+  }
+  .fc-stats-bar {
+    gap: 20px;
+    padding: 16px 20px;
+  }
+  .fc-study-body > .fc-study-right {
+    min-height: 380px;
+  }
+}
+
+/* ── NAV HEADER (sign in/out + profile) ─────────────────────────── */
+/* Text "Sign in" button (shown when logged out) */
+.fc-profile-nav-btn {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  color: var(--fc-text);
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.fc-profile-nav-btn:hover {
+  background: var(--fc-bg);
+  border-color: var(--fc-muted);
+}
+
+/* Icon button (shown when logged in) */
+.fc-profile-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  color: var(--fc-text);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.fc-profile-icon-btn:hover {
+  background: var(--fc-bg);
+  border-color: var(--fc-muted);
+  color: var(--fc-red);
+}
+
