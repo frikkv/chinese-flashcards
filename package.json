@@ -23,6 +23,7 @@
     "audio:generate": "tsx scripts/generate-audio.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.41",
     "@better-auth/drizzle-adapter": "^1.5.4",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
@@ -39,6 +40,7 @@
     "@trpc/tanstack-react-query": "^11.11.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
+    "ai": "^6.0.116",
     "better-auth": "^1.5.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

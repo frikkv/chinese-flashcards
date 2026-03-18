@@ -180,31 +180,33 @@ export const progressRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id
       const now = new Date()
-      for (const { cardId, correct } of input.cards) {
-        await db
-          .insert(flashcardProgress)
-          .values({
-            userId,
-            cardId,
-            dialect: input.dialect,
-            timesCorrect: correct ? 1 : 0,
-            timesAttempted: 1,
-            lastSeenAt: now,
-            createdAt: now,
-          })
-          .onConflictDoUpdate({
-            target: [
-              flashcardProgress.userId,
-              flashcardProgress.cardId,
-              flashcardProgress.dialect,
-            ],
-            set: {
-              timesCorrect: sql`${flashcardProgress.timesCorrect} + ${correct ? 1 : 0}`,
-              timesAttempted: sql`${flashcardProgress.timesAttempted} + 1`,
+      await Promise.all(
+        input.cards.map(({ cardId, correct }) =>
+          db
+            .insert(flashcardProgress)
+            .values({
+              userId,
+              cardId,
+              dialect: input.dialect,
+              timesCorrect: correct ? 1 : 0,
+              timesAttempted: 1,
               lastSeenAt: now,
-            },
-          })
-      }
+              createdAt: now,
+            })
+            .onConflictDoUpdate({
+              target: [
+                flashcardProgress.userId,
+                flashcardProgress.cardId,
+                flashcardProgress.dialect,
+              ],
+              set: {
+                timesCorrect: sql`${flashcardProgress.timesCorrect} + ${correct ? 1 : 0}`,
+                timesAttempted: sql`${flashcardProgress.timesAttempted} + 1`,
+                lastSeenAt: now,
+              },
+            }),
+        ),
+      )
     }),
 
   saveSession: protectedProcedure

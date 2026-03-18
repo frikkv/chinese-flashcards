@@ -79,7 +79,9 @@ body {
 
 /* ── TYPOGRAPHY ── */
 .fc-hero-title {
-  font-family: 'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'NSimSun', serif;
+  font-family:
+    'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'NSimSun',
+    serif;
   font-size: clamp(3rem, 10vw, 6rem);
   color: var(--fc-red);
   line-height: 1;
@@ -155,7 +157,9 @@ body {
   padding-bottom: 0;
 }
 .fc-ws-brand-title {
-  font-family: 'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'NSimSun', serif;
+  font-family:
+    'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'NSimSun',
+    serif;
   font-size: 2.2rem;
   color: var(--fc-red);
   line-height: 1;
@@ -191,7 +195,9 @@ body {
   font-size: 0.82rem;
   font-weight: 500;
   cursor: pointer;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 .fc-dialect-tab:hover {
   color: var(--fc-text);
@@ -587,7 +593,9 @@ body {
 .fc-ws-sidebar .fc-mastery-hardest-char {
   font-size: 0.95rem;
 }
-.fc-ws-sidebar .fc-mastery-hardest-chars .fc-mastery-hardest-char:nth-child(n+4) {
+.fc-ws-sidebar
+  .fc-mastery-hardest-chars
+  .fc-mastery-hardest-char:nth-child(n + 4) {
   display: none;
 }
 
@@ -3131,7 +3139,9 @@ body {
   font-size: 0.75rem;
   padding: 2px 6px;
   border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
 }
 
 .fc-edit-word-remove:hover {
@@ -3160,7 +3170,9 @@ body {
   font-size: 0.9rem;
   padding: 2px 6px;
   border-radius: 4px;
-  transition: color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    background 0.15s;
   color: var(--fc-light);
 }
 
@@ -3206,7 +3218,9 @@ body {
   color: var(--fc-text);
   cursor: pointer;
   padding: 3px 10px;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .fc-edit-undo-btn:hover {
@@ -4548,8 +4562,13 @@ body {
 
 /* ── SKELETON LOADING ────────────────────────────────────────────── */
 @keyframes fc-skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .fc-skeleton {

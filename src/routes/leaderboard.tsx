@@ -176,7 +176,7 @@ function LeaderboardPage() {
         {/* Header */}
         <div className="fc-lb-header">
           <h1 className="fc-lb-title">Weekly Leaderboard</h1>
-            {/* always rendered so header height is stable while data loads */}
+          {/* always rendered so header height is stable while data loads */}
           <div className="fc-lb-subtitle" style={{ minHeight: '1.4em' }}>
             {weekRange ? `This Week · ${weekRange}` : ''}
           </div>
@@ -201,8 +201,16 @@ function LeaderboardPage() {
                   <Skeleton height={10} width="32%" style={{ marginTop: 5 }} />
                 </div>
                 <div className="fc-lb-row-stats">
-                  <Skeleton height={16} width={56} style={{ marginLeft: 'auto' }} />
-                  <Skeleton height={10} width={72} style={{ marginTop: 5, marginLeft: 'auto' }} />
+                  <Skeleton
+                    height={16}
+                    width={56}
+                    style={{ marginLeft: 'auto' }}
+                  />
+                  <Skeleton
+                    height={10}
+                    width={72}
+                    style={{ marginTop: 5, marginLeft: 'auto' }}
+                  />
                 </div>
               </div>
             ))}

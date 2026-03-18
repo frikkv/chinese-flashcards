@@ -1,16 +1,10 @@
-import OpenAI from 'openai'
+import { generateText, generateObject } from 'ai'
+import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { createTRPCRouter, publicProcedure } from './init'
 import { db } from '#/db'
 import { chatMessages } from '#/db/schema'
-
-// ── OPENAI CLIENT ─────────────────────────────────────────────────
-let _openai: OpenAI | null = null
-function getOpenAI() {
-  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  return _openai
-}
 
 // ── RATE LIMITER (in-memory, best-effort for serverless) ──────────
 const rateLimitMap = new Map<string, number[]>()
@@ -82,25 +76,20 @@ export const chatRouter = createTRPCRouter({
           (category ? `\n- Category: ${category}` : '')
       }
 
-      // Call GPT-4o-mini
-      const completion = await getOpenAI().chat.completions.create(
-        {
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...input.messages.map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
-          ],
-          temperature: 0.7,
-          max_tokens: 600,
-        },
-        { signal: AbortSignal.timeout(15_000) },
-      )
+      const { text: assistantContent } = await generateText({
+        model: openai('gpt-4o-mini'),
+        system: systemPrompt,
+        messages: input.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+        temperature: 0.7,
+        maxTokens: 600,
+        abortSignal: AbortSignal.timeout(15_000),
+      })
 
-      const assistantContent =
-        completion.choices[0]?.message?.content?.trim() ??
+      const finalContent =
+        assistantContent.trim() ||
         'Sorry, I could not generate a response. Please try again.'
 
       // Save to DB for logged-in users
@@ -123,14 +112,14 @@ export const chatRouter = createTRPCRouter({
             id: crypto.randomUUID(),
             userId,
             role: 'assistant',
-            content: assistantContent,
+            content: finalContent,
             cardContext: contextJson,
             createdAt: new Date(),
           },
         ])
       }
 
-      return { content: assistantContent }
+      return { content: finalContent }
     }),
 
   translateToZh: publicProcedure
@@ -144,30 +133,22 @@ export const chatRouter = createTRPCRouter({
         })
       }
 
-      const completion = await getOpenAI().chat.completions.create(
-        {
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content:
-                'Translate the given text to Mandarin Chinese. Respond ONLY with a JSON object: {"char":"...","pinyin":"..."}. No explanation, no markdown, no other text.',
-            },
-            { role: 'user', content: input.text },
-          ],
-          max_tokens: 150,
-          temperature: 0.2,
-        },
-        { signal: AbortSignal.timeout(10_000) },
-      )
-
-      const raw = completion.choices[0]?.message?.content?.trim() ?? ''
       try {
-        const parsed = JSON.parse(raw)
-        return {
-          char: String(parsed.char ?? ''),
-          pinyin: String(parsed.pinyin ?? ''),
-        }
+        const { object } = await generateObject({
+          model: openai('gpt-4o-mini'),
+          schema: z.object({
+            char: z.string().describe('Mandarin Chinese characters'),
+            pinyin: z.string().describe('Pinyin with tone diacritics'),
+          }),
+          system:
+            'Translate the given text to Mandarin Chinese.',
+          prompt: input.text,
+          temperature: 0.2,
+          maxTokens: 150,
+          abortSignal: AbortSignal.timeout(10_000),
+        })
+
+        return { char: object.char, pinyin: object.pinyin }
       } catch {
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',

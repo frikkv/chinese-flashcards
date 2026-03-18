@@ -114,6 +114,10 @@ export const flashcardProgress = pgTable(
   (table) => [
     primaryKey({ columns: [table.userId, table.cardId, table.dialect] }),
     index('flashcard_progress_userId_idx').on(table.userId),
+    index('flashcard_progress_userId_dialect_idx').on(
+      table.userId,
+      table.dialect,
+    ),
   ],
 )
 
@@ -246,6 +250,8 @@ export const friendships = pgTable(
   (table) => [
     index('friendships_sender_idx').on(table.senderId),
     index('friendships_receiver_idx').on(table.receiverId),
+    index('friendships_sender_status_idx').on(table.senderId, table.status),
+    index('friendships_receiver_status_idx').on(table.receiverId, table.status),
     // A user can only have one relationship row per (sender, receiver) direction.
     unique('friendships_unique_pair').on(table.senderId, table.receiverId),
   ],

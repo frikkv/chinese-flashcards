@@ -8,7 +8,9 @@ import type { Word } from '../data/vocabulary'
 import { computeXP, getLevelInfo } from '#/lib/levels'
 import { Pencil } from 'lucide-react'
 const FriendsModal = lazy(() =>
-  import('#/components/FriendsModal').then((m) => ({ default: m.FriendsModal })),
+  import('#/components/FriendsModal').then((m) => ({
+    default: m.FriendsModal,
+  })),
 )
 import { Skeleton } from '#/components/Skeleton'
 
@@ -134,7 +136,10 @@ function StatCard({
     .join(' ')
   return (
     <div className={cls}>
-      <div className="fc-profile-stat-num" style={color ? { color } : undefined}>
+      <div
+        className="fc-profile-stat-num"
+        style={color ? { color } : undefined}
+      >
         {num}
       </div>
       <div className="fc-profile-stat-label">{label}</div>
@@ -391,7 +396,11 @@ function ProfilePage() {
                   Lv.{levelInfo.level} · {levelInfo.title}
                 </span>
               ) : (
-                <Skeleton width={86} height={22} style={{ borderRadius: 999 }} />
+                <Skeleton
+                  width={86}
+                  height={22}
+                  style={{ borderRadius: 999 }}
+                />
               )}
             </div>
             <div className="fc-profile-email">{user.email}</div>
@@ -537,9 +546,16 @@ function ProfilePage() {
               </div>
               <div className="fc-profile-stat-grid">
                 {Array.from({ length: 7 }).map((_, i) => (
-                  <div key={i} className={`fc-profile-stat${i === 4 ? ' fc-profile-stat--wide' : ''}`}>
+                  <div
+                    key={i}
+                    className={`fc-profile-stat${i === 4 ? ' fc-profile-stat--wide' : ''}`}
+                  >
                     <Skeleton height={28} width="52%" />
-                    <Skeleton height={10} width="72%" style={{ marginTop: 7 }} />
+                    <Skeleton
+                      height={10}
+                      width="72%"
+                      style={{ marginTop: 7 }}
+                    />
                     <Skeleton height={9} width="48%" style={{ marginTop: 2 }} />
                   </div>
                 ))}
@@ -585,12 +601,13 @@ function ProfilePage() {
                 Learning Statistics
               </div>
               <div className="fc-profile-stat-grid">
-
                 {/* Sessions — sub line uses thisWeekSessions */}
                 <StatCard
                   num={stats?.totalSessions ?? 0}
                   label="Sessions"
-                  sub={stats ? `+${stats.thisWeekSessions} this week` : undefined}
+                  sub={
+                    stats ? `+${stats.thisWeekSessions} this week` : undefined
+                  }
                 />
 
                 {/* Total Reviews */}
@@ -616,7 +633,9 @@ function ProfilePage() {
                   num={overallAccuracy !== null ? `${overallAccuracy}%` : '—'}
                   label="Accuracy"
                   sub="All time average"
-                  color={overallAccuracy !== null ? 'var(--fc-blue)' : undefined}
+                  color={
+                    overallAccuracy !== null ? 'var(--fc-blue)' : undefined
+                  }
                   tone={overallAccuracy !== null ? 'blue' : undefined}
                 />
 
@@ -655,7 +674,6 @@ function ProfilePage() {
                   color={allStats.learning > 0 ? 'var(--fc-wrong)' : undefined}
                   tone={allStats.learning > 0 ? 'warning' : undefined}
                 />
-
               </div>
             </div>
 

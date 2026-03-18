@@ -1,4 +1,6 @@
-export function AnswerChoices({
+import { memo } from 'react'
+
+export const AnswerChoices = memo(function AnswerChoices({
   choices,
   choiceStates,
   answered,
@@ -23,4 +25,4 @@ export function AnswerChoices({
       ))}
     </div>
   )
-}
+})

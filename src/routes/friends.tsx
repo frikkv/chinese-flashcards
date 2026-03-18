@@ -319,11 +319,22 @@ function FriendsPage() {
               {[0, 1, 2].map((i) => (
                 <div key={i} className="fc-social-user-row">
                   <Skeleton width={36} height={36} circle />
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                    }}
+                  >
                     <Skeleton height={13} width="42%" />
                     <Skeleton height={11} width="26%" />
                   </div>
-                  <Skeleton height={30} width={68} style={{ borderRadius: 8 }} />
+                  <Skeleton
+                    height={30}
+                    width={68}
+                    style={{ borderRadius: 8 }}
+                  />
                 </div>
               ))}
             </>
