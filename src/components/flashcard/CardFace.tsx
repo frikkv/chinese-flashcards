@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Volume2 } from 'lucide-react'
 import type { Dialect } from '#/lib/dialect'
 import { speakHanzi } from '#/lib/tts'
@@ -25,7 +26,7 @@ export function charFontStyle(
   return { fontSize: `${Math.max(1.5, fitMax).toFixed(2)}rem` }
 }
 
-export function CardFace({
+export const CardFace = memo(function CardFace({
   content,
   isBack,
   hanzi,
@@ -88,4 +89,4 @@ export function CardFace({
       )}
     </div>
   )
-}
+})

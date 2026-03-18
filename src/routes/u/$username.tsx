@@ -34,8 +34,10 @@ type ProgressCard = {
 
 function computeMastery(vocab: Word[], cards: ProgressCard[]) {
   const map = new Map(cards.map((c) => [c.cardId, c]))
-  let learning = 0, known = 0
-  let totalCorrect = 0, totalAttempted = 0
+  let learning = 0,
+    known = 0
+  let totalCorrect = 0,
+    totalAttempted = 0
   const hardest: Array<{ char: string; accuracy: number }> = []
   const recentlyMastered: Array<{ char: string; lastSeenAt: Date }> = []
 
@@ -47,21 +49,30 @@ function computeMastery(vocab: Word[], cards: ProgressCard[]) {
       const acc = p.timesCorrect / p.timesAttempted
       if (p.timesCorrect >= 3 && acc >= 0.8) {
         known++
-        recentlyMastered.push({ char: word.char, lastSeenAt: new Date(p.lastSeenAt) })
+        recentlyMastered.push({
+          char: word.char,
+          lastSeenAt: new Date(p.lastSeenAt),
+        })
       } else {
         learning++
-        if (p.timesAttempted >= 2) hardest.push({ char: word.char, accuracy: acc })
+        if (p.timesAttempted >= 2)
+          hardest.push({ char: word.char, accuracy: acc })
       }
     }
   }
   hardest.sort((a, b) => a.accuracy - b.accuracy)
-  recentlyMastered.sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+  recentlyMastered.sort(
+    (a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime(),
+  )
 
   return {
     known,
     learning,
     total: vocab.length,
-    accuracy: totalAttempted > 0 ? Math.round((totalCorrect / totalAttempted) * 100) : null,
+    accuracy:
+      totalAttempted > 0
+        ? Math.round((totalCorrect / totalAttempted) * 100)
+        : null,
     totalReviews: totalAttempted,
     hardest: hardest.slice(0, 6).map((h) => h.char),
     recentlyMastered: recentlyMastered.slice(0, 8).map((r) => r.char),
@@ -93,7 +104,10 @@ function StatCard({
     .join(' ')
   return (
     <div className={cls}>
-      <div className="fc-profile-stat-num" style={color ? { color } : undefined}>
+      <div
+        className="fc-profile-stat-num"
+        style={color ? { color } : undefined}
+      >
         {num}
       </div>
       <div className="fc-profile-stat-label">{label}</div>
@@ -270,7 +284,9 @@ function PublicProfilePage() {
   const weakest =
     wordSetOptions.length > 1
       ? wordSetOptions.reduce((worst, ws) =>
-          (ws.stats.accuracy ?? 101) < (worst.stats.accuracy ?? 101) ? ws : worst,
+          (ws.stats.accuracy ?? 101) < (worst.stats.accuracy ?? 101)
+            ? ws
+            : worst,
         )
       : null
 
@@ -278,7 +294,8 @@ function PublicProfilePage() {
   for (const c of cards) {
     if (c.timesAttempted >= 2) {
       const acc = c.timesCorrect / c.timesAttempted
-      if (c.timesCorrect < 3 || acc < 0.8) allHardest.push({ char: c.cardId, acc })
+      if (c.timesCorrect < 3 || acc < 0.8)
+        allHardest.push({ char: c.cardId, acc })
     }
   }
   allHardest.sort((a, b) => a.acc - b.acc)
@@ -292,7 +309,9 @@ function PublicProfilePage() {
         allRecentlyMastered.push({ char: c.cardId, lastSeenAt: c.lastSeenAt })
     }
   }
-  allRecentlyMastered.sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+  allRecentlyMastered.sort(
+    (a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime(),
+  )
   const topRecentMastered = allRecentlyMastered.slice(0, 8)
 
   const allTimeXP = computeXP(stats.totalCorrectAnswers, stats.totalSessions)
@@ -320,7 +339,11 @@ function PublicProfilePage() {
               </span>
             </div>
             <div className="fc-profile-email">@{profile.username}</div>
-            {profile.bio && <div className="fc-social-bio" style={{ marginTop: 2 }}>{profile.bio}</div>}
+            {profile.bio && (
+              <div className="fc-social-bio" style={{ marginTop: 2 }}>
+                {profile.bio}
+              </div>
+            )}
             <div className="fc-level-progress-row">
               <div className="fc-level-progress-track">
                 <div
@@ -373,7 +396,6 @@ function PublicProfilePage() {
         <div className="fc-profile-section">
           <div className="fc-profile-section-title">Learning Statistics</div>
           <div className="fc-profile-stat-grid">
-
             <StatCard
               num={stats.totalSessions}
               label="Sessions"
@@ -404,7 +426,10 @@ function PublicProfilePage() {
 
             {stats.lastSession && (
               <StatCard
-                num={formatWordSetKey(stats.lastSession.wordSetKey, stats.lastSession.wordSetDetail)}
+                num={formatWordSetKey(
+                  stats.lastSession.wordSetKey,
+                  stats.lastSession.wordSetDetail,
+                )}
                 label="Last Studied"
                 sub="Last activity"
                 wide
@@ -426,28 +451,32 @@ function PublicProfilePage() {
               color={stats.needsReview > 0 ? 'var(--fc-wrong)' : undefined}
               tone={stats.needsReview > 0 ? 'warning' : undefined}
             />
-
           </div>
         </div>
 
         {/* Performance Insights */}
-        {(topHardest.length > 0 || topRecentMastered.length > 0 || strongest || weakest) && (
+        {(topHardest.length > 0 ||
+          topRecentMastered.length > 0 ||
+          strongest ||
+          weakest) && (
           <div className="fc-profile-section">
             <div className="fc-profile-section-title">Performance Insights</div>
             <div className="fc-profile-insights-grid">
-
               {(strongest || weakest) && (
                 <div className="fc-profile-insight-card">
                   {strongest && (
                     <div className="fc-profile-insight-row">
                       <span className="fc-profile-insight-icon">🏆</span>
                       <div>
-                        <div className="fc-profile-insight-label">Strongest set</div>
+                        <div className="fc-profile-insight-label">
+                          Strongest set
+                        </div>
                         <div className="fc-profile-insight-val">
                           {strongest.name}
                           {strongest.stats.accuracy !== null && (
                             <span className="fc-profile-insight-sub">
-                              {' '}· {strongest.stats.accuracy}% accuracy
+                              {' '}
+                              · {strongest.stats.accuracy}% accuracy
                             </span>
                           )}
                         </div>
@@ -458,12 +487,15 @@ function PublicProfilePage() {
                     <div className="fc-profile-insight-row">
                       <span className="fc-profile-insight-icon">📈</span>
                       <div>
-                        <div className="fc-profile-insight-label">Needs work</div>
+                        <div className="fc-profile-insight-label">
+                          Needs work
+                        </div>
                         <div className="fc-profile-insight-val">
                           {weakest.name}
                           {weakest.stats.accuracy !== null && (
                             <span className="fc-profile-insight-sub">
-                              {' '}· {weakest.stats.accuracy}% accuracy
+                              {' '}
+                              · {weakest.stats.accuracy}% accuracy
                             </span>
                           )}
                         </div>
@@ -475,14 +507,19 @@ function PublicProfilePage() {
 
               {topHardest.length > 0 && (
                 <div className="fc-profile-insight-card">
-                  <div className="fc-profile-insight-label" style={{ marginBottom: 10 }}>
+                  <div
+                    className="fc-profile-insight-label"
+                    style={{ marginBottom: 10 }}
+                  >
                     Struggling with
                   </div>
                   <div className="fc-profile-char-grid">
                     {topHardest.map(({ char, acc }) => (
                       <div key={char} className="fc-profile-char-item">
                         <span className="fc-profile-char">{char}</span>
-                        <span className="fc-profile-char-acc">{Math.round(acc * 100)}%</span>
+                        <span className="fc-profile-char-acc">
+                          {Math.round(acc * 100)}%
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -491,23 +528,27 @@ function PublicProfilePage() {
 
               {topRecentMastered.length > 0 && (
                 <div className="fc-profile-insight-card">
-                  <div className="fc-profile-insight-label" style={{ marginBottom: 10 }}>
+                  <div
+                    className="fc-profile-insight-label"
+                    style={{ marginBottom: 10 }}
+                  >
                     Recently mastered
                   </div>
                   <div className="fc-profile-char-grid">
                     {topRecentMastered.map(({ char }) => (
-                      <div key={char} className="fc-profile-char-item fc-profile-char-item--known">
+                      <div
+                        key={char}
+                        className="fc-profile-char-item fc-profile-char-item--known"
+                      >
                         <span className="fc-profile-char">{char}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-
             </div>
           </div>
         )}
-
       </div>
 
       {showFriendsModal && (

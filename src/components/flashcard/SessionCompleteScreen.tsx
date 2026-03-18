@@ -11,7 +11,8 @@ export function SessionCompleteScreen({
   onStudyAgain: () => void
   onBack: () => void
 }) {
-  const finalPct = totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0
+  const finalPct =
+    totalAttempts > 0 ? Math.round((score / totalAttempts) * 100) : 0
   return (
     <div className="fc-app">
       <div className="fc-results-container">

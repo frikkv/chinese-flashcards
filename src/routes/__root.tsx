@@ -38,7 +38,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     links: [
       // Early connection to Google Fonts CDN.
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-      { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
+      {
+        rel: 'preconnect',
+        href: 'https://fonts.gstatic.com',
+        crossOrigin: 'anonymous',
+      },
       { rel: 'stylesheet', href: appCss },
       // Brand-mark font subset (学中文, ≈10 KB): render-blocking so the LCP
       // element paints with the correct CJK glyph on first paint everywhere,

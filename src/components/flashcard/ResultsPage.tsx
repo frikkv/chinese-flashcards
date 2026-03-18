@@ -93,7 +93,9 @@ export function ResultsPage({
             </div>
             {mastery.hardest.length > 0 && (
               <div className="fc-mastery-hardest">
-                <span className="fc-mastery-hardest-label">Keep practising:</span>
+                <span className="fc-mastery-hardest-label">
+                  Keep practising:
+                </span>
                 <div className="fc-mastery-hardest-chars">
                   {mastery.hardest.map((char) => (
                     <span key={char} className="fc-mastery-hardest-char">
