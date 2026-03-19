@@ -330,6 +330,7 @@ export function WordSetPage({
 
           <RightSidebar
             isSignedIn={isSignedIn}
+            authPending={authPending}
             progressPending={progressPending}
             thisWeekXP={thisWeekXP}
             lastWeekXP={lastWeekXP}

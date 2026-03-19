@@ -72,26 +72,10 @@ export function LeftSidebar({
             aria-hidden="true"
             style={{ pointerEvents: 'none', cursor: 'default' }}
           >
-            <Skeleton
-              width={36}
-              height={36}
-              style={{ borderRadius: 6 }}
-            />
-            <Skeleton
-              height={14}
-              width="44%"
-              style={{ marginTop: 4 }}
-            />
-            <Skeleton
-              height={11}
-              width="28%"
-              style={{ marginTop: 4 }}
-            />
-            <Skeleton
-              height={10}
-              width="66%"
-              style={{ marginTop: 4 }}
-            />
+            <Skeleton width={36} height={32} style={{ borderRadius: 6 }} />
+            <Skeleton height={14} width="44%" />
+            <Skeleton height={11} width="28%" />
+            <Skeleton height={11} width="66%" />
           </div>
         ) : isSignedIn ? (
           <button
@@ -123,26 +107,10 @@ export function LeftSidebar({
             aria-hidden="true"
             style={{ pointerEvents: 'none', cursor: 'default' }}
           >
-            <Skeleton
-              width={36}
-              height={36}
-              style={{ borderRadius: 6 }}
-            />
-            <Skeleton
-              height={14}
-              width="48%"
-              style={{ marginTop: 4 }}
-            />
-            <Skeleton
-              height={11}
-              width="68%"
-              style={{ marginTop: 4 }}
-            />
-            <Skeleton
-              height={10}
-              width="82%"
-              style={{ marginTop: 4 }}
-            />
+            <Skeleton width={36} height={32} style={{ borderRadius: 6 }} />
+            <Skeleton height={14} width="48%" />
+            <Skeleton height={11} width="68%" />
+            <Skeleton height={11} width="82%" />
           </div>
         ) : lastSession && lastSession.dialect === dialectTab ? (
           <button

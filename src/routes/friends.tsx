@@ -27,6 +27,10 @@ function FriendsPage() {
     ...trpc.social.listFriends.queryOptions(),
     enabled: !!session?.user,
   })
+  const suggestedQuery = useQuery({
+    ...trpc.social.getSuggestedFriends.queryOptions(),
+    enabled: !!session?.user,
+  })
   const searchResults = useQuery({
     ...trpc.social.searchUsers.queryOptions({ query: submittedQuery }),
     enabled: submittedQuery.length > 0,
@@ -40,6 +44,9 @@ function FriendsPage() {
       queryKey: trpc.social.listOutgoingRequests.queryKey(),
     })
     qc.invalidateQueries({ queryKey: trpc.social.listFriends.queryKey() })
+    qc.invalidateQueries({
+      queryKey: trpc.social.getSuggestedFriends.queryKey(),
+    })
   }
 
   const sendRequest = useMutation(
@@ -203,6 +210,75 @@ function FriendsPage() {
             </div>
           )}
         </div>
+
+        {/* ── Suggested friends ──────────────────────────────── */}
+        {(suggestedQuery.data?.length ?? 0) > 0 && (
+          <div className="fc-social-section">
+            <div className="fc-social-section-title">People You May Know</div>
+            {suggestedQuery.data!.map((s) => {
+              const isOutgoing = outgoingIds.has(s.userId)
+              return (
+                <div key={s.userId} className="fc-social-user-row">
+                  <div className="fc-social-user-avatar">
+                    {(s.displayName[0] ?? '?').toUpperCase()}
+                  </div>
+                  <div className="fc-social-user-info">
+                    {s.username ? (
+                      <Link
+                        to="/u/$username"
+                        params={{ username: s.username }}
+                        className="fc-social-user-name"
+                      >
+                        {s.displayName}
+                      </Link>
+                    ) : (
+                      <span className="fc-social-user-name">
+                        {s.displayName}
+                      </span>
+                    )}
+                    {s.username && (
+                      <div className="fc-social-user-handle">@{s.username}</div>
+                    )}
+                    <div className="fc-social-mutual">
+                      {s.mutualFriendCount === 1
+                        ? `Friends with ${s.mutualFriendNames[0]}`
+                        : s.mutualFriendCount === 2
+                          ? `Friends with ${s.mutualFriendNames[0]} and ${s.mutualFriendNames[1]}`
+                          : `Friends with ${s.mutualFriendNames[0]} and ${s.mutualFriendCount - 1} others`}
+                    </div>
+                  </div>
+                  <div className="fc-social-user-actions">
+                    {isOutgoing ? (
+                      <button
+                        className="fc-social-btn fc-social-btn--secondary"
+                        onClick={() => {
+                          const req = outgoing.find(
+                            (r) => r.userId === s.userId,
+                          )
+                          if (req)
+                            cancelRequest.mutate({
+                              friendshipId: req.friendshipId,
+                            })
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      <button
+                        className="fc-social-btn fc-social-btn--primary"
+                        onClick={() =>
+                          sendRequest.mutate({ targetUserId: s.userId })
+                        }
+                      >
+                        Add Friend
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* ── Incoming requests ──────────────────────────────── */}
         {incoming.length > 0 && (

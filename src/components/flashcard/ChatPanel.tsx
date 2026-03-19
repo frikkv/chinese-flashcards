@@ -20,11 +20,11 @@ const CHAT_SUGGESTIONS_DEFAULT = [
   'Give me 3 example sentences using 你好.',
 ]
 
-function CHAT_SUGGESTIONS_FOR_CARD(ctx: ChatCardContext) {
+function CHAT_SUGGESTIONS_FOR_CARD(_ctx: ChatCardContext) {
   return [
-    `Use ${ctx.char} in a sentence.`,
-    `What does ${ctx.char} mean exactly?`,
-    `How do I remember ${ctx.char}?`,
+    'Use this word in a sentence.',
+    'What are common mistakes with this word?',
+    'How do I remember this word?',
   ]
 }
 
@@ -128,12 +128,10 @@ export const ChatPanel = memo(function ChatPanel({
       <div className="fc-chat-messages">
         {messages.length === 0 ? (
           <div className="fc-chat-empty">
-            <div className="fc-chat-empty-char">
-              {cardContext ? cardContext.char : '问'}
-            </div>
+            <div className="fc-chat-empty-char">问</div>
             <div>
               {cardContext
-                ? `Ask anything about ${cardContext.char} or Chinese in general.`
+                ? 'Ask anything about this word or Chinese in general.'
                 : 'Ask me anything about Mandarin Chinese!'}
             </div>
           </div>

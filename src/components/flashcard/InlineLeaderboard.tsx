@@ -4,6 +4,8 @@ import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { Skeleton } from '#/components/Skeleton'
 
+const SLOT_COUNT = 5
+
 export function InlineLeaderboard() {
   const trpc = useTRPC()
   const { data: authSession, isPending: authPending } = authClient.useSession()
@@ -17,11 +19,11 @@ export function InlineLeaderboard() {
   // Hide entirely once we know the user is not signed in
   if (!authPending && !isSignedIn) return null
 
-  const allEntries = lbQuery.data?.entries ?? []
-  const entries = allEntries.slice(0, 5)
-  const hasMore = allEntries.length > 5
-  const hasFriends = lbQuery.data?.hasFriends ?? false
+  const entries = (lbQuery.data?.entries ?? []).slice(0, SLOT_COUNT)
   const isPending = authPending || lbQuery.isPending
+  const emptySlots = isPending ? 0 : Math.max(0, SLOT_COUNT - entries.length)
+  // Show the "add friends" CTA in the last slot if there are empty slots
+  const showAddFriendsCta = emptySlots > 0 && !isPending
 
   return (
     <div className="fc-ws-lb">
@@ -32,29 +34,14 @@ export function InlineLeaderboard() {
         </Link>
       </div>
 
-      {isPending && (
-        <div className="fc-ws-lb-loading">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="fc-ws-lb-row">
-              <Skeleton width={20} height={14} style={{ borderRadius: 4 }} />
-              <Skeleton height={12} width="65%" style={{ borderRadius: 4 }} />
-              <Skeleton height={12} width={36} style={{ borderRadius: 4 }} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!isPending && !hasFriends && (
-        <div className="fc-ws-lb-empty">
-          <Link to="/friends" className="fc-ws-lb-add-link">
-            Add friends to compete →
-          </Link>
-        </div>
-      )}
-
-      {!isPending && hasFriends && entries.every((e) => e.xp === 0) && (
-        <div className="fc-ws-lb-empty">No activity yet this week.</div>
-      )}
+      {isPending &&
+        Array.from({ length: SLOT_COUNT }, (_, i) => (
+          <div key={i} className="fc-ws-lb-row">
+            <Skeleton width={18} height={16} style={{ borderRadius: 4 }} />
+            <Skeleton height={13} width="60%" style={{ borderRadius: 4 }} />
+            <Skeleton height={13} width={38} style={{ borderRadius: 4 }} />
+          </div>
+        ))}
 
       {!isPending &&
         entries.map((entry) => (
@@ -83,9 +70,38 @@ export function InlineLeaderboard() {
           </div>
         ))}
 
-      {!isPending && hasMore && (
-        <Link to="/leaderboard" className="fc-ws-lb-show-more">
-          Show more →
+      {/* Fill remaining slots with empty dash rows */}
+      {!isPending &&
+        emptySlots > 0 &&
+        Array.from({ length: showAddFriendsCta ? emptySlots - 1 : emptySlots }, (_, i) => {
+          const slotRank = entries.length + i + 1
+          return (
+            <div key={`empty-${i}`} className="fc-ws-lb-row fc-ws-lb-row--empty">
+              <span className="fc-ws-lb-rank">
+                {slotRank === 1
+                  ? '🥇'
+                  : slotRank === 2
+                    ? '🥈'
+                    : slotRank === 3
+                      ? '🥉'
+                      : `#${slotRank}`}
+              </span>
+              <span className="fc-ws-lb-name fc-ws-lb-name--empty">—</span>
+              <span className="fc-ws-lb-xp fc-ws-lb-xp--zero">—</span>
+            </div>
+          )
+        })}
+
+      {/* Last slot: CTA to add friends */}
+      {showAddFriendsCta && (
+        <Link to="/friends" className="fc-ws-lb-row fc-ws-lb-row--cta">
+          <span className="fc-ws-lb-rank">
+            {SLOT_COUNT <= 3
+              ? ['🥇', '🥈', '🥉'][SLOT_COUNT - 1]
+              : `#${SLOT_COUNT}`}
+          </span>
+          <span className="fc-ws-lb-cta-text">Add more friends →</span>
+          <span />
         </Link>
       )}
     </div>

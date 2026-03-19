@@ -965,4 +965,122 @@ export const socialRouter = createTRPCRouter({
       hasFriends: participantIds.length > 1,
     }
   }),
+
+  /** Suggest friends based on friends-of-friends (mutual connections). */
+  getSuggestedFriends: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id
+
+    // 1. Get my accepted friend IDs
+    const myFriendRows = await db
+      .select()
+      .from(friendships)
+      .where(
+        and(
+          or(
+            eq(friendships.senderId, userId),
+            eq(friendships.receiverId, userId),
+          ),
+          eq(friendships.status, 'accepted'),
+        ),
+      )
+    const myFriendIds = myFriendRows.map((r) =>
+      r.senderId === userId ? r.receiverId : r.senderId,
+    )
+    if (myFriendIds.length === 0) return []
+
+    // 2. Get friends-of-friends
+    const fofRows = await db
+      .select()
+      .from(friendships)
+      .where(
+        and(
+          or(
+            inArray(friendships.senderId, myFriendIds),
+            inArray(friendships.receiverId, myFriendIds),
+          ),
+          eq(friendships.status, 'accepted'),
+        ),
+      )
+
+    // Build candidate → set of mutual friend IDs
+    const myFriendIdSet = new Set(myFriendIds)
+    const candidates = new Map<string, Set<string>>()
+    for (const row of fofRows) {
+      // For each friendship, figure out who is my friend and who is the candidate
+      const isSenderMyFriend = myFriendIdSet.has(row.senderId)
+      const isReceiverMyFriend = myFriendIdSet.has(row.receiverId)
+      if (isSenderMyFriend) {
+        const candidate = row.receiverId
+        if (candidate !== userId && !myFriendIdSet.has(candidate)) {
+          const set = candidates.get(candidate) ?? new Set()
+          set.add(row.senderId)
+          candidates.set(candidate, set)
+        }
+      }
+      if (isReceiverMyFriend) {
+        const candidate = row.senderId
+        if (candidate !== userId && !myFriendIdSet.has(candidate)) {
+          const set = candidates.get(candidate) ?? new Set()
+          set.add(row.receiverId)
+          candidates.set(candidate, set)
+        }
+      }
+    }
+    if (candidates.size === 0) return []
+
+    // 3. Exclude anyone I already have a pending/declined/canceled relationship with
+    const touchedRows = await db
+      .select({ senderId: friendships.senderId, receiverId: friendships.receiverId })
+      .from(friendships)
+      .where(
+        and(
+          or(
+            eq(friendships.senderId, userId),
+            eq(friendships.receiverId, userId),
+          ),
+          inArray(friendships.status, ['pending', 'declined', 'canceled']),
+        ),
+      )
+    const touchedIds = new Set(
+      touchedRows.map((r) => (r.senderId === userId ? r.receiverId : r.senderId)),
+    )
+    for (const id of touchedIds) candidates.delete(id)
+    if (candidates.size === 0) return []
+
+    // 4. Fetch profiles for candidates + mutual friends
+    const allNeededIds = new Set<string>()
+    for (const [candidateId, mutualSet] of candidates) {
+      allNeededIds.add(candidateId)
+      for (const mId of mutualSet) allNeededIds.add(mId)
+    }
+    const profiles = await db
+      .select({
+        userId: userProfiles.userId,
+        username: userProfiles.username,
+        displayName: userProfiles.displayName,
+      })
+      .from(userProfiles)
+      .where(inArray(userProfiles.userId, [...allNeededIds]))
+    const profileMap = new Map(profiles.map((p) => [p.userId, p]))
+
+    // 5. Build result, sort by mutual count desc, limit to 10
+    const result = [...candidates.entries()]
+      .map(([candidateId, mutualSet]) => {
+        const profile = profileMap.get(candidateId)
+        const mutualNames = [...mutualSet]
+          .slice(0, 2)
+          .map((id) => profileMap.get(id)?.displayName ?? 'a friend')
+        return {
+          userId: candidateId,
+          username: profile?.username ?? null,
+          displayName: profile?.displayName ?? 'Unknown',
+          mutualFriendCount: mutualSet.size,
+          mutualFriendNames: mutualNames,
+        }
+      })
+      .sort((a, b) => b.mutualFriendCount - a.mutualFriendCount)
+      .slice(0, 10)
+
+    return result
+  }),
 })

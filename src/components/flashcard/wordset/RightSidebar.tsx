@@ -6,6 +6,7 @@ import { Skeleton } from '#/components/Skeleton'
 
 interface RightSidebarProps {
   isSignedIn: boolean
+  authPending: boolean
   progressPending: boolean
   thisWeekXP: number
   lastWeekXP: number
@@ -16,6 +17,7 @@ interface RightSidebarProps {
 
 export function RightSidebar({
   isSignedIn,
+  authPending,
   progressPending,
   thisWeekXP,
   lastWeekXP,
@@ -49,74 +51,86 @@ export function RightSidebar({
     thisWeekXP >= 50 ? '📈 Great progress' :
     thisWeekXP > 0 ? '👍 On track' :
     'Start your week'
-  const motivation =
-    thisWeekXP >= lastWeekXP && lastWeekXP > 0 ? 'You\'re ahead of last week — keep it up!' :
-    thisWeekXP > 0 ? 'Keep going — you\'re climbing this week\'s rankings.' :
-    'Study today to start climbing this week\'s rankings.'
-
   return (
     <div className="fc-ws-sidebar">
       <InlineLeaderboard />
       <div className="fc-ws-weekly-placeholder">
-        <div className="fc-ws-weekly-header">
-          <span className="fc-ws-weekly-title">This Week</span>
-          <span className="fc-ws-weekly-sub">{sub}</span>
-        </div>
-        {isSignedIn && (
-          progressPending ? (
-            <>
-              {/* XP section skeleton */}
-              <div className="fc-ws-weekly-section">
-                <Skeleton height={10} width="28%" style={{ borderRadius: 4 }} />
-                <div className="fc-ws-weekly-xp-bar-wrap">
-                  <Skeleton height={5} style={{ flex: 1, borderRadius: 99 }} />
-                  <Skeleton height={11} width={52} style={{ borderRadius: 4 }} />
-                </div>
+        {authPending || (isSignedIn && progressPending) ? (
+          <>
+            {/* Header skeleton */}
+            <div className="fc-ws-weekly-header">
+              <Skeleton height={10} width="36%" style={{ borderRadius: 4 }} />
+              <Skeleton height={13} width="52%" style={{ borderRadius: 4 }} />
+            </div>
+            {/* XP section skeleton */}
+            <div className="fc-ws-weekly-section">
+              <Skeleton height={12} width="28%" style={{ borderRadius: 4 }} />
+              <div className="fc-ws-weekly-xp-bar-wrap">
+                <Skeleton height={5} style={{ flex: 1, borderRadius: 99 }} />
+                <Skeleton height={13} width={52} style={{ borderRadius: 4 }} />
               </div>
-              {/* Streak/rank section skeleton */}
-              <div className="fc-ws-weekly-section">
-                <div className="fc-ws-weekly-rank-row">
-                  <Skeleton height={10} width="24%" style={{ borderRadius: 4 }} />
-                  <Skeleton height={11} width="38%" style={{ borderRadius: 4 }} />
-                </div>
+              <Skeleton height={12} width="52%" style={{ borderRadius: 4 }} />
+            </div>
+            {/* Streak section skeleton */}
+            <div className="fc-ws-weekly-section">
+              <div className="fc-ws-weekly-rank-row">
+                <Skeleton height={12} width="24%" style={{ borderRadius: 4 }} />
+                <Skeleton height={13} width="32%" style={{ borderRadius: 4 }} />
               </div>
-            </>
-          ) : (
-            <>
-              {/* XP section */}
-              <div className="fc-ws-weekly-section">
-                <span className="fc-ws-weekly-section-label">⚡ XP</span>
-                <div className="fc-ws-weekly-xp-bar-wrap">
-                  <div className="fc-ws-weekly-xp-bar">
-                    <div className="fc-ws-weekly-xp-bar-fill" style={{ width: `${fillPct}%` }} />
+            </div>
+            {/* Rank section skeleton */}
+            <div className="fc-ws-weekly-section" style={{ flex: 1 }}>
+              <div className="fc-ws-weekly-rank-row">
+                <Skeleton height={12} width="20%" style={{ borderRadius: 4 }} />
+                <Skeleton height={13} width="58%" style={{ borderRadius: 4 }} />
+              </div>
+              <Skeleton height={12} width="72%" style={{ borderRadius: 4, marginTop: 4 }} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="fc-ws-weekly-header">
+              <span className="fc-ws-weekly-title">This Week</span>
+              <span className="fc-ws-weekly-sub">{sub}</span>
+            </div>
+            {isSignedIn && (
+              <>
+                {/* XP section — always shown */}
+                <div className="fc-ws-weekly-section">
+                  <span className="fc-ws-weekly-section-label">⚡ XP</span>
+                  <div className="fc-ws-weekly-xp-bar-wrap">
+                    <div className="fc-ws-weekly-xp-bar">
+                      <div className="fc-ws-weekly-xp-bar-fill" style={{ width: `${fillPct}%` }} />
+                    </div>
+                    <span className="fc-ws-weekly-xp-nums">{thisWeekXP} / {xpTarget} XP</span>
                   </div>
-                  <span className="fc-ws-weekly-xp-nums">{thisWeekXP} / {xpTarget} XP</span>
+                  <span className="fc-ws-weekly-xp-hint">
+                    {xpHint ?? (thisWeekXP === 0 ? 'Study to earn XP' : '\u00A0')}
+                  </span>
                 </div>
-                {xpHint && <span className="fc-ws-weekly-xp-hint">{xpHint}</span>}
-              </div>
-              {/* Streak section */}
-              {streak > 0 && (
+                {/* Streak section — always shown */}
                 <div className="fc-ws-weekly-section">
                   <div className="fc-ws-weekly-rank-row">
                     <span className="fc-ws-weekly-section-label">🔥 Streak</span>
-                    <span className="fc-ws-weekly-streak-val">{streak} day{streak !== 1 ? 's' : ''}</span>
+                    <span className="fc-ws-weekly-streak-val">
+                      {streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''}` : '—'}
+                    </span>
                   </div>
                 </div>
-              )}
-              {/* Rank section */}
-              {tier && (
+                {/* Rank section — always shown */}
                 <div className="fc-ws-weekly-section">
                   <div className="fc-ws-weekly-rank-row">
                     <span className="fc-ws-weekly-section-label">🏆 Rank</span>
-                    <span className="fc-ws-weekly-rank-label">🌍 {tier}</span>
+                    <span className="fc-ws-weekly-rank-label">
+                      {tier ? `🌍 ${tier}` : '—'}
+                    </span>
                     {trendStatus && <span className="fc-ws-weekly-rank-status">{trendStatus}</span>}
                   </div>
                 </div>
-              )}
-            </>
-          )
+              </>
+            )}
+          </>
         )}
-        <div className="fc-ws-weekly-motivation">{motivation}</div>
       </div>
       <div className="fc-ws-progress-placeholder">
         {dashVocab && cardProgress && (

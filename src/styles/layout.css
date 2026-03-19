@@ -126,7 +126,8 @@
 
 .fc-ws-list .fc-ws-btn {
   padding: 16px 18px;
-  min-height: 108px;
+  height: 142px;
+  overflow: hidden;
 }
 
 .fc-ws-list .fc-ws-char {

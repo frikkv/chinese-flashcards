@@ -8,6 +8,10 @@
   overflow: hidden;
 }
 
+.fc-ws-weekly-placeholder {
+  height: 244px;
+}
+
 /* ── This Week card internals ── */
 .fc-ws-weekly-header {
   padding: 12px 14px 10px;
@@ -34,6 +38,9 @@
   gap: 5px;
   padding: 9px 14px;
   border-bottom: 1px solid var(--fc-border);
+}
+.fc-ws-weekly-section:last-child {
+  border-bottom: none;
 }
 .fc-ws-weekly-section-label {
   font-size: 0.72rem;
@@ -180,6 +187,8 @@
   align-items: center;
   gap: 6px;
   padding: 9px 14px;
+  min-height: 38px;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--fc-border);
   transition: background 0.1s;
 }
@@ -228,6 +237,28 @@
 
 .fc-ws-lb-xp--zero {
   color: var(--fc-light);
+}
+
+.fc-ws-lb-row--empty .fc-ws-lb-rank {
+  opacity: 0.4;
+}
+
+.fc-ws-lb-name--empty {
+  color: var(--fc-light);
+}
+
+.fc-ws-lb-row--cta {
+  text-decoration: none;
+  cursor: pointer;
+}
+.fc-ws-lb-row--cta:hover {
+  background: var(--fc-bg);
+}
+
+.fc-ws-lb-cta-text {
+  font-size: 0.78rem;
+  color: var(--fc-blue);
+  white-space: nowrap;
 }
 
 /* ── Compact mastery card inside the sidebar ── */
