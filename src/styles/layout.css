@@ -50,6 +50,12 @@
 }
 
 /* Left column brand (compact title) */
+.fc-ws-brand-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .fc-ws-brand-title {
   font-family:
     'Noto Serif SC', 'Noto Serif CJK SC', 'Songti SC', 'STSong', 'NSimSun',
@@ -57,8 +63,35 @@
   font-size: 2.2rem;
   color: var(--fc-red);
   line-height: 1;
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
+
+/* Leaderboard button in topbar */
+.fc-leaderboard-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  color: var(--fc-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.fc-leaderboard-btn:hover {
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  border-color: var(--fc-gold);
+}
+
+.fc-leaderboard-btn svg {
+  color: var(--fc-gold);
+}
+
 /* Dialect tabs */
 .fc-dialect-tabs {
   display: flex;

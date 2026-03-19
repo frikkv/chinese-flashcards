@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { User } from 'lucide-react'
+import { User, Trophy } from 'lucide-react'
 import type { Word } from '#/data/vocabulary'
 import type { Dialect } from '#/lib/dialect'
 import { hsk1Words, hsk2Words, lang1511Units } from '#/data/vocabulary'
@@ -274,7 +274,17 @@ export function WordSetPage({
   return (
     <div className="fc-app fc-app--wordset">
       <div className="fc-ws-topbar">
-        <div className="fc-ws-brand-title">学中文</div>
+        <div className="fc-ws-brand-left">
+          <div className="fc-ws-brand-title">学中文</div>
+          <Link
+            to="/leaderboard"
+            className="fc-leaderboard-btn"
+            aria-label="Leaderboard"
+          >
+            <Trophy size={16} strokeWidth={1.8} />
+            <span>Leaderboard</span>
+          </Link>
+        </div>
         {onSignIn ? (
           <button className="fc-profile-nav-btn" onClick={onSignIn}>
             Sign in
