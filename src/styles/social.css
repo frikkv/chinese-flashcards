@@ -405,13 +405,8 @@
 
 .fc-upload-name-input {
   font-size: 0.88rem;
-  background: var(--fc-surface);
-  border: 1.5px solid var(--fc-border);
   border-radius: 8px;
   padding: 9px 12px;
-  color: var(--fc-text);
-  outline: none;
-  transition: border-color 0.15s;
   width: 100%;
   box-sizing: border-box;
 }
@@ -422,13 +417,7 @@
 
 /* ── CUSTOM SETS MODAL ─────────────────────────────────────────── */
 .fc-modal-overlay {
-  position: fixed;
-  inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
   padding: 24px;
 }
 
@@ -731,18 +720,13 @@
 
 .fc-upload-paste-input {
   font-size: 0.85rem;
-  background: var(--fc-surface);
-  border: 1.5px solid var(--fc-border);
   border-radius: 8px;
   padding: 10px 12px;
-  color: var(--fc-text);
-  outline: none;
   resize: vertical;
   width: 100%;
   box-sizing: border-box;
   font-family: inherit;
   line-height: 1.5;
-  transition: border-color 0.15s;
 }
 
 .fc-upload-paste-input:focus {

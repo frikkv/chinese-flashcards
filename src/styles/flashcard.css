@@ -1,6 +1,7 @@
-/* ── Sidebar placeholder boxes ── */
+/* ── Sidebar cards (shared base) ── */
 .fc-ws-weekly-placeholder,
-.fc-ws-progress-placeholder {
+.fc-ws-progress-placeholder,
+.fc-ws-lb {
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
   border-radius: 12px;
@@ -104,10 +105,6 @@
 
 /* Leaderboard card inside sidebar */
 .fc-ws-lb {
-  background: var(--fc-surface);
-  border: 1px solid var(--fc-border);
-  border-radius: 12px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -257,10 +254,10 @@
 
 /* Placeholder shown before any word set is selected */
 .fc-ws-right-empty {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 40px 20px;
   border: 1.5px dashed var(--fc-border);
   border-radius: 16px;
   color: var(--fc-light);
@@ -372,16 +369,13 @@
 /* ── SETTINGS ── */
 .fc-settings-wrap {
   width: 100%;
-  max-width: 640px;
-  margin-top: 20px;
-  margin-bottom: 28px;
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
   border-radius: 16px;
-  padding: 18px 22px;
+  padding: 16px 20px;
 }
 .fc-settings-section {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 .fc-settings-wrap .fc-settings-section:last-child {
   margin-bottom: 0;
@@ -634,14 +628,10 @@
 }
 .fc-type-input {
   flex: 1;
-  border: 1.5px solid var(--fc-border);
   border-radius: 14px;
   padding: 16px 20px;
   font-family: 'Lora', serif;
   font-size: 1.05rem;
-  background: var(--fc-surface);
-  color: var(--fc-text);
-  outline: none;
   transition:
     border-color 0.2s,
     background 0.2s;

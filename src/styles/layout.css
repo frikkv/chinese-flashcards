@@ -1,6 +1,10 @@
 /* ── WORDSET PAGE: in-flow top bar ── */
 .fc-app--wordset {
   padding-top: 0;
+  flex: unset;
+  min-height: 100dvh;
+  gap: 16px;
+  padding-bottom: 32px;
 }
 
 .fc-ws-topbar {
@@ -9,39 +13,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 32px;
+  padding: 10px 32px;
   border-bottom: 1px solid var(--fc-border);
   box-sizing: border-box;
 }
 
 /* ── WORD SET PAGE ── */
 .fc-wordset-container {
-  flex: 1;
-  min-height: 0;
-  max-height: calc(100dvh - 136px); /* 60px topbar + 28px gap + 48px bottom padding */
   width: 100%;
-  max-width: 960px;
+  max-width: 1200px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   margin: 0;
-}
-
-/* Expand container to fit 3-column layout */
-@media (min-width: 1100px) {
-  .fc-wordset-container {
-    max-width: 1200px;
-  }
+  padding: 0 8px;
 }
 
 /* ── THREE-COLUMN WORD SET LAYOUT ── */
 .fc-ws-outer-row {
-  flex: 1;
-  min-height: 0;
   display: grid;
   grid-template-columns: 260px 1fr 220px;
-  gap: 24px;
-  overflow: hidden;
+  gap: 20px;
+  align-items: start;
   width: 100%;
 }
 
@@ -52,6 +44,9 @@
   gap: 6px;
   overflow: hidden;
   min-height: 0;
+  max-height: calc(100dvh - 100px);
+  position: sticky;
+  top: 16px;
 }
 
 /* Left column brand (compact title) */
@@ -143,7 +138,7 @@
 .fc-ws-right {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   overflow: hidden;
   min-height: 0;
 }
@@ -155,7 +150,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
   padding-right: 2px; /* prevent scrollbar from clipping border */
 }
 
@@ -172,9 +167,11 @@
 .fc-ws-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   align-self: start;
   min-width: 0;
+  position: sticky;
+  top: 16px;
 }
 
 /* Hide sidebar + collapse to 2-column grid below 1100px */
@@ -184,6 +181,9 @@
   }
   .fc-ws-sidebar {
     display: none;
+  }
+  .fc-wordset-container {
+    max-width: 960px;
   }
 }
 
@@ -227,6 +227,8 @@
 
 .fc-wordset-container .fc-start-btn {
   margin-top: 0;
+  padding: 14px 40px;
+  border-radius: 12px;
 }
 
 /* ── STUDY WORKSPACE ── */

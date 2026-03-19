@@ -91,6 +91,29 @@ body {
 }
 
 
+/* ── SHARED: text input base ────────────────────────────────────── */
+.fc-upload-name-input,
+.fc-upload-paste-input,
+.fc-type-input {
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  color: var(--fc-text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+/* ── SHARED: modal overlay base ─────────────────────────────────── */
+.fc-modal-overlay,
+.fc-friends-modal-overlay,
+.fc-username-gate-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
 /* ── SKELETON LOADING ────────────────────────────────────────────── */
 @keyframes fc-skeleton-pulse {
   0%,
