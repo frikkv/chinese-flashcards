@@ -15,7 +15,7 @@ import type {
 } from '#/components/flashcard/types'
 import { LeftSidebar } from '#/components/flashcard/wordset/LeftSidebar'
 import { CenterSettings } from '#/components/flashcard/wordset/CenterSettings'
-import { RightSidebar } from '#/components/flashcard/wordset/RightSidebar'
+// RightSidebar removed for demo - backend logic preserved
 import { CustomWordSetModal } from '#/components/flashcard/wordset/CustomWordSetModal'
 
 interface WordSetPageProps {
@@ -328,16 +328,7 @@ export function WordSetPage({
             onStart={handleStart}
           />
 
-          <RightSidebar
-            isSignedIn={isSignedIn}
-            authPending={authPending}
-            progressPending={progressPending}
-            thisWeekXP={thisWeekXP}
-            lastWeekXP={lastWeekXP}
-            streak={streak}
-            dashVocab={dashVocab}
-            cardProgress={cardProgress}
-          />
+          {/* RightSidebar removed for demo - backend logic preserved in parent */}
         </div>
       </main>
 
