@@ -379,8 +379,8 @@
 .fc-picker-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 5px;
+  margin-bottom: 5px;
   user-select: none;
 }
 .fc-picker-grid--units {
@@ -390,8 +390,8 @@
 .fc-unit-btn {
   background: var(--fc-surface);
   border: 1.5px solid var(--fc-border);
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: 7px;
+  padding: 5px 10px;
   font-family: 'Lora', serif;
   font-size: 0.85rem;
   color: var(--fc-muted);
@@ -419,45 +419,45 @@
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
   border-radius: 16px;
-  padding: 16px 20px;
+  padding: 12px 18px;
 }
 .fc-settings-section {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .fc-settings-wrap .fc-settings-section:last-child {
   margin-bottom: 0;
 }
 .fc-settings-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--fc-light);
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 .fc-settings-options {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   flex-wrap: wrap;
 }
 .fc-settings-divider {
   height: 1px;
   background: var(--fc-border);
-  margin: 2px 0 14px;
+  margin: 2px 0 8px;
 }
 .fc-settings-mode-hint {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--fc-muted);
   font-style: italic;
-  margin-top: 6px;
-  line-height: 1.4;
+  margin-top: 4px;
+  line-height: 1.35;
 }
 .fc-setting-opt {
   background: var(--fc-surface);
   border: 1.5px solid var(--fc-border);
   border-radius: 8px;
-  padding: 8px 16px;
+  padding: 6px 13px;
   font-family: 'Lora', serif;
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   color: var(--fc-muted);
   cursor: pointer;
   transition:

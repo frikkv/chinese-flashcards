@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
-import { User } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { User, Trophy } from 'lucide-react'
+import { authClient } from '#/lib/auth-client'
+import { useTRPC } from '#/integrations/trpc/react'
 import type { Word } from '#/data/vocabulary'
 import type { Dialect } from '#/lib/dialect'
 import { hsk1Words, hsk2Words, lang1511Units } from '#/data/vocabulary'
@@ -29,6 +32,7 @@ interface WordSetPageProps {
   streak: number
   customWordSets: CustomWordSet[]
   isSignedIn: boolean
+  userName: string | null
   authPending: boolean
   progressPending: boolean
   customWordSetsPending: boolean
@@ -62,6 +66,7 @@ export function WordSetPage({
   streak,
   customWordSets,
   isSignedIn,
+  userName,
   authPending,
   progressPending,
   customWordSetsPending,
@@ -274,19 +279,22 @@ export function WordSetPage({
   return (
     <div className="fc-app fc-app--wordset">
       <div className="fc-ws-topbar">
-        <div className="fc-ws-brand-title">学中文</div>
+        <div className="fc-ws-brand-left">
+          <Link to="/" className="fc-ws-brand-title">学中文</Link>
+          <Link
+            to="/leaderboard"
+            className="fc-ws-lb-icon-btn"
+            aria-label="Leaderboard"
+          >
+            <Trophy size={18} strokeWidth={2} />
+          </Link>
+        </div>
         {onSignIn ? (
           <button className="fc-profile-nav-btn" onClick={onSignIn}>
             Sign in
           </button>
         ) : (
-          <Link
-            to="/profile"
-            className="fc-profile-icon-btn"
-            aria-label="Profile"
-          >
-            <User size={18} strokeWidth={1.8} />
-          </Link>
+          <ProfileMenu userName={userName} />
         )}
       </div>
       <main className="fc-wordset-container">
@@ -328,16 +336,7 @@ export function WordSetPage({
             onStart={handleStart}
           />
 
-          <RightSidebar
-            isSignedIn={isSignedIn}
-            authPending={authPending}
-            progressPending={progressPending}
-            thisWeekXP={thisWeekXP}
-            lastWeekXP={lastWeekXP}
-            streak={streak}
-            dashVocab={dashVocab}
-            cardProgress={cardProgress}
-          />
+          {/* RightSidebar hidden — backend logic (leaderboard, progress, weekly stats) preserved */}
         </div>
       </main>
 
@@ -352,6 +351,54 @@ export function WordSetPage({
           setSelectedWordSet('temp')
         }}
       />
+    </div>
+  )
+}
+
+function ProfileMenu({ userName: _userName }: { userName: string | null }) {
+  const trpc = useTRPC()
+  const myProfileQuery = useQuery({
+    ...trpc.social.getMyProfile.queryOptions(),
+    staleTime: 60_000,
+  })
+  const username = myProfileQuery.data?.username
+
+  return (
+    <div className="fc-profile-menu-wrap">
+      <button className="fc-profile-menu-trigger">
+        <User size={20} strokeWidth={2} />
+        {username && <span className="fc-ws-topbar-name">{username}</span>}
+      </button>
+      <div className="fc-profile-menu">
+        <Link to="/profile" className="fc-profile-menu-item">
+          User stats
+        </Link>
+        <Link to="/friends" className="fc-profile-menu-item">
+          Friends
+        </Link>
+        {username && (
+          <Link
+            to="/u/$username"
+            params={{ username }}
+            className="fc-profile-menu-item"
+          >
+            Public profile
+          </Link>
+        )}
+        <Link to="/profile" className="fc-profile-menu-item">
+          Account settings
+        </Link>
+        <button
+          className="fc-profile-menu-item fc-profile-menu-item--danger"
+          onClick={() =>
+            authClient.signOut({
+              fetchOptions: { onSuccess: () => window.location.replace('/') },
+            })
+          }
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   )
 }
