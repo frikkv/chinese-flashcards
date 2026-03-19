@@ -1,8 +1,14 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import superjson from 'superjson'
 import { auth } from '#/lib/auth'
+import { DEMO_AUTH, DEMO_SESSION } from '#/lib/demo-auth'
 
 export async function createContext({ request }: { request: Request }) {
+  // In demo mode, always return the demo session
+  if (DEMO_AUTH) {
+    return { session: DEMO_SESSION }
+  }
+
   const session = await auth.api
     .getSession({ headers: request.headers })
     .catch(() => null)

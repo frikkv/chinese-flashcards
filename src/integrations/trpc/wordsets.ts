@@ -11,6 +11,7 @@ import {
   editWordSetWithAI,
 } from '#/server/ai/generateWordSet'
 import { createRateLimiter } from '#/lib/rate-limit'
+import { DEMO_AUTH } from '#/lib/demo-auth'
 
 // In-memory, best-effort: max 5 AI generations per 10 minutes per user
 const generateLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 5 })
@@ -127,6 +128,11 @@ export const wordsetsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Skip database writes in demo mode
+      if (DEMO_AUTH) {
+        console.log('[Demo Mode] wordsets.save skipped')
+        return { id: 'demo-wordset-' + Date.now() }
+      }
       const userId = ctx.session.user.id
       const id = crypto.randomUUID()
       await db.insert(customWordSets).values({
@@ -144,6 +150,10 @@ export const wordsetsRouter = createTRPCRouter({
 
   // List user's saved custom word sets (favorites first, then newest)
   list: protectedProcedure.query(async ({ ctx }) => {
+    // Return empty list in demo mode (no saved word sets)
+    if (DEMO_AUTH) {
+      return []
+    }
     const userId = ctx.session.user.id
     const rows = await db
       .select()

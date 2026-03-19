@@ -1,7 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { authClient } from '#/lib/auth-client'
+import { DEMO_AUTH } from '#/lib/demo-auth'
+import { DemoModeBadge } from './DemoModeBadge'
 
 export function AuthPage({ onSkip }: { onSkip: () => void }) {
+  // In demo mode, automatically skip to main app
+  useEffect(() => {
+    if (DEMO_AUTH) {
+      onSkip()
+    }
+  }, [onSkip])
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -40,8 +48,14 @@ export function AuthPage({ onSkip }: { onSkip: () => void }) {
     }
   }
 
+  // If demo mode is active, don't render the auth page
+  if (DEMO_AUTH) {
+    return null
+  }
+
   return (
     <div className="fc-app">
+      <DemoModeBadge />
       <div className="fc-auth-container">
         <h1 className="fc-hero-title">学中文</h1>
         <form className="fc-auth-form" onSubmit={handleSubmit}>

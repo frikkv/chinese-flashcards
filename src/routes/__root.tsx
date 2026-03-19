@@ -22,6 +22,8 @@ import type { TRPCRouter } from '#/integrations/trpc/router'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
+import { DemoModeBadge } from '#/components/DemoModeBadge'
+import { DEMO_AUTH } from '#/lib/demo-auth'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -144,10 +146,13 @@ function RootLayout() {
 
   const profileQuery = useQuery({
     ...trpc.social.getMyProfile.queryOptions(),
-    enabled: !!session?.user,
+    // Don't fetch profile in demo mode - we're using a mock user
+    enabled: !!session?.user && !DEMO_AUTH,
   })
 
+  // Skip username setup in demo mode
   const needsUsername =
+    !DEMO_AUTH &&
     !dismissed &&
     !!session?.user &&
     !sessionPending &&
@@ -157,6 +162,7 @@ function RootLayout() {
 
   return (
     <>
+      <DemoModeBadge />
       <Outlet />
       {needsUsername && (
         <UsernameSetupModal onDone={() => setDismissed(true)} />

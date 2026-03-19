@@ -9,9 +9,37 @@ import {
   userLastSession,
   accounts,
 } from '#/db/schema'
+import { DEMO_AUTH } from '#/lib/demo-auth'
+
+// Mock progress data for demo mode
+const DEMO_PROGRESS = {
+  cards: [],
+  lastSession: null,
+  lastCompletedSession: null,
+  streak: 3,
+  thisWeekSessions: 5,
+  thisWeekXP: 150,
+  lastWeekXP: 120,
+}
+
+const DEMO_PROFILE_STATS = {
+  cards: [],
+  streak: 3,
+  bestStreak: 7,
+  thisWeekSessions: 5,
+  totalSessions: 25,
+  totalCorrect: 450,
+  totalReviews: 500,
+  lastSession: null,
+  providers: ['google'],
+}
 
 export const progressRouter = createTRPCRouter({
   getProgress: protectedProcedure.query(async ({ ctx }) => {
+    // Return mock data in demo mode
+    if (DEMO_AUTH) {
+      return DEMO_PROGRESS
+    }
     const userId = ctx.session.user.id
     const [cards, lastSessionRows, recentSessionRows, sessionDates] =
       await Promise.all([
@@ -100,6 +128,11 @@ export const progressRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Skip database writes in demo mode
+      if (DEMO_AUTH) {
+        console.log('[Demo Mode] saveLastSession skipped')
+        return
+      }
       const userId = ctx.session.user.id
       await db
         .insert(userLastSession)
@@ -135,6 +168,11 @@ export const progressRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Skip database writes in demo mode
+      if (DEMO_AUTH) {
+        console.log('[Demo Mode] recordCard skipped')
+        return
+      }
       const userId = ctx.session.user.id
       const now = new Date()
       await db
@@ -174,6 +212,11 @@ export const progressRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Skip database writes in demo mode
+      if (DEMO_AUTH) {
+        console.log('[Demo Mode] batchRecordCards skipped')
+        return
+      }
       const userId = ctx.session.user.id
       const now = new Date()
       await Promise.all(
@@ -218,6 +261,11 @@ export const progressRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      // Skip database writes in demo mode
+      if (DEMO_AUTH) {
+        console.log('[Demo Mode] saveSession skipped')
+        return
+      }
       const userId = ctx.session.user.id
       await db.insert(studySessions).values({
         id: crypto.randomUUID(),
@@ -234,6 +282,10 @@ export const progressRouter = createTRPCRouter({
     }),
 
   getProfileStats: protectedProcedure.query(async ({ ctx }) => {
+    // Return mock data in demo mode
+    if (DEMO_AUTH) {
+      return DEMO_PROFILE_STATS
+    }
     const userId = ctx.session.user.id
     const [cards, allSessions, accountRows] = await Promise.all([
       db

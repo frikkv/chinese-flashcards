@@ -23,6 +23,19 @@ import {
   flashcardProgress,
 } from '#/db/schema'
 import { hsk1Words, hsk2Words, lang1511Units } from '#/data/vocabulary'
+import { DEMO_AUTH, DEMO_USER } from '#/lib/demo-auth'
+
+// Mock profile for demo mode
+const DEMO_PROFILE = {
+  userId: DEMO_USER.id,
+  username: DEMO_USER.username,
+  displayName: DEMO_USER.name,
+  bio: 'This is a demo account for preview purposes.',
+  usernameConfirmed: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  friendCount: 0,
+}
 
 const TOTAL_VOCAB =
   hsk1Words.length +
@@ -360,6 +373,10 @@ export const socialRouter = createTRPCRouter({
 
   /** Get or create own profile. Protected. */
   getMyProfile: protectedProcedure.query(async ({ ctx }) => {
+    // Return mock profile in demo mode
+    if (DEMO_AUTH) {
+      return DEMO_PROFILE
+    }
     const profile = await ensureProfile(ctx.session.user.id, {
       name: ctx.session.user.name,
       email: ctx.session.user.email,
