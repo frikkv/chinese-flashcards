@@ -986,7 +986,28 @@ export const socialRouter = createTRPCRouter({
     const myFriendIds = myFriendRows.map((r) =>
       r.senderId === userId ? r.receiverId : r.senderId,
     )
-    if (myFriendIds.length === 0) return []
+    if (myFriendIds.length === 0) {
+      // No friends yet — suggest the app creator as a starter friend
+      const [frikk] = await db
+        .select({
+          userId: userProfiles.userId,
+          username: userProfiles.username,
+          displayName: userProfiles.displayName,
+        })
+        .from(userProfiles)
+        .where(eq(userProfiles.username, 'me'))
+        .limit(1)
+      if (frikk && frikk.userId !== userId) {
+        return [{
+          userId: frikk.userId,
+          username: frikk.username,
+          displayName: frikk.displayName,
+          mutualFriendCount: 0,
+          mutualFriendNames: [],
+        }]
+      }
+      return []
+    }
 
     // 2. Get friends-of-friends
     const fofRows = await db

@@ -240,11 +240,13 @@ function FriendsPage() {
                       <div className="fc-social-user-handle">@{s.username}</div>
                     )}
                     <div className="fc-social-mutual">
-                      {s.mutualFriendCount === 1
-                        ? `Friends with ${s.mutualFriendNames[0]}`
-                        : s.mutualFriendCount === 2
-                          ? `Friends with ${s.mutualFriendNames[0]} and ${s.mutualFriendNames[1]}`
-                          : `Friends with ${s.mutualFriendNames[0]} and ${s.mutualFriendCount - 1} others`}
+                      {s.mutualFriendCount === 0
+                        ? 'App creator — add me!'
+                        : s.mutualFriendCount === 1
+                          ? `Friends with ${s.mutualFriendNames[0]}`
+                          : s.mutualFriendCount === 2
+                            ? `Friends with ${s.mutualFriendNames[0]} and ${s.mutualFriendNames[1]}`
+                            : `Friends with ${s.mutualFriendNames[0]} and ${s.mutualFriendCount - 1} others`}
                     </div>
                   </div>
                   <div className="fc-social-user-actions">

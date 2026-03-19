@@ -261,6 +261,22 @@
   white-space: nowrap;
 }
 
+.fc-ws-progress-placeholder {
+  min-height: 140px;
+}
+.fc-mastery-empty {
+  padding: 16px 14px;
+  font-size: 0.78rem;
+  color: var(--fc-muted);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 120px;
+  text-align: center;
+}
+
 /* ── Compact mastery card inside the sidebar ── */
 .fc-ws-sidebar .fc-mastery-dashboard {
   max-width: 220px;

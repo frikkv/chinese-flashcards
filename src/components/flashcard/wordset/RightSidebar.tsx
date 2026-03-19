@@ -133,8 +133,12 @@ export function RightSidebar({
         )}
       </div>
       <div className="fc-ws-progress-placeholder">
-        {dashVocab && cardProgress && (
+        {dashVocab && cardProgress ? (
           <WordSetDashboard vocab={dashVocab} cardProgress={cardProgress} />
+        ) : (
+          <div className="fc-mastery-empty">
+            Select a word set to see your progress
+          </div>
         )}
       </div>
     </div>

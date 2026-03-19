@@ -38,7 +38,7 @@ pnpm dlx shadcn@latest add <component>
 - `src/routes/index.tsx` — Thin orchestrator: auth gate, study session state/logic, page routing between wordset/study/sound/tone/results. The study page JSX lives here; other pages are imported components
 - `src/routes/profile.tsx` — Logged-in user's own profile (edit display name, username, bio; view stats and level). Imports `StatCard`, `WordSetRow` from `src/components/profile/`
 - `src/routes/u/$username.tsx` — Public profile page for any user (stats, friend button, friends modal)
-- `src/routes/friends.tsx` — Friends management (search users, incoming/outgoing requests, friends list)
+- `src/routes/friends.tsx` — Friends management (search users, suggested friends via friends-of-friends, incoming/outgoing requests, friends list)
 - `src/routes/leaderboard.tsx` — Weekly XP leaderboard for the user + their friends
 
 **Flashcard UI components** (`src/components/flashcard/`):
@@ -49,11 +49,11 @@ pnpm dlx shadcn@latest add <component>
 - `wordset/WordSetPage.tsx` — Word set selection page orchestrator (state, derived data, session builders); renders the four sub-components below
 - `wordset/LeftSidebar.tsx` — Dialect tabs (Mandarin/Cantonese) + word set list buttons (My Word Sets, Last Session, LANG 1511, HSK, Cantonese Basics)
 - `wordset/CenterSettings.tsx` — Study settings panel (HSK/unit pickers with drag-select, study mode, answer style, session size, sound-only, tone quiz) + Start button
-- `wordset/RightSidebar.tsx` — Leaderboard snippet, "This Week" XP/streak/rank card, mastery progress card
+- `wordset/RightSidebar.tsx` — Leaderboard snippet (fixed 5-row), "This Week" XP/streak/rank card (fixed height), mastery progress card (shows empty state when no word set selected)
 - `wordset/CustomWordSetModal.tsx` — Custom word set CRUD modal (list/create/edit views, upload/paste/AI-generate, AI edit). Owns its own tRPC mutations
-- `InlineLeaderboard.tsx` — Self-contained leaderboard sidebar snippet; fetches `social.getWeeklyLeaderboard`, hides for unauthenticated users
+- `InlineLeaderboard.tsx` — Self-contained leaderboard sidebar snippet; always renders exactly 5 rows (real entries + empty dash rows + "Add more friends" CTA); fetches `social.getWeeklyLeaderboard`, hides for unauthenticated users
 - `CardFace.tsx`, `StudyHeader.tsx`, `NextButton.tsx`, `StageDots.tsx`, `AnswerChoices.tsx` — Small study page UI primitives
-- `ChatPanel.tsx` — Inline AI chat for study pages
+- `ChatPanel.tsx` — Inline AI chat for study pages; suggestions use generic text ("this word") to avoid revealing the current card's character
 - `PronunciationBox.tsx` — Pronunciation input box below chat
 - `ResultsPage.tsx` — Session results summary (lazy-loaded)
 - `SessionCompleteScreen.tsx` — Completion screen for sound/tone modes (lazy-loaded)
@@ -63,6 +63,7 @@ pnpm dlx shadcn@latest add <component>
 
 - `StatCard.tsx` — Reusable stat display card (num, label, sub, tone variant)
 - `WordSetRow.tsx` — Word set progress row with bar and mastery chips
+- `PerformanceInsights.tsx` — Shared strongest/weakest sets, struggling words, recently mastered cards (used by both profile pages)
 
 **Other components**:
 
@@ -73,18 +74,18 @@ pnpm dlx shadcn@latest add <component>
 
 - `router.ts` — Root tRPC router; imports `chat`, `distractors`, `progress`, `wordsets`, `social` sub-routers
 - `chat.ts` — AI chat (`sendMessage`) and translation (`translateToZh`) procedures
-- `distractors.ts` — Fetches/generates wrong-answer choices (DB-cached, AI-generated via GPT-4o-mini)
+- `distractors.ts` — Fetches/generates wrong-answer choices (DB-cached, AI-generated via GPT-4o-mini); rate-limited to 60 req/min per user
 - `progress.ts` — Saves session results and per-card history for logged-in users; `getProgress` returns `thisWeekXP` and `lastWeekXP` using Monday 00:00 UTC week boundary (same as leaderboard)
-- `social.ts` — Social features: profiles, friend requests, leaderboard, user search
+- `social.ts` — Social features: profiles, friend requests, leaderboard, user search, suggested friends (friends-of-friends; falls back to app creator @me for users with no friends)
 - `wordsets.ts` — Custom word sets: AI extraction from uploaded files/text, save/list/update/delete/favorite
 - `src/integrations/tanstack-query/root-provider.tsx` — QueryClient + tRPC provider wiring
 
 **Libraries** (`src/lib/`):
 
 - `flashcard-logic.ts` — Pure stateless helpers for the study engine: `QueueItem` type, `shuffle`, `normalizeAnswer`, `buildQueue`, `getQuestionContent`, `getAnswerContent`, `buildToneChoices`, `stripTones`, and tone-vowel utilities; no React or side effects
-- `mastery.ts` — `computeMastery()` pure function + `ProgressCard`/`MasteryStats` types; used by profile page
+- `mastery.ts` — `computeMastery()`, `getHardestWords()`, `getRecentlyMastered()`, `formatWordSetKey()` + `ProgressCard`/`MasteryStats` types; single source of truth for mastery logic used by both profile pages
 - `levels.ts` — XP formula (`computeXP`) and level ladder (`getLevelInfo`): 7 levels from Beginner → Legend
-- `rate-limit.ts` — `createRateLimiter({ windowMs, max })` factory; used by `chat.ts` and `wordsets.ts` instead of ad-hoc per-file maps
+- `rate-limit.ts` — `createRateLimiter({ windowMs, max })` factory; used by `chat.ts`, `wordsets.ts`, and `distractors.ts`
 - `time.ts` — `getWeekStartTs()`: returns Monday 00:00 UTC timestamp; single source of truth for week boundary used by `progress.ts`, `social.ts`
 - `auth.ts` — Better Auth server config (no `baseURL`; uses `BETTER_AUTH_URL` for `trustedOrigins`)
 - `auth-client.ts` — Better Auth client config (no `baseURL`; uses relative paths)
@@ -109,8 +110,8 @@ The `wordset` page (`fc-app--wordset`) is rendered by `wordset/WordSetPage.tsx`,
 - **Centre column** (`wordset/CenterSettings.tsx`, `fc-ws-right`, 1fr) — study settings + Start Studying button
 - **Right sidebar** (`wordset/RightSidebar.tsx`, `fc-ws-sidebar`, 220 px, hidden below 1100 px) — three stacked cards:
   1. `InlineLeaderboard` — weekly XP leaderboard snippet
-  2. **"This Week" card** (`fc-ws-weekly-placeholder`) — XP progress bar vs last week's XP, streak, global tier (signed-in only); motivation text always shown
-  3. **Mastery card** (`fc-ws-progress-placeholder`) — shows `WordSetDashboard` (progress bar, New/Learning/Known chips, accuracy, struggling words) when a word set is selected via `dashVocab`
+  2. **"This Week" card** (`fc-ws-weekly-placeholder`, fixed height 244px) — XP progress bar vs last week's XP, streak, global tier; full skeleton during loading (no text flash)
+  3. **Mastery card** (`fc-ws-progress-placeholder`) — shows `WordSetDashboard` (progress bar, New/Learning/Known chips, accuracy, struggling words) when a word set is selected; shows "Select a word set to see your progress" empty state otherwise
 - **Custom Word Sets modal** (`wordset/CustomWordSetModal.tsx`) — self-contained modal with list/create/edit views; owns its own tRPC mutations
 
 The "This Week" card weekly XP uses Monday 00:00 UTC as the week boundary (matching the leaderboard). Global tier is derived client-side from `thisWeekXP` thresholds (Top 50 → Top 5000). The `--fc-accent` CSS variable is defined as `var(--fc-blue)` and used for the XP bar fill and rank status badge.
@@ -119,7 +120,7 @@ The "This Week" card weekly XP uses Monday 00:00 UTC as the week boundary (match
 
 Client → tRPC hooks → `/api/trpc` route → tRPC procedures → Drizzle → PostgreSQL
 
-On Vercel: Nitro bundles the TanStack Start SSR server and emits `.vercel/output/` (Vercel Build Output API). All routes — including `/api/trpc` — are handled by the Nitro Vercel serverless entry; no manual `vercel.json` routing is needed.
+On Vercel: Nitro bundles the TanStack Start SSR server and emits `.vercel/output/` (Vercel Build Output API). All routes — including `/api/trpc` — are handled by the Nitro Vercel serverless entry. `vercel.json` sets `regions: ["hnd1"]` to colocate serverless functions with the Tokyo Supabase instance.
 
 ### Flashcard app — page states
 
@@ -177,10 +178,18 @@ Logged-in users can upload documents (PDF, DOCX, plain text) or paste text; the 
 - **Leaderboard** — `/leaderboard` shows weekly XP rankings for the user + all accepted friends; resets Monday 00:00 UTC
 - **XP formula** — `correctAnswers + completedSessions × 5`; all-time XP drives the level system (7 levels: Beginner → Legend)
 - **Friend requests** — auto-accept if a reverse pending request already exists (mutual interest)
+- **Suggested friends** — "People You May Know" on `/friends` page; uses friends-of-friends algorithm; falls back to app creator (@me) for users with no friends
 
 ### CSS conventions
 
-All styles live in `src/styles.css` (single global file, ~4300 lines). All classes use the `fc-` prefix. Key CSS variables are defined on `.fc-app`:
+Styles are split into `src/styles/` with a single entry point `src/styles.css` that imports all files:
+- `base.css` — tailwind, fonts, reset, CSS variables, skeleton, shared patterns (modal overlay base, text input base)
+- `layout.css` — page grids, nav, buttons, responsive breakpoints
+- `flashcard.css` — study modes, cards, answers, chat, sidebar cards, mastery dashboard
+- `profile.css` — profile pages, stats, insights, level badge
+- `social.css` — auth, modals, friends, leaderboard
+
+All classes use the `fc-` prefix. Key CSS variables are defined on `.fc-app`:
 
 - `--fc-accent: var(--fc-blue)` — used for XP bar, rank badge, and other accent UI
 - `--fc-blue: #2c5f8a`, `--fc-red: #c0392b`, `--fc-success: #27ae60`, `--fc-wrong: #e74c3c`
@@ -211,3 +220,7 @@ Better Auth with Drizzle adapter. Sign-in/sign-out is integrated in the UI. Auth
 | Profile stats cards | `src/components/profile/StatCard.tsx` |
 | Profile word set progress rows | `src/components/profile/WordSetRow.tsx` |
 | Profile page layout / data flow | `src/routes/profile.tsx` |
+| Performance insights (both profile pages) | `src/components/profile/PerformanceInsights.tsx` |
+| Suggested friends / People You May Know | `src/integrations/trpc/social.ts` (`getSuggestedFriends`) + `src/routes/friends.tsx` |
+| Friends page (search, requests, friends list) | `src/routes/friends.tsx` |
+| Inline leaderboard (sidebar, 5-row fixed) | `src/components/flashcard/InlineLeaderboard.tsx` |

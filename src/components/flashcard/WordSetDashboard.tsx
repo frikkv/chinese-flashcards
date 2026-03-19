@@ -98,13 +98,9 @@ export function WordSetDashboard({
           <span className="fc-mastery-chip-label">Known</span>
         </div>
       </div>
-      {(stats.accuracy !== null || stats.totalReviews > 0) && (
+      {stats.accuracy !== null && (
         <div className="fc-mastery-meta">
-          {stats.accuracy !== null && <span>{stats.accuracy}% accuracy</span>}
-          {stats.accuracy !== null && stats.totalReviews > 0 && <span>·</span>}
-          {stats.totalReviews > 0 && (
-            <span>{stats.totalReviews} total reviews</span>
-          )}
+          <span>{stats.accuracy}% accuracy</span>
         </div>
       )}
       {stats.hardest.length > 0 && (
