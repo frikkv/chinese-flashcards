@@ -44,8 +44,10 @@ pnpm dlx shadcn@latest add <component>
 - `leaderboard.tsx` — Weekly XP leaderboard for the user + their friends
 - `feedback.tsx` — Feedback submission page (feedback/feature/bug types, past feedback list)
 - `settings.tsx` — User settings (dark mode toggle)
-- `admin/overview.tsx` — Admin dashboard (KPI cards, 14-day charts, event stats, feature usage, audit log)
-- `admin/users.tsx` — Admin user management (search, role filter, role toggle, pagination)
+- `admin/overview.tsx` — Admin dashboard (KPI cards, retention, funnel, time-to-value, 14-day charts, event stats, feature usage, audit log)
+- `admin/analytics.tsx` — Dedicated analytics (retention cohorts, funnels, growth trends, top events, feature usage)
+- `admin/users.tsx` — Admin user management (search, role filter, sort, per-user stats, role toggle, CSV export)
+- `admin/system.tsx` — Operational monitoring (AI usage by feature/model, real token/cost tracking, heavy users, rate limits, audit log)
 - `admin/index.tsx` — Redirects to `/admin/overview`
 - `api.trpc.$.tsx` — tRPC handler
 
@@ -90,7 +92,7 @@ pnpm dlx shadcn@latest add <component>
 - `social.ts` — Profiles, friend requests, leaderboard, user search, suggested friends (friends-of-friends; falls back to @me for users with no friends)
 - `wordsets.ts` — Custom word sets: AI extraction from uploaded files/text, save/list/update/delete/favorite; rate-limited 5 per 10 min
 - `feedback.ts` — Submit and list feedback (feedback/feature/bug types)
-- `admin.ts` — Admin dashboard: `checkAccess`, `getOverviewStats`, `getEventStats`, `getGrowthStats`, `getFeatureUsage`, `listUsers` (search + role filter), `updateUserRole`, `getAuditLog`
+- `admin.ts` — Admin dashboard: `checkAccess`, `getOverviewStats`, `getEventStats`, `getGrowthStats`, `getFeatureUsage`, `getRetention` (D1/D7/D30 + cohorts), `getFunnel` (cumulative 5-step), `getTimeToValue` (median hours), `getAiUsage` (real metered from `ai_usage_events`), `getSystemHealth` (heavy users, rate limits), `listUsers` (search + role filter + sort + per-user stats), `updateUserRole`, `getAuditLog`, `exportUsers` (CSV)
 - `src/integrations/tanstack-query/root-provider.tsx` — QueryClient + tRPC provider wiring
 
 **Libraries** (`src/lib/`):
@@ -107,13 +109,14 @@ pnpm dlx shadcn@latest add <component>
 **Server utilities** (`src/server/`):
 
 - `analytics.ts` — `logEvent({ userId, eventName, properties })` fire-and-forget insert into `analytics_events` table
-- `ai/generateDistractors.ts` — GPT-4o-mini logic for generating wrong answer choices
-- `ai/generateWordSet.ts` — GPT-4o-mini logic for extracting Chinese vocab from arbitrary text
+- `ai-usage.ts` — `logAiUsage({ userId, featureName, model, inputTokens, outputTokens })` fire-and-forget insert into `ai_usage_events` with real cost computation from token counts
+- `ai/generateDistractors.ts` — GPT-4o-mini logic for generating wrong answer choices; instrumented with `logAiUsage`
+- `ai/generateWordSet.ts` — GPT-4o-mini logic for extracting/generating/editing Chinese vocab; all 3 functions instrumented with `logAiUsage`
 - `extractors/index.ts` — File-to-text extraction (PDF, DOCX, plain text) for custom word set uploads
 
 **Data / Config**:
 
-- `src/db/schema.ts` — Drizzle schema: auth tables, `distractorSets`, `flashcardProgress`, `studySessions`, `chatMessages`, `userLastSession`, `customWordSets`, `userProfiles` (with `role: user|admin`), `friendships`, `feedback`, `analyticsEvents`, `adminAuditLog`
+- `src/db/schema.ts` — Drizzle schema: auth tables, `distractorSets`, `flashcardProgress`, `studySessions`, `chatMessages`, `userLastSession`, `customWordSets`, `userProfiles` (with `role: user|admin`), `friendships`, `feedback`, `aiUsageEvents`, `analyticsEvents`, `adminAuditLog`
 - `src/data/vocabulary.ts` — All flashcard data: HSK 1 (149), HSK 2 (148), HSK 3 (299), HSK 4 (537), LANG 1511 units
 - `public/audio/` — Pre-generated MP3s for every vocab word
 - `vite.config.ts` — Vite + TanStack Start + Nitro config
@@ -138,7 +141,9 @@ On Vercel: Nitro bundles the TanStack Start SSR server and emits `.vercel/output
 
 ### Analytics / event tracking
 
-`logEvent()` from `src/server/analytics.ts` is called fire-and-forget after successful mutations. Events tracked:
+Two instrumentation systems, both fire-and-forget (never block the main request):
+
+**Product events** — `logEvent()` from `src/server/analytics.ts` → `analytics_events` table:
 - `study_session_completed` — in progress.ts after saveSession
 - `chat_message_sent` — in chat.ts after message saved
 - `custom_word_set_created` — in wordsets.ts after save
@@ -146,13 +151,20 @@ On Vercel: Nitro bundles the TanStack Start SSR server and emits `.vercel/output
 - `friend_request_accepted` — in social.ts after status update
 - `feedback_submitted` — in feedback.ts after feedback insert
 
+**AI usage metering** — `logAiUsage()` from `src/server/ai-usage.ts` → `ai_usage_events` table:
+- Real token counts from Vercel AI SDK's `usage.promptTokens` / `usage.completionTokens`
+- Cost computed per-request from GPT-4o-mini pricing ($0.15/1M input, $0.60/1M output)
+- Features: `chat`, `translate`, `distractor_generation`, `wordset_extraction`, `wordset_prompt_generation`, `wordset_ai_edit`
+
 ### Admin system
 
 - **User roles**: `role` field on `userProfiles` (`'user' | 'admin'`, default `'user'`)
-- **Authorization**: `adminProcedure` in `init.ts` chains from `protectedProcedure`, queries role from DB, throws FORBIDDEN if not admin
-- **Dashboard** (`/admin/overview`): KPI cards (9 metrics), 14-day mini bar charts (new users, active users, sessions), top events list, feature usage, audit log
-- **User management** (`/admin/users`): search, role filter, role toggle (prevents self-demotion), audit logging for role changes
-- **Audit log**: `adminAuditLog` table tracks admin actions (role changes); displayed on overview page
+- **Authorization**: `adminProcedure` in `init.ts` chains from `protectedProcedure`, queries role from DB, throws FORBIDDEN if not admin. All admin pages check access server-side — URL knowledge alone grants no data access
+- **Overview** (`/admin/overview`): KPI cards (9 metrics), retention (D1/D7/D30), product funnel (cumulative 5-step), time-to-value (median hours), 14-day charts, top events, feature usage, audit log
+- **Analytics** (`/admin/analytics`): Retention cohorts (8 weeks), funnels, time-to-value, growth trends, top events, feature usage. "Active user" = completed study session (consistent across all metrics)
+- **Users** (`/admin/users`): Search, role filter, sort (newest/oldest/most active), per-user stats (sessions/chats/word sets/last active), role toggle (prevents self-demotion), CSV export (up to 5000 users)
+- **System** (`/admin/system`): Real AI usage from `ai_usage_events` (volume by time window, tokens/cost by feature, model breakdown, top AI-consuming users), heavy user monitoring, rate limit hits, audit log
+- **Audit log**: `adminAuditLog` table tracks admin actions (role changes)
 
 ### Dark mode
 
@@ -195,7 +207,7 @@ Styles are split into `src/styles/` with a single entry point `src/styles.css` t
 - `flashcard.css` — study modes, cards, answers, chat, sidebar cards, mastery dashboard
 - `profile.css` — profile pages, stats, insights, level badge
 - `social.css` — auth, modals, friends, leaderboard, settings page (toggle switch), feedback page
-- `admin.css` — admin dashboard, stats grid, mini bar charts, lists, user table, role buttons, pagination
+- `admin.css` — admin dashboard, stats grid, mini bar charts, funnel bars, cohort grid, retention, lists, user table, role buttons, sort/filter, pagination
 
 All classes use the `fc-` prefix. Key CSS variables are defined on `.fc-app`:
 
@@ -235,9 +247,12 @@ Better Auth with Drizzle adapter. Sign-in/sign-out is integrated in the UI. Auth
 | Dark mode / theming | `src/lib/theme.tsx` + `src/styles/base.css` (dark mode vars) |
 | Settings page | `src/routes/settings.tsx` |
 | Feedback page | `src/routes/feedback.tsx` |
-| Admin dashboard / analytics | `src/integrations/trpc/admin.ts` + `src/routes/admin/overview.tsx` |
-| Admin user management | `src/routes/admin/users.tsx` |
-| Event tracking | `src/server/analytics.ts` (helper) + individual tRPC routers |
+| Admin overview / KPIs / retention / funnel | `src/integrations/trpc/admin.ts` + `src/routes/admin/overview.tsx` |
+| Admin analytics (cohorts, growth, events) | `src/routes/admin/analytics.tsx` |
+| Admin user management / CSV export | `src/routes/admin/users.tsx` |
+| Admin system / AI usage / operational | `src/routes/admin/system.tsx` |
+| Product event tracking | `src/server/analytics.ts` (helper) + individual tRPC routers |
+| AI usage metering | `src/server/ai-usage.ts` (helper) + `src/server/ai/*.ts` + `chat.ts` |
 | Notification sidebar | `src/components/AppHeader.tsx` |
 
 ---
@@ -294,7 +309,7 @@ Using `db:push` without updating migrations can result in:
 - All tables in the `public` schema MUST have RLS enabled
 - Sensitive tables (`accounts`, `sessions`, `verifications`) MUST use deny-all policies for public access
 - User data tables (`flashcard_progress`, `study_sessions`, `chat_messages`, `custom_word_sets`, `user_last_session`, `feedback`) MUST use per-user policies: `auth.uid() = user_id`
-- Admin-only tables (`analytics_events`, `admin_audit_log`) MUST NOT be publicly accessible — access only through `adminProcedure` on the server
+- Admin-only tables (`analytics_events`, `ai_usage_events`, `admin_audit_log`) MUST NOT be publicly accessible — access only through `adminProcedure` on the server
 - `user_profiles` and `friendships` may allow limited public read access but MUST restrict writes to the owning user
 
 ### General
