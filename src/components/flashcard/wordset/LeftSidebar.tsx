@@ -157,7 +157,7 @@ export function LeftSidebar({
             >
               <span className="fc-ws-char">汉语</span>
               <span className="fc-ws-label">HSK</span>
-              <span className="fc-ws-count">2 levels · 300 words</span>
+              <span className="fc-ws-count">4 levels · 1200+ words</span>
               <span className="fc-ws-desc">
                 Official HSK vocabulary
               </span>

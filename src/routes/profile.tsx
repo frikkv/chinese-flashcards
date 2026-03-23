@@ -3,7 +3,7 @@ import { useState, useRef, lazy, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
-import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
+import { hsk1Words, hsk2Words, hsk3Words, hsk4Words, lang1511Units } from '../data/vocabulary'
 import { computeXP, getLevelInfo } from '#/lib/levels'
 import type { ProgressCard } from '#/lib/mastery'
 import { computeMastery, formatWordSetKey, getHardestWords, getRecentlyMastered } from '#/lib/mastery'
@@ -126,7 +126,9 @@ function ProfilePage() {
   // ── Per-word-set mastery ──────────────────────────────────────
   const hsk1Stats = computeMastery(hsk1Words, cards)
   const hsk2Stats = computeMastery(hsk2Words, cards)
-  const hskAllWords = [...hsk1Words, ...hsk2Words]
+  const hsk3Stats = computeMastery(hsk3Words, cards)
+  const hsk4Stats = computeMastery(hsk4Words, cards)
+  const hskAllWords = [...hsk1Words, ...hsk2Words, ...hsk3Words, ...hsk4Words]
   const hskAllStats = computeMastery(hskAllWords, cards)
 
   const langUnitStats = lang1511Units.map((u) => ({
@@ -145,6 +147,8 @@ function ProfilePage() {
   const wordSetOptions = [
     { name: 'HSK 1', stats: hsk1Stats },
     { name: 'HSK 2', stats: hsk2Stats },
+    { name: 'HSK 3', stats: hsk3Stats },
+    { name: 'HSK 4', stats: hsk4Stats },
     ...langUnitStats
       .filter((l) => l.stats.totalReviews > 0)
       .map((l) => ({ name: `Unit ${l.unit}`, stats: l.stats })),
@@ -512,6 +516,8 @@ function ProfilePage() {
                 </div>
                 <WordSetRow name="HSK 1" stats={hsk1Stats} />
                 <WordSetRow name="HSK 2" stats={hsk2Stats} />
+                <WordSetRow name="HSK 3" stats={hsk3Stats} />
+                <WordSetRow name="HSK 4" stats={hsk4Stats} />
               </div>
 
               {/* LANG 1511 */}

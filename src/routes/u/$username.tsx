@@ -7,7 +7,7 @@ import { computeXP, getLevelInfo } from '#/lib/levels'
 import type { ProgressCard } from '#/lib/mastery'
 import { computeMastery, formatWordSetKey, getHardestWords, getRecentlyMastered } from '#/lib/mastery'
 import { FriendsModal } from '#/components/FriendsModal'
-import { hsk1Words, hsk2Words, lang1511Units } from '#/data/vocabulary'
+import { hsk1Words, hsk2Words, hsk3Words, hsk4Words, lang1511Units } from '#/data/vocabulary'
 import { StatCard } from '#/components/profile/StatCard'
 import { PerformanceInsights } from '#/components/profile/PerformanceInsights'
 
@@ -161,6 +161,8 @@ function PublicProfilePage() {
   // Per-word-set mastery for Performance Insights
   const hsk1Stats = computeMastery(hsk1Words, cards)
   const hsk2Stats = computeMastery(hsk2Words, cards)
+  const hsk3Stats = computeMastery(hsk3Words, cards)
+  const hsk4Stats = computeMastery(hsk4Words, cards)
   const langUnitStats = lang1511Units.map((u) => ({
     unit: u.unit,
     stats: computeMastery(u.words, cards),
@@ -169,6 +171,8 @@ function PublicProfilePage() {
   const wordSetOptions = [
     { name: 'HSK 1', stats: hsk1Stats },
     { name: 'HSK 2', stats: hsk2Stats },
+    { name: 'HSK 3', stats: hsk3Stats },
+    { name: 'HSK 4', stats: hsk4Stats },
     ...langUnitStats
       .filter((l) => l.stats.totalReviews > 0)
       .map((l) => ({ name: `Unit ${l.unit}`, stats: l.stats })),

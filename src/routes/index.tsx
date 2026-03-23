@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import type { Word } from '../data/vocabulary'
 import type { Dialect } from '../lib/dialect'
 import { getRomanization } from '../lib/dialect'
-import { hsk1Words, hsk2Words, lang1511Units } from '../data/vocabulary'
+import { hsk1Words, hsk2Words, hsk3Words, hsk4Words, lang1511Units } from '../data/vocabulary'
 import { cantoneseBasicsWords } from '../data/cantonese-vocabulary'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
@@ -163,6 +163,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       const detail = db.wordSetDetail.split(',').map(Number).filter(Boolean)
       if (detail.includes(1)) vocab = vocab.concat(hsk1Words)
       if (detail.includes(2)) vocab = vocab.concat(hsk2Words)
+      if (detail.includes(3)) vocab = vocab.concat(hsk3Words)
+      if (detail.includes(4)) vocab = vocab.concat(hsk4Words)
       hskLevels = new Set(detail)
     } else if (db.wordSetKey === 'lang1511') {
       const detail = db.wordSetDetail.split(',').map(Number).filter(Boolean)

@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { User, Trophy } from 'lucide-react'
+import { User, Trophy, Bell, MessageSquarePlus } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import type { Word } from '#/data/vocabulary'
 import type { Dialect } from '#/lib/dialect'
-import { hsk1Words, hsk2Words, lang1511Units } from '#/data/vocabulary'
+import { hsk1Words, hsk2Words, hsk3Words, hsk4Words, lang1511Units } from '#/data/vocabulary'
 import { cantoneseBasicsWords } from '#/data/cantonese-vocabulary'
 import type { ProgressCard } from '#/components/flashcard/WordSetDashboard'
 import type {
@@ -127,6 +127,8 @@ export function WordSetPage({
       let v: Word[] = []
       if (selectedHSKLevels.has(1)) v = v.concat(hsk1Words)
       if (selectedHSKLevels.has(2)) v = v.concat(hsk2Words)
+      if (selectedHSKLevels.has(3)) v = v.concat(hsk3Words)
+      if (selectedHSKLevels.has(4)) v = v.concat(hsk4Words)
       return v
     }
     if (selectedWordSet === 'lang1511') {
@@ -160,6 +162,8 @@ export function WordSetPage({
       let v: Word[] = []
       if (selectedHSKLevels.has(1)) v = v.concat(hsk1Words)
       if (selectedHSKLevels.has(2)) v = v.concat(hsk2Words)
+      if (selectedHSKLevels.has(3)) v = v.concat(hsk3Words)
+      if (selectedHSKLevels.has(4)) v = v.concat(hsk4Words)
       return v
     }
     if (selectedWordSet === 'lang1511') {
@@ -288,13 +292,25 @@ export function WordSetPage({
           >
             <Trophy size={18} strokeWidth={2} />
           </Link>
+          <Link
+            to="/feedback"
+            className="fc-ws-lb-icon-btn"
+            aria-label="Give feedback"
+          >
+            <MessageSquarePlus size={18} strokeWidth={2} />
+          </Link>
         </div>
         {onSignIn ? (
           <button className="fc-profile-nav-btn" onClick={onSignIn}>
             Sign in
           </button>
         ) : (
-          <ProfileMenu userName={userName} />
+          <div className="fc-ws-topbar-right">
+            <button className="fc-ws-bell-btn" aria-label="Notifications">
+              <Bell size={18} strokeWidth={2} />
+            </button>
+            <ProfileMenu userName={userName} />
+          </div>
         )}
       </div>
       <main className="fc-wordset-container">

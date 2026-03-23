@@ -257,6 +257,16 @@ export const friendships = pgTable(
   ],
 )
 
+export const feedback = pgTable('feedback', {
+  id: text('id').primaryKey(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull().$type<'feedback' | 'feature' | 'bug'>(),
+  message: text('message').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),

@@ -22,11 +22,13 @@ import {
   studySessions,
   flashcardProgress,
 } from '#/db/schema'
-import { hsk1Words, hsk2Words, lang1511Units } from '#/data/vocabulary'
+import { hsk1Words, hsk2Words, hsk3Words, hsk4Words, lang1511Units } from '#/data/vocabulary'
 
 const TOTAL_VOCAB =
   hsk1Words.length +
   hsk2Words.length +
+  hsk3Words.length +
+  hsk4Words.length +
   lang1511Units.reduce((sum, u) => sum + u.words.length, 0)
 
 // ── HELPERS ────────────────────────────────────────────────────────

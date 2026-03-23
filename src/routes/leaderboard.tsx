@@ -182,11 +182,6 @@ function LeaderboardPage() {
           </div>
         </div>
 
-        {/* XP explanation */}
-        <div className="fc-lb-xp-hint">
-          XP = correct answers + 5 per completed session
-        </div>
-
         {/* Loading — skeleton rows match final leaderboard layout */}
         {lbQuery.isPending && (
           <div className="fc-lb-list">

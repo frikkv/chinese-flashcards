@@ -5,12 +5,14 @@ import { createTRPCRouter, publicProcedure } from './init'
 import { db } from '#/db'
 import { distractorSets } from '#/db/schema'
 import { generateDistractors } from '#/server/ai/generateDistractors'
-import { hsk1Words, hsk2Words, lang1511Units } from '#/data/vocabulary'
+import { hsk1Words, hsk2Words, hsk3Words, hsk4Words, lang1511Units } from '#/data/vocabulary'
 import { createRateLimiter } from '#/lib/rate-limit'
 
 const allVocab = [
   ...hsk1Words,
   ...hsk2Words,
+  ...hsk3Words,
+  ...hsk4Words,
   ...lang1511Units.flatMap((u) => u.words),
 ]
 

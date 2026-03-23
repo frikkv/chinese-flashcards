@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Dialect } from '#/lib/dialect'
-import { lang1511Units } from '#/data/vocabulary'
+import { lang1511Units, hsk1Words, hsk2Words, hsk3Words, hsk4Words } from '#/data/vocabulary'
 import type { Settings, SoundSettings, SoundAnswerFormat, LastSession } from '#/components/flashcard/types'
 
 interface CenterSettingsProps {
@@ -68,7 +68,7 @@ export function CenterSettings({
           dragTypeRef.current === 'hsk' &&
           dragAnchorIdxRef.current !== null
         ) {
-          const anchorLevel = [1, 2][dragAnchorIdxRef.current]
+          const anchorLevel = [1, 2, 3, 4][dragAnchorIdxRef.current]
           onSelectedHSKLevelsChange((() => {
             const next = new Set(preDragHSKRef.current)
             if (dragActionRef.current === 'select') next.add(anchorLevel)
@@ -113,7 +113,7 @@ export function CenterSettings({
                     <div className="fc-settings-section">
                       <div className="fc-settings-label">HSK Level</div>
                       <div className="fc-picker-grid">
-                        {[1, 2].map((level, idx) => (
+                        {[1, 2, 3, 4].map((level, idx) => (
                           <button
                             key={level}
                             className={`fc-unit-btn${selectedHSKLevels.has(level) ? ' selected' : ''}`}
@@ -138,7 +138,7 @@ export function CenterSettings({
                               )
                                 return
                               isDraggingRef.current = true
-                              const hskLevels = [1, 2]
+                              const hskLevels = [1, 2, 3, 4]
                               const [lo, hi] = [
                                 Math.min(dragAnchorIdxRef.current, idx),
                                 Math.max(dragAnchorIdxRef.current, idx),
@@ -165,7 +165,7 @@ export function CenterSettings({
                                 opacity: 0.6,
                               }}
                             >
-                              (150)
+                              ({[hsk1Words, hsk2Words, hsk3Words, hsk4Words][level - 1]?.length ?? 0})
                             </span>
                           </button>
                         ))}

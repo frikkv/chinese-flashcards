@@ -53,7 +53,7 @@
 .fc-ws-brand-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 20px;
 }
 .fc-ws-brand-title {
   font-family:
@@ -464,6 +464,27 @@
   color: var(--fc-muted);
 }
 
+.fc-ws-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.fc-ws-bell-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--fc-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+  transform: translateY(6px);
+}
+.fc-ws-bell-btn:hover {
+  color: var(--fc-red);
+}
+
 /* ── Profile dropdown menu ── */
 .fc-profile-menu-wrap {
   position: relative;
@@ -472,6 +493,7 @@
   padding: 8px 0;
 }
 .fc-profile-menu-wrap:hover {
+  margin-left: -24px;
   padding-left: 24px;
 }
 .fc-profile-menu-trigger {
