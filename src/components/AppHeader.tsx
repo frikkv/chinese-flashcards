@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { User, Trophy, Bell, MessageSquarePlus, Settings, X, Inbox, Megaphone } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
@@ -10,6 +10,32 @@ export function AppHeader({ onSignIn }: { onSignIn?: () => void }) {
   const isSignedIn = !!authSession?.user
   const showSignIn = !authPending && !isSignedIn && onSignIn
   const [notifOpen, setNotifOpen] = useState(false)
+  const trpc = useTRPC()
+  const qc = useQueryClient()
+
+  // Unread count for badge
+  const unreadQuery = useQuery({
+    ...trpc.announcements.getUnreadCount.queryOptions(),
+    enabled: isSignedIn,
+    staleTime: 30_000,
+  })
+  const unreadCount = unreadQuery.data ?? 0
+
+  const markAllMutation = useMutation(
+    trpc.announcements.markAllAsRead.mutationOptions({
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: trpc.announcements.getUnreadCount.queryKey() })
+        qc.invalidateQueries({ queryKey: trpc.announcements.getPublishedWithReadState.queryKey() })
+      },
+    }),
+  )
+
+  function handleOpenNotif() {
+    setNotifOpen(true)
+    if (isSignedIn && unreadCount > 0) {
+      markAllMutation.mutate()
+    }
+  }
 
   return (
     <div className="fc-ws-topbar">
@@ -46,9 +72,12 @@ export function AppHeader({ onSignIn }: { onSignIn?: () => void }) {
           <button
             className="fc-ws-bell-btn"
             aria-label="Notifications"
-            onClick={() => setNotifOpen((o) => !o)}
+            onClick={() => notifOpen ? setNotifOpen(false) : handleOpenNotif()}
           >
             <Bell size={18} strokeWidth={2} />
+            {unreadCount > 0 && (
+              <span className="fc-ws-bell-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+            )}
           </button>
           <ProfileMenu />
         </div>
@@ -143,11 +172,24 @@ function ProfileMenu() {
 
 function AnnouncementsSection() {
   const trpc = useTRPC()
-  const announcementsQuery = useQuery({
+  const { data: authSession } = authClient.useSession()
+  const isSignedIn = !!authSession?.user
+
+  // Use read-state-aware query for signed-in users, plain query for guests
+  const withReadState = useQuery({
+    ...trpc.announcements.getPublishedWithReadState.queryOptions(),
+    enabled: isSignedIn,
+    staleTime: 30_000,
+  })
+  const publicOnly = useQuery({
     ...trpc.announcements.getPublished.queryOptions(),
+    enabled: !isSignedIn,
     staleTime: 60_000,
   })
-  const items = announcementsQuery.data ?? []
+
+  const items = isSignedIn
+    ? (withReadState.data ?? []).map((a) => ({ ...a, isRead: a.isRead }))
+    : (publicOnly.data ?? []).map((a) => ({ ...a, isRead: true })) // guests: treat all as read (no badge)
 
   return (
     <div className="fc-notif-section">
@@ -160,10 +202,14 @@ function AnnouncementsSection() {
           <div className="fc-notif-empty">No announcements</div>
         ) : (
           items.map((a) => (
-            <div key={a.id} className="fc-notif-announce-item">
+            <div
+              key={a.id}
+              className={`fc-notif-announce-item${!a.isRead ? ' fc-notif-announce-item--unread' : ''}`}
+            >
               <div className="fc-notif-announce-title">
                 {a.isPinned && <span className="fc-notif-pin">📌 </span>}
                 {a.title}
+                {!a.isRead && <span className="fc-notif-unread-dot" />}
               </div>
               <div className="fc-notif-announce-body">{a.body}</div>
               {a.publishedAt && (

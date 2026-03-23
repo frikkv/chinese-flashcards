@@ -292,6 +292,26 @@ export const announcements = pgTable(
   ],
 )
 
+// ── ANNOUNCEMENT READS ───────────────────────────────────────────
+// Tracks which announcements each user has read. Used for unread badges.
+export const announcementReads = pgTable(
+  'announcement_reads',
+  {
+    id: text('id').primaryKey(),
+    announcementId: text('announcement_id')
+      .notNull()
+      .references(() => announcements.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    readAt: timestamp('read_at').defaultNow().notNull(),
+  },
+  (table) => [
+    unique('announcement_reads_unique').on(table.announcementId, table.userId),
+    index('announcement_reads_user_idx').on(table.userId),
+  ],
+)
+
 // ── AI USAGE EVENTS ──────────────────────────────────────────────
 // Metered AI usage tracking. Logged after each successful AI call.
 export const aiUsageEvents = pgTable(
