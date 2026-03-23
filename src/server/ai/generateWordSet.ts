@@ -2,6 +2,7 @@ import { generateObject } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 import type { Dialect } from '#/lib/dialect'
+import { logAiUsage } from '#/server/ai-usage'
 
 interface Word {
   char: string
@@ -57,7 +58,7 @@ export async function generateWordSet(
 ): Promise<Word[]> {
   const { lang, wordSchema, toWord } = dialectConfig(dialect)
 
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model: openai('gpt-4o-mini'),
     schema: z.object({ words: z.array(wordSchema) }),
     system: `You are a ${lang} language expert. Extract vocabulary from the provided text. Only include actual vocabulary present in the text. Prefer the most useful/frequent ones. No duplicate characters.`,
@@ -65,6 +66,12 @@ export async function generateWordSet(
     temperature: 0.1,
     maxTokens: 2000,
     abortSignal: AbortSignal.timeout(30_000),
+  })
+  logAiUsage({
+    featureName: 'wordset_extraction',
+    model: 'gpt-4o-mini',
+    inputTokens: usage?.promptTokens,
+    outputTokens: usage?.completionTokens,
   })
 
   return dedupe(object.words.map(toWord)).slice(0, 60)
@@ -82,7 +89,7 @@ export async function generateWordSetFromPrompt(
     ? `Generate approximately ${wordCount}`
     : 'Generate a comprehensive list of'
 
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model: openai('gpt-4o-mini'),
     schema: z.object({ words: z.array(wordSchema) }),
     system: `You are a ${lang} language expert. Generate useful, real vocabulary matching the user's description. Order by frequency. No duplicate characters.`,
@@ -90,6 +97,12 @@ export async function generateWordSetFromPrompt(
     temperature: 0.3,
     maxTokens: 4000,
     abortSignal: AbortSignal.timeout(30_000),
+  })
+  logAiUsage({
+    featureName: 'wordset_prompt_generation',
+    model: 'gpt-4o-mini',
+    inputTokens: usage?.promptTokens,
+    outputTokens: usage?.completionTokens,
   })
 
   return dedupe(object.words.map(toWord)).slice(0, wordCount ?? 60)
@@ -113,7 +126,7 @@ export async function editWordSetWithAI(
   )
 
   try {
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model: openai('gpt-4o-mini'),
       schema: diffSchema,
       system: `You are a ${lang} language expert. You will receive a word list and an instruction. Return ONLY the diff — do NOT return unchanged words. Follow the instruction precisely.`,
@@ -121,6 +134,12 @@ export async function editWordSetWithAI(
       temperature: 0.2,
       maxTokens: 2000,
       abortSignal: AbortSignal.timeout(30_000),
+    })
+    logAiUsage({
+      featureName: 'wordset_ai_edit',
+      model: 'gpt-4o-mini',
+      inputTokens: usage?.promptTokens,
+      outputTokens: usage?.completionTokens,
     })
 
     // Apply removals

@@ -18,7 +18,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as UUsernameRouteImport } from './routes/u/$username'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminSystemRouteImport } from './routes/admin/system'
 import { Route as AdminOverviewRouteImport } from './routes/admin/overview'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -67,9 +69,19 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSystemRoute = AdminSystemRouteImport.update({
+  id: '/admin/system',
+  path: '/admin/system',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminOverviewRoute = AdminOverviewRouteImport.update({
   id: '/admin/overview',
   path: '/admin/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/admin/analytics',
+  path: '/admin/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
@@ -90,7 +102,9 @@ export interface FileRoutesByFullPath {
   '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/overview': typeof AdminOverviewRoute
+  '/admin/system': typeof AdminSystemRoute
   '/admin/users': typeof AdminUsersRoute
   '/u/$username': typeof UUsernameRoute
   '/admin/': typeof AdminIndexRoute
@@ -104,7 +118,9 @@ export interface FileRoutesByTo {
   '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/overview': typeof AdminOverviewRoute
+  '/admin/system': typeof AdminSystemRoute
   '/admin/users': typeof AdminUsersRoute
   '/u/$username': typeof UUsernameRoute
   '/admin': typeof AdminIndexRoute
@@ -119,7 +135,9 @@ export interface FileRoutesById {
   '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/overview': typeof AdminOverviewRoute
+  '/admin/system': typeof AdminSystemRoute
   '/admin/users': typeof AdminUsersRoute
   '/u/$username': typeof UUsernameRoute
   '/admin/': typeof AdminIndexRoute
@@ -135,7 +153,9 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/profile'
     | '/settings'
+    | '/admin/analytics'
     | '/admin/overview'
+    | '/admin/system'
     | '/admin/users'
     | '/u/$username'
     | '/admin/'
@@ -149,7 +169,9 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/profile'
     | '/settings'
+    | '/admin/analytics'
     | '/admin/overview'
+    | '/admin/system'
     | '/admin/users'
     | '/u/$username'
     | '/admin'
@@ -163,7 +185,9 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/profile'
     | '/settings'
+    | '/admin/analytics'
     | '/admin/overview'
+    | '/admin/system'
     | '/admin/users'
     | '/u/$username'
     | '/admin/'
@@ -178,7 +202,9 @@ export interface RootRouteChildren {
   LeaderboardRoute: typeof LeaderboardRoute
   ProfileRoute: typeof ProfileRoute
   SettingsRoute: typeof SettingsRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
+  AdminSystemRoute: typeof AdminSystemRoute
   AdminUsersRoute: typeof AdminUsersRoute
   UUsernameRoute: typeof UUsernameRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -251,11 +277,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/system': {
+      id: '/admin/system'
+      path: '/admin/system'
+      fullPath: '/admin/system'
+      preLoaderRoute: typeof AdminSystemRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/overview': {
       id: '/admin/overview'
       path: '/admin/overview'
       fullPath: '/admin/overview'
       preLoaderRoute: typeof AdminOverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/admin/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/trpc/$': {
@@ -282,7 +322,9 @@ const rootRouteChildren: RootRouteChildren = {
   LeaderboardRoute: LeaderboardRoute,
   ProfileRoute: ProfileRoute,
   SettingsRoute: SettingsRoute,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminOverviewRoute: AdminOverviewRoute,
+  AdminSystemRoute: AdminSystemRoute,
   AdminUsersRoute: AdminUsersRoute,
   UUsernameRoute: UUsernameRoute,
   AdminIndexRoute: AdminIndexRoute,

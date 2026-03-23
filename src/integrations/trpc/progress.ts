@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { eq, desc, sql } from 'drizzle-orm'
 import { createTRPCRouter, protectedProcedure } from './init'
 import { getWeekStartTs } from '#/lib/time'
+import { logEvent } from '#/server/analytics'
 import { db } from '#/db'
 import {
   flashcardProgress,
@@ -230,6 +231,11 @@ export const progressRouter = createTRPCRouter({
         correctCount: input.correctCount,
         totalCount: input.totalCount,
         completedAt: new Date(),
+      })
+      logEvent({
+        userId,
+        eventName: 'study_session_completed',
+        properties: { mode: input.mode, wordSetKey: input.wordSetKey, sessionSize: input.sessionSize, correctCount: input.correctCount, totalCount: input.totalCount },
       })
     }),
 

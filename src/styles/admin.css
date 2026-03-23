@@ -53,26 +53,189 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+  margin-bottom: 20px;
 }
 .fc-admin-stat-card {
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
   border-radius: 12px;
-  padding: 18px 20px;
+  padding: 16px 18px;
 }
 .fc-admin-stat-num {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 600;
   color: var(--fc-text);
   line-height: 1.1;
 }
 .fc-admin-stat-label {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--fc-muted);
-  margin-top: 4px;
+  margin-top: 3px;
+}
+
+/* ── Sections ── */
+.fc-admin-section {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+.fc-admin-section-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--fc-text);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.fc-admin-section-sub {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--fc-muted);
+}
+.fc-admin-section-subtitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  margin: 12px 0 6px;
+}
+
+/* ── Two column layout ── */
+.fc-admin-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+/* ── Charts row ── */
+.fc-admin-charts-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* ── Mini bar chart ── */
+.fc-admin-minichart {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.fc-admin-minichart-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fc-muted);
+  margin-bottom: 10px;
+}
+.fc-admin-minichart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 48px;
+}
+.fc-admin-minichart-col {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.fc-admin-minichart-bar {
+  width: 100%;
+  background: var(--fc-red);
+  border-radius: 2px 2px 0 0;
+  min-height: 1px;
+  transition: height 0.3s;
+}
+.fc-admin-minichart-total {
+  font-size: 0.72rem;
+  color: var(--fc-light);
+  margin-top: 6px;
+  text-align: right;
+}
+
+/* ── Lists ── */
+.fc-admin-list {
+  display: flex;
+  flex-direction: column;
+}
+.fc-admin-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--fc-border);
+}
+.fc-admin-list-row:last-child {
+  border-bottom: none;
+}
+.fc-admin-list-name {
+  font-size: 0.82rem;
+  color: var(--fc-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc-admin-list-sub {
+  color: var(--fc-muted);
+  font-size: 0.78rem;
+}
+.fc-admin-list-val {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  white-space: nowrap;
+  margin-left: 8px;
 }
 
 /* ── Users table ── */
+.fc-admin-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.fc-admin-title-row .fc-admin-title {
+  margin-bottom: 0;
+}
+.fc-admin-filter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.fc-admin-sort-select {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--fc-border);
+  background: var(--fc-surface);
+  color: var(--fc-text);
+  font-family: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.fc-admin-toolbar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+.fc-admin-search-form {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+.fc-admin-search-form .fc-social-search-input {
+  flex: 1;
+}
+.fc-admin-role-filter {
+  display: flex;
+  gap: 4px;
+}
 .fc-admin-table-wrap {
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
@@ -83,7 +246,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--fc-border);
 }
 .fc-admin-user-row:last-child {
@@ -94,34 +257,73 @@
   min-width: 0;
 }
 .fc-admin-user-name {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 500;
   color: var(--fc-text);
   display: flex;
   align-items: center;
   gap: 6px;
 }
+.fc-admin-user-stats {
+  display: flex;
+  gap: 10px;
+  font-size: 0.7rem;
+  color: var(--fc-light);
+  margin-top: 2px;
+}
 .fc-admin-user-meta {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--fc-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.fc-admin-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
 .fc-admin-user-date {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--fc-light);
   white-space: nowrap;
 }
 .fc-admin-badge {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
   background: var(--fc-red-light);
   color: var(--fc-red);
+}
+.fc-admin-role-btn {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--fc-border);
+  background: var(--fc-surface);
+  color: var(--fc-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.fc-admin-role-btn:hover:not(:disabled) {
+  border-color: var(--fc-red);
+  color: var(--fc-red);
+}
+.fc-admin-role-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.fc-admin-role-btn--admin {
+  background: var(--fc-red-light);
+  color: var(--fc-red);
+  border-color: transparent;
 }
 
 /* ── Pagination ── */
@@ -137,8 +339,107 @@
   color: var(--fc-muted);
 }
 
-@media (max-width: 640px) {
+/* ── Funnel ── */
+.fc-admin-funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fc-admin-funnel-step {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.fc-admin-funnel-bar-wrap {
+  height: 8px;
+  background: var(--fc-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.fc-admin-funnel-bar {
+  height: 100%;
+  background: var(--fc-red);
+  border-radius: 4px;
+  transition: width 0.3s;
+  min-width: 2px;
+}
+.fc-admin-funnel-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fc-admin-funnel-label {
+  font-size: 0.82rem;
+  color: var(--fc-text);
+}
+.fc-admin-funnel-val {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+.fc-admin-funnel-pct {
+  font-weight: 400;
+  color: var(--fc-muted);
+}
+
+/* ── Retention ── */
+.fc-admin-retention-val {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  margin-left: 8px;
+}
+.fc-admin-retention-val--good {
+  color: var(--fc-success);
+}
+
+/* ── Cohort grid ── */
+.fc-admin-cohort-grid {
+  display: flex;
+  gap: 6px;
+}
+.fc-admin-cohort-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.fc-admin-cohort-week {
+  font-size: 0.65rem;
+  color: var(--fc-muted);
+  white-space: nowrap;
+}
+.fc-admin-cohort-bar {
+  width: 100%;
+  max-width: 40px;
+  background: var(--fc-red);
+  border-radius: 3px 3px 0 0;
+  min-height: 2px;
+  align-self: flex-end;
+}
+.fc-admin-cohort-rate {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+.fc-admin-cohort-size {
+  font-size: 0.6rem;
+  color: var(--fc-light);
+}
+
+@media (max-width: 768px) {
   .fc-admin-stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .fc-admin-two-col {
+    grid-template-columns: 1fr;
+  }
+  .fc-admin-charts-row {
+    grid-template-columns: 1fr;
+  }
+  .fc-admin-toolbar {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

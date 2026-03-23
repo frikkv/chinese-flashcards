@@ -11,6 +11,7 @@ import {
   editWordSetWithAI,
 } from '#/server/ai/generateWordSet'
 import { createRateLimiter } from '#/lib/rate-limit'
+import { logEvent } from '#/server/analytics'
 
 // In-memory, best-effort: max 5 AI generations per 10 minutes per user
 const generateLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 5 })
@@ -138,6 +139,11 @@ export const wordsetsRouter = createTRPCRouter({
         dialect: input.dialect,
         sourceFileName: input.sourceFileName,
         createdAt: new Date(),
+      })
+      logEvent({
+        userId,
+        eventName: 'custom_word_set_created',
+        properties: { wordCount: input.words.length, dialect: input.dialect },
       })
       return { id }
     }),

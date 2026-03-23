@@ -6,6 +6,8 @@ import { createTRPCRouter, publicProcedure } from './init'
 import { db } from '#/db'
 import { chatMessages } from '#/db/schema'
 import { createRateLimiter } from '#/lib/rate-limit'
+import { logEvent } from '#/server/analytics'
+import { logAiUsage } from '#/server/ai-usage'
 
 // In-memory, best-effort for serverless (resets on cold start)
 const chatLimiter = createRateLimiter({ windowMs: 60_000, max: 20 })
@@ -65,7 +67,7 @@ export const chatRouter = createTRPCRouter({
           (category ? `\n- Category: ${category}` : '')
       }
 
-      const { text: assistantContent } = await generateText({
+      const { text: assistantContent, usage: chatUsage } = await generateText({
         model: openai('gpt-4o-mini'),
         system: systemPrompt,
         messages: input.messages.map((m) => ({
@@ -75,6 +77,13 @@ export const chatRouter = createTRPCRouter({
         temperature: 0.7,
         maxTokens: 600,
         abortSignal: AbortSignal.timeout(15_000),
+      })
+      logAiUsage({
+        userId: ctx.session?.user.id,
+        featureName: 'chat',
+        model: 'gpt-4o-mini',
+        inputTokens: chatUsage?.promptTokens,
+        outputTokens: chatUsage?.completionTokens,
       })
 
       const finalContent =
@@ -108,6 +117,10 @@ export const chatRouter = createTRPCRouter({
         ])
       }
 
+      logEvent({
+        userId: ctx.session?.user.id,
+        eventName: 'chat_message_sent',
+      })
       return { content: finalContent }
     }),
 
@@ -123,7 +136,7 @@ export const chatRouter = createTRPCRouter({
       }
 
       try {
-        const { object } = await generateObject({
+        const { object, usage: translateUsage } = await generateObject({
           model: openai('gpt-4o-mini'),
           schema: z.object({
             char: z.string().describe('Mandarin Chinese characters'),
@@ -137,6 +150,13 @@ export const chatRouter = createTRPCRouter({
           abortSignal: AbortSignal.timeout(10_000),
         })
 
+        logAiUsage({
+          userId: ctx.session?.user.id,
+          featureName: 'translate',
+          model: 'gpt-4o-mini',
+          inputTokens: translateUsage?.promptTokens,
+          outputTokens: translateUsage?.completionTokens,
+        })
         return { char: object.char, pinyin: object.pinyin }
       } catch {
         throw new TRPCError({

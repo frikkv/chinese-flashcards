@@ -3,6 +3,7 @@ import { desc, eq } from 'drizzle-orm'
 import { createTRPCRouter, protectedProcedure } from './init'
 import { db } from '#/db'
 import { feedback } from '#/db/schema'
+import { logEvent } from '#/server/analytics'
 
 export const feedbackRouter = createTRPCRouter({
   submit: protectedProcedure
@@ -21,6 +22,7 @@ export const feedbackRouter = createTRPCRouter({
         message: input.message,
         createdAt: new Date(),
       })
+      logEvent({ userId, eventName: 'feedback_submitted', properties: { type: input.type } })
     }),
 
   list: protectedProcedure.query(async ({ ctx }) => {

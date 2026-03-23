@@ -2,13 +2,14 @@ import { generateObject } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 import type { Word } from '#/data/vocabulary'
+import { logAiUsage } from '#/server/ai-usage'
 
 export async function generateDistractors(
   word: Word,
   allVocab: Word[],
 ): Promise<{ distractors: string[]; source: 'ai' | 'fallback' }> {
   try {
-    const { object } = await generateObject({
+    const { object, usage } = await generateObject({
       model: openai('gpt-4o-mini'),
       schema: z.object({
         distractors: z
@@ -21,6 +22,12 @@ export async function generateDistractors(
       prompt: `Chinese word: ${word.char}\nPinyin: ${word.pinyin}\nCorrect meaning: ${word.english}\n\nGenerate exactly 3 wrong but plausible English meanings.\nRules:\n- similar meaning category\n- not synonyms of the correct answer\n- not identical to the correct answer\n- short natural phrases\n- avoid duplicates`,
       temperature: 0.7,
       maxTokens: 100,
+    })
+    logAiUsage({
+      featureName: 'distractor_generation',
+      model: 'gpt-4o-mini',
+      inputTokens: usage?.promptTokens,
+      outputTokens: usage?.completionTokens,
     })
 
     const validated = validateDistractors(object.distractors, word.english)

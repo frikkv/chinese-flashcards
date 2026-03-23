@@ -8,6 +8,7 @@ import {
   integer,
   primaryKey,
   unique,
+  jsonb,
 } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
@@ -265,6 +266,55 @@ export const feedback = pgTable('feedback', {
     .references(() => users.id, { onDelete: 'cascade' }),
   type: text('type').notNull().$type<'feedback' | 'feature' | 'bug'>(),
   message: text('message').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// ── AI USAGE EVENTS ──────────────────────────────────────────────
+// Metered AI usage tracking. Logged after each successful AI call.
+export const aiUsageEvents = pgTable(
+  'ai_usage_events',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id'),
+    featureName: text('feature_name').notNull(),
+    model: text('model').notNull(),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    estimatedCostUsd: text('estimated_cost_usd'),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('ai_usage_feature_idx').on(table.featureName),
+    index('ai_usage_created_idx').on(table.createdAt),
+  ],
+)
+
+// ── ANALYTICS EVENTS ─────────────────────────────────────────────
+export const analyticsEvents = pgTable(
+  'analytics_events',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id'),
+    eventName: text('event_name').notNull(),
+    properties: jsonb('properties').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('analytics_events_name_idx').on(table.eventName),
+    index('analytics_events_created_idx').on(table.createdAt),
+  ],
+)
+
+// ── ADMIN AUDIT LOG ──────────────────────────────────────────────
+export const adminAuditLog = pgTable('admin_audit_log', {
+  id: text('id').primaryKey(),
+  adminUserId: text('admin_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(),
+  targetUserId: text('target_user_id'),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

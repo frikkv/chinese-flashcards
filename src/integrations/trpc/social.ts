@@ -23,6 +23,7 @@ import {
   flashcardProgress,
 } from '#/db/schema'
 import { hsk1Words, hsk2Words, hsk3Words, hsk4Words, lang1511Units } from '#/data/vocabulary'
+import { logEvent } from '#/server/analytics'
 
 const TOTAL_VOCAB =
   hsk1Words.length +
@@ -578,6 +579,7 @@ export const socialRouter = createTRPCRouter({
         createdAt: new Date(),
         updatedAt: new Date(),
       })
+      logEvent({ userId: senderId, eventName: 'friend_request_sent', properties: { targetUserId: input.targetUserId } })
       return { friendshipId: id, autoAccepted: false }
     }),
 
@@ -625,6 +627,7 @@ export const socialRouter = createTRPCRouter({
         .update(friendships)
         .set({ status: 'accepted', updatedAt: new Date() })
         .where(eq(friendships.id, input.friendshipId))
+      logEvent({ userId, eventName: 'friend_request_accepted', properties: { friendshipId: input.friendshipId } })
     }),
 
   /** Decline an incoming pending request. */
