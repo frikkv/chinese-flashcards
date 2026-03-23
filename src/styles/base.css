@@ -116,6 +116,10 @@ body {
 [data-theme='dark'] .fc-card-face {
   background: var(--fc-surface);
 }
+[data-theme='dark'] .fc-chat-msg.user .fc-chat-bubble {
+  background: #4a8bc2;
+  color: #fff;
+}
 
 /* ── TYPOGRAPHY ── */
 .fc-hero-title {

@@ -15,6 +15,13 @@
       "when": 1773729756011,
       "tag": "0001_brave_the_renegades",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774281909029,
+      "tag": "0002_steep_dakota_north",
+      "breakpoints": true
     }
   ]
 }
