@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { AppHeader } from '#/components/AppHeader'
 import { useState, useRef, lazy, Suspense } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
@@ -193,13 +194,9 @@ function ProfilePage() {
   const isLoading = profileQuery.isPending
 
   return (
-    <div className="fc-app">
+    <div className="fc-app fc-app--wordset">
+      <AppHeader />
       <div className="fc-profile-container">
-        {/* Back link */}
-        <Link to="/" className="fc-back-btn" style={{ textDecoration: 'none' }}>
-          ← Home
-        </Link>
-
         {/* Header */}
         <div className="fc-profile-header">
           <div className="fc-profile-avatar">
@@ -238,9 +235,7 @@ function ProfilePage() {
                   />
                 </div>
                 <span className="fc-level-progress-label">
-                  {levelInfo.isMaxLevel
-                    ? `${levelInfo.xp.toLocaleString()} XP · Max level`
-                    : `${levelInfo.xpIntoLevel.toLocaleString()} / ${(levelInfo.xpIntoLevel + (levelInfo.xpToNext ?? 0)).toLocaleString()} XP · ${levelInfo.xpToNext?.toLocaleString()} to Lv.${levelInfo.level + 1}`}
+                  {`${levelInfo.xp.toLocaleString()} XP`}
                 </span>
               </div>
             ) : (

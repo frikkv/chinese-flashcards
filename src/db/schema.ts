@@ -214,6 +214,7 @@ export const userProfiles = pgTable(
     username: text('username').notNull().unique(),
     displayName: text('display_name').notNull(),
     bio: text('bio'),
+    role: text('role').notNull().default('user').$type<'user' | 'admin'>(),
     // false until the user explicitly picks a username (triggers first-login setup)
     usernameConfirmed: boolean('username_confirmed').default(false).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),

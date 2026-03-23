@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { AppHeader } from '#/components/AppHeader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
@@ -107,16 +108,9 @@ function FriendsPage() {
   const friendIds = new Set(friends.map((r) => r.userId))
 
   return (
-    <div className="fc-app">
+    <div className="fc-app fc-app--wordset">
+      <AppHeader />
       <div className="fc-social-container">
-        <Link
-          to="/profile"
-          className="fc-back-btn"
-          style={{ textDecoration: 'none' }}
-        >
-          ← Profile
-        </Link>
-
         <div className="fc-social-title-row">
           <h1 className="fc-social-title">Friends</h1>
           <Link to="/leaderboard" className="fc-social-lb-link">

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { AppHeader } from '#/components/AppHeader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
@@ -73,12 +74,9 @@ function FeedbackPage() {
   } as const
 
   return (
-    <div className="fc-app">
+    <div className="fc-app fc-app--wordset">
+      <AppHeader />
       <div className="fc-social-container">
-        <Link to="/" className="fc-back-btn" style={{ textDecoration: 'none' }}>
-          ← Home
-        </Link>
-
         <h1 className="fc-social-title" style={{ marginBottom: 16 }}>
           Feedback
         </h1>

@@ -78,6 +78,45 @@ body {
   overflow-x: hidden;
 }
 
+/* ── DARK MODE ── */
+[data-theme='dark'] body {
+  background: #1a1814;
+  color: #e8e6e3;
+}
+[data-theme='dark'] .fc-app {
+  --fc-bg: #1a1814;
+  --fc-surface: #252320;
+  --fc-border: #3a3835;
+  --fc-text: #e8e6e3;
+  --fc-muted: #9a9895;
+  --fc-light: #807e7b;
+  --fc-red: #e04d3d;
+  --fc-red-dark: #c0392b;
+  --fc-red-light: #3a2220;
+  --fc-blue: #4a8bc2;
+  --fc-success: #2ecc71;
+  --fc-success-light: #1a3025;
+  --fc-wrong: #e74c3c;
+  --fc-wrong-light: #3a2220;
+  --fc-blue-dark: #3a7ab0;
+  --fc-blue-tint: #1e2a35;
+  --fc-text-hover: #f0eeeb;
+  --fc-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+  --fc-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Override hardcoded whites/light backgrounds in dark mode */
+[data-theme='dark'] .fc-ws-lb-row--me {
+  background: #1e2a35;
+}
+[data-theme='dark'] .fc-auth-google-btn {
+  background: var(--fc-surface);
+  color: var(--fc-text);
+}
+[data-theme='dark'] .fc-card-face {
+  background: var(--fc-surface);
+}
+
 /* ── TYPOGRAPHY ── */
 .fc-hero-title {
   font-family:

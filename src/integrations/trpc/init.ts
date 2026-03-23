@@ -1,6 +1,9 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import superjson from 'superjson'
+import { eq } from 'drizzle-orm'
 import { auth } from '#/lib/auth'
+import { db } from '#/db'
+import { userProfiles } from '#/db/schema'
 
 export async function createContext({ request }: { request: Request }) {
   const session = await auth.api
@@ -33,3 +36,15 @@ export const protectedProcedure = t.procedure
     if (!ctx.session) throw new TRPCError({ code: 'UNAUTHORIZED' })
     return next({ ctx: { ...ctx, session: ctx.session } })
   })
+
+export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  const [profile] = await db
+    .select({ role: userProfiles.role })
+    .from(userProfiles)
+    .where(eq(userProfiles.userId, ctx.session.user.id))
+    .limit(1)
+  if (!profile || profile.role !== 'admin') {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required.' })
+  }
+  return next({ ctx })
+})

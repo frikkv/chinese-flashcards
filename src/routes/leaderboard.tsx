@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { AppHeader } from '#/components/AppHeader'
 import { useQuery } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
@@ -162,16 +163,9 @@ function LeaderboardPage() {
   const weekRange = data?.weekStart ? formatWeekRange(data.weekStart) : ''
 
   return (
-    <div className="fc-app">
+    <div className="fc-app fc-app--wordset">
+      <AppHeader />
       <div className="fc-lb-container">
-        {/* Back nav */}
-        <Link
-          to="/profile"
-          className="fc-back-btn"
-          style={{ textDecoration: 'none' }}
-        >
-          ← Profile
-        </Link>
 
         {/* Header */}
         <div className="fc-lb-header">

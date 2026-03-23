@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { AppHeader } from '#/components/AppHeader'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { authClient } from '#/lib/auth-client'
@@ -200,12 +201,9 @@ function PublicProfilePage() {
   const levelInfo = getLevelInfo(allTimeXP)
 
   return (
-    <div className="fc-app">
+    <div className="fc-app fc-app--wordset">
+      <AppHeader />
       <div className="fc-profile-container">
-        <Link to="/" className="fc-back-btn" style={{ textDecoration: 'none' }}>
-          ← Home
-        </Link>
-
         {/* Header */}
         <div className="fc-profile-header">
           <div className="fc-profile-avatar">

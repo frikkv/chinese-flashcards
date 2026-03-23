@@ -704,7 +704,6 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
         streak={progressQuery.data?.streak ?? 0}
         customWordSets={customWordSetsQuery.data ?? []}
         isSignedIn={isSignedIn}
-        userName={authSession?.user?.name ?? null}
         authPending={authPending}
         progressPending={progressQuery.isPending}
         customWordSetsPending={customWordSetsQuery.isPending}

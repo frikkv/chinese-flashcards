@@ -22,6 +22,7 @@ import type { TRPCRouter } from '#/integrations/trpc/router'
 import type { TRPCOptionsProxy } from '@trpc/tanstack-react-query'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
+import { ThemeProvider } from '#/lib/theme'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -186,12 +187,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/* Apply saved theme before first paint to prevent flash */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t)})()` }} />
         {/* Async font loader — runs before body paints, inserts a non-render-blocking stylesheet */}
         <script dangerouslySetInnerHTML={{ __html: FONT_INJECT }} />
       </head>
       <body>
         <TanStackQueryProvider>
+          <ThemeProvider>
           {children}
+          </ThemeProvider>
           <Analytics />
           <SpeedInsights />
           {DevToolsPanel && (
