@@ -16,54 +16,196 @@ import {
   aiUsageEvents,
 } from '#/db/schema'
 
+// ── Shared range input ──────────────────────────────────────────
+const rangeInput = z.object({
+  range: z.enum(['24h', '7d', '30d']).default('7d'),
+})
+
+function rangeToMs(range: '24h' | '7d' | '30d'): number {
+  return range === '24h' ? 86_400_000 : range === '7d' ? 7 * 86_400_000 : 30 * 86_400_000
+}
+
+function rangeDates(range: '24h' | '7d' | '30d') {
+  const ms = rangeToMs(range)
+  const now = Date.now()
+  return {
+    start: new Date(now - ms),
+    prevStart: new Date(now - ms * 2),
+    prevEnd: new Date(now - ms),
+  }
+}
+
+function pctChange(current: number, previous: number): number | null {
+  if (previous === 0) return current > 0 ? 100 : null
+  return Math.round(((current - previous) / previous) * 100)
+}
+
 export const adminRouter = createTRPCRouter({
   /** Check if current user is admin (used by frontend route guards). */
   checkAccess: adminProcedure.query(() => ({ isAdmin: true })),
 
   /**
-   * Aggregate platform statistics for the overview dashboard.
+   * Dashboard stats with date range and comparison vs previous period.
    * "Active users" = distinct users with at least one study session in the period.
-   * This is the same signal used for retention and growth metrics.
    */
-  getOverviewStats: adminProcedure.query(async () => {
-    const weekAgo = new Date(Date.now() - 7 * 86_400_000)
+  getOverviewStats: adminProcedure
+    .input(rangeInput)
+    .query(async ({ input }) => {
+      const { start, prevStart, prevEnd } = rangeDates(input.range)
 
-    const [
-      totalUsersRows,
-      newUsersRows,
-      activeUsersRows,
-      totalSessionsRows,
-      recentSessionsRows,
-      totalChatRows,
-      totalWordSetsRows,
-      totalFriendshipsRows,
-      totalFeedbackRows,
-    ] = await Promise.all([
-      db.select({ c: count() }).from(users),
-      db.select({ c: count() }).from(users).where(gte(users.createdAt, weekAgo)),
-      db
-        .select({ c: sql<string>`count(distinct ${studySessions.userId})` })
-        .from(studySessions)
-        .where(gte(studySessions.completedAt, weekAgo)),
-      db.select({ c: count() }).from(studySessions),
-      db.select({ c: count() }).from(studySessions).where(gte(studySessions.completedAt, weekAgo)),
-      db.select({ c: count() }).from(chatMessages),
-      db.select({ c: count() }).from(customWordSets),
-      db.select({ c: count() }).from(friendships).where(eq(friendships.status, 'accepted')),
-      db.select({ c: count() }).from(feedback),
-    ])
+      const countInRange = (table: any, dateCol: any, since: Date, until?: Date) => {
+        const cond = until ? and(gte(dateCol, since), sql`${dateCol} < ${until}`) : gte(dateCol, since)
+        return db.select({ c: count() }).from(table).where(cond)
+      }
 
-    return {
-      totalUsers: totalUsersRows[0]?.c ?? 0,
-      newUsersThisWeek: newUsersRows[0]?.c ?? 0,
-      activeUsersThisWeek: parseInt(activeUsersRows[0]?.c ?? '0'),
-      totalStudySessions: totalSessionsRows[0]?.c ?? 0,
-      studySessionsThisWeek: recentSessionsRows[0]?.c ?? 0,
-      totalChatMessages: totalChatRows[0]?.c ?? 0,
-      totalCustomWordSets: totalWordSetsRows[0]?.c ?? 0,
-      totalFriendships: totalFriendshipsRows[0]?.c ?? 0,
-      totalFeedback: totalFeedbackRows[0]?.c ?? 0,
-    }
+      const activeInRange = (since: Date, until?: Date) => {
+        const cond = until
+          ? and(gte(studySessions.completedAt, since), sql`${studySessions.completedAt} < ${until}`)
+          : gte(studySessions.completedAt, since)
+        return db.select({ c: sql<string>`count(distinct ${studySessions.userId})` }).from(studySessions).where(cond)
+      }
+
+      const [
+        totalUsersRows, newUsersCur, newUsersPrev,
+        activeUsersCur, activeUsersPrev,
+        totalSessionsRows, sessionsCur, sessionsPrev,
+        totalChatRows, chatCur, chatPrev,
+        totalWordSetsRows, totalFriendshipsRows, totalFeedbackRows,
+        aiCostCur, aiCostPrev,
+      ] = await Promise.all([
+        db.select({ c: count() }).from(users),
+        countInRange(users, users.createdAt, start),
+        countInRange(users, users.createdAt, prevStart, prevEnd),
+        activeInRange(start),
+        activeInRange(prevStart, prevEnd),
+        db.select({ c: count() }).from(studySessions),
+        countInRange(studySessions, studySessions.completedAt, start),
+        countInRange(studySessions, studySessions.completedAt, prevStart, prevEnd),
+        db.select({ c: count() }).from(chatMessages),
+        countInRange(chatMessages, chatMessages.createdAt, start),
+        countInRange(chatMessages, chatMessages.createdAt, prevStart, prevEnd),
+        db.select({ c: count() }).from(customWordSets),
+        db.select({ c: count() }).from(friendships).where(eq(friendships.status, 'accepted')),
+        db.select({ c: count() }).from(feedback),
+        db.select({ c: sql<string>`coalesce(sum(estimated_cost_usd::numeric), 0)` }).from(aiUsageEvents).where(gte(aiUsageEvents.createdAt, start)),
+        db.select({ c: sql<string>`coalesce(sum(estimated_cost_usd::numeric), 0)` }).from(aiUsageEvents).where(and(gte(aiUsageEvents.createdAt, prevStart), sql`${aiUsageEvents.createdAt} < ${prevEnd}`)),
+      ])
+
+      const newUsers = newUsersCur[0]?.c ?? 0
+      const newUsersPrevVal = newUsersPrev[0]?.c ?? 0
+      const activeUsers = parseInt(activeUsersCur[0]?.c ?? '0')
+      const activeUsersPrevVal = parseInt(activeUsersPrev[0]?.c ?? '0')
+      const sessions = sessionsCur[0]?.c ?? 0
+      const sessionsPrevVal = sessionsPrev[0]?.c ?? 0
+      const chat = chatCur[0]?.c ?? 0
+      const chatPrevVal = chatPrev[0]?.c ?? 0
+      const aiCost = parseFloat(aiCostCur[0]?.c ?? '0')
+      const aiCostPrevVal = parseFloat(aiCostPrev[0]?.c ?? '0')
+
+      return {
+        totalUsers: totalUsersRows[0]?.c ?? 0,
+        newUsers,
+        newUsersDelta: pctChange(newUsers, newUsersPrevVal),
+        activeUsers,
+        activeUsersDelta: pctChange(activeUsers, activeUsersPrevVal),
+        totalStudySessions: totalSessionsRows[0]?.c ?? 0,
+        sessions,
+        sessionsDelta: pctChange(sessions, sessionsPrevVal),
+        totalChatMessages: totalChatRows[0]?.c ?? 0,
+        chat,
+        chatDelta: pctChange(chat, chatPrevVal),
+        totalCustomWordSets: totalWordSetsRows[0]?.c ?? 0,
+        totalFriendships: totalFriendshipsRows[0]?.c ?? 0,
+        totalFeedback: totalFeedbackRows[0]?.c ?? 0,
+        aiCost: parseFloat(aiCost.toFixed(4)),
+        aiCostDelta: pctChange(Math.round(aiCost * 10000), Math.round(aiCostPrevVal * 10000)),
+        range: input.range,
+      }
+    }),
+
+  /**
+   * Auto-generated insights based on threshold rules.
+   * Returns a list of plain-English observations about recent trends.
+   */
+  getInsights: adminProcedure
+    .input(rangeInput)
+    .query(async ({ input }) => {
+      const { start, prevStart, prevEnd } = rangeDates(input.range)
+      const insights: string[] = []
+
+      // Retention D1
+      const [d1Cur, d1Prev] = await Promise.all([
+        db.execute(sql.raw(`
+          SELECT count(DISTINCT u.id)::text AS retained, (SELECT count(*)::text FROM users WHERE created_at <= now() - interval '1 day') AS total
+          FROM users u WHERE u.created_at <= now() - interval '1 day'
+            AND EXISTS (SELECT 1 FROM study_sessions s WHERE s.user_id = u.id AND s.completed_at >= u.created_at + interval '1 day' AND s.completed_at < u.created_at + interval '2 days')
+        `)),
+        null, // skip prev period for simplicity
+      ])
+      const d1Row = d1Cur.rows[0] as Record<string, string> | undefined
+      const d1Rate = d1Row && parseInt(d1Row.total) > 0 ? Math.round((parseInt(d1Row.retained) / parseInt(d1Row.total)) * 100) : null
+      if (d1Rate !== null && d1Rate < 20) insights.push(`D1 retention is ${d1Rate}% — below 20% threshold`)
+      if (d1Rate !== null && d1Rate >= 50) insights.push(`D1 retention is ${d1Rate}% — strong!`)
+
+      // Session volume change
+      const [sesCur, sesPrev] = await Promise.all([
+        db.select({ c: count() }).from(studySessions).where(gte(studySessions.completedAt, start)),
+        db.select({ c: count() }).from(studySessions).where(and(gte(studySessions.completedAt, prevStart), sql`${studySessions.completedAt} < ${prevEnd}`)),
+      ])
+      const sesDelta = pctChange(sesCur[0]?.c ?? 0, sesPrev[0]?.c ?? 0)
+      if (sesDelta !== null && sesDelta < -20) insights.push(`Study sessions dropped ${Math.abs(sesDelta)}% vs previous period`)
+      if (sesDelta !== null && sesDelta > 30) insights.push(`Study sessions up ${sesDelta}% vs previous period`)
+
+      // AI cost
+      const [aiCur, aiPrev] = await Promise.all([
+        db.select({ c: sql<string>`coalesce(sum(estimated_cost_usd::numeric), 0)` }).from(aiUsageEvents).where(gte(aiUsageEvents.createdAt, start)),
+        db.select({ c: sql<string>`coalesce(sum(estimated_cost_usd::numeric), 0)` }).from(aiUsageEvents).where(and(gte(aiUsageEvents.createdAt, prevStart), sql`${aiUsageEvents.createdAt} < ${prevEnd}`)),
+      ])
+      const aiCostCur = parseFloat(aiCur[0]?.c ?? '0')
+      const aiCostPrevVal = parseFloat(aiPrev[0]?.c ?? '0')
+      const aiDelta = pctChange(Math.round(aiCostCur * 10000), Math.round(aiCostPrevVal * 10000))
+      if (aiDelta !== null && aiDelta > 40) insights.push(`AI cost increased ${aiDelta}% vs previous period ($${aiCostCur.toFixed(2)})`)
+
+      // Top user concentration
+      const topUser = await db.execute(sql`
+        SELECT cm.user_id, count(*)::text AS cnt, (SELECT count(*)::text FROM chat_messages WHERE created_at >= ${start} AND role = 'user') AS total
+        FROM chat_messages cm WHERE cm.created_at >= ${start} AND cm.role = 'user'
+        GROUP BY cm.user_id ORDER BY count(*) DESC LIMIT 1
+      `)
+      const topRow = topUser.rows[0] as Record<string, string> | undefined
+      if (topRow && parseInt(topRow.total) > 10) {
+        const pct = Math.round((parseInt(topRow.cnt) / parseInt(topRow.total)) * 100)
+        if (pct >= 30) insights.push(`Top user generated ${pct}% of all chat messages this period`)
+      }
+
+      if (insights.length === 0) insights.push('No significant changes detected this period')
+
+      return insights
+    }),
+
+  /**
+   * Recent activity feed: last 20 events across signups, sessions, chat, admin actions.
+   */
+  getRecentActivity: adminProcedure.query(async () => {
+    const rows = await db.execute(sql`
+      (SELECT 'signup' AS type, u.name AS label, u.created_at AS ts FROM users u ORDER BY u.created_at DESC LIMIT 5)
+      UNION ALL
+      (SELECT 'session' AS type, coalesce(p.display_name, 'Unknown') AS label, s.completed_at AS ts
+       FROM study_sessions s LEFT JOIN user_profiles p ON p.user_id = s.user_id ORDER BY s.completed_at DESC LIMIT 5)
+      UNION ALL
+      (SELECT 'chat' AS type, coalesce(p.display_name, 'Unknown') AS label, c.created_at AS ts
+       FROM chat_messages c LEFT JOIN user_profiles p ON p.user_id = c.user_id WHERE c.role = 'user' ORDER BY c.created_at DESC LIMIT 5)
+      UNION ALL
+      (SELECT 'admin' AS type, coalesce(p.display_name, 'Admin') || ': ' || a.action AS label, a.created_at AS ts
+       FROM admin_audit_log a LEFT JOIN user_profiles p ON p.user_id = a.admin_user_id ORDER BY a.created_at DESC LIMIT 5)
+      ORDER BY ts DESC
+      LIMIT 20
+    `)
+    return (rows.rows as Array<{ type: string; label: string; ts: string }>).map((r) => ({
+      type: r.type,
+      label: r.label,
+      time: r.ts,
+    }))
   }),
 
   /** Analytics event stats: totals, top events, daily counts for 14 days. */

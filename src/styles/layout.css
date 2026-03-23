@@ -564,6 +564,32 @@
 .fc-notif-section-content {
   min-height: 60px;
 }
+.fc-notif-announce-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--fc-border);
+}
+.fc-notif-announce-item:last-child {
+  border-bottom: none;
+}
+.fc-notif-announce-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--fc-text);
+  margin-bottom: 3px;
+}
+.fc-notif-announce-body {
+  font-size: 0.8rem;
+  color: var(--fc-muted);
+  line-height: 1.4;
+}
+.fc-notif-announce-date {
+  font-size: 0.7rem;
+  color: var(--fc-light);
+  margin-top: 4px;
+}
+.fc-notif-pin {
+  font-size: 0.75rem;
+}
 .fc-notif-empty {
   font-size: 0.85rem;
   color: var(--fc-light);

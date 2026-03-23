@@ -269,6 +269,29 @@ export const feedback = pgTable('feedback', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// ── ANNOUNCEMENTS ────────────────────────────────────────────────
+// Admin-managed announcements shown in the app notification panel.
+export const announcements = pgTable(
+  'announcements',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    isPublished: boolean('is_published').default(false).notNull(),
+    isPinned: boolean('is_pinned').default(false).notNull(),
+    authorUserId: text('author_user_id'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    publishedAt: timestamp('published_at'),
+  },
+  (table) => [
+    index('announcements_published_idx').on(table.isPublished, table.isPinned),
+  ],
+)
+
 // ── AI USAGE EVENTS ──────────────────────────────────────────────
 // Metered AI usage tracking. Logged after each successful AI call.
 export const aiUsageEvents = pgTable(

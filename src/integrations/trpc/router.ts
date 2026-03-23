@@ -6,6 +6,7 @@ import { wordsetsRouter } from './wordsets'
 import { socialRouter } from './social'
 import { feedbackRouter } from './feedback'
 import { adminRouter } from './admin'
+import { announcementsRouter } from './announcements'
 
 export const trpcRouter = createTRPCRouter({
   progress: progressRouter,
@@ -15,5 +16,6 @@ export const trpcRouter = createTRPCRouter({
   social: socialRouter,
   feedback: feedbackRouter,
   admin: adminRouter,
+  announcements: announcementsRouter,
 })
 export type TRPCRouter = typeof trpcRouter

@@ -127,6 +127,7 @@ function AdminUsersPage() {
           <Link to="/admin/analytics" className="fc-admin-nav-link">Analytics</Link>
           <Link to="/admin/users" className="fc-admin-nav-link active">Users</Link>
           <Link to="/admin/system" className="fc-admin-nav-link">System</Link>
+          <Link to="/admin/announcements" className="fc-admin-nav-link">Announcements</Link>
         </div>
 
         <div className="fc-admin-title-row">

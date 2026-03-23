@@ -78,15 +78,7 @@ export function AppHeader({ onSignIn }: { onSignIn?: () => void }) {
                   <div className="fc-notif-empty">No messages</div>
                 </div>
               </div>
-              <div className="fc-notif-section">
-                <div className="fc-notif-section-title">
-                  <Megaphone size={15} strokeWidth={2} />
-                  Announcements
-                </div>
-                <div className="fc-notif-section-content">
-                  <div className="fc-notif-empty">No announcements</div>
-                </div>
-              </div>
+              <AnnouncementsSection />
             </div>
           </div>
         </div>
@@ -144,6 +136,44 @@ function ProfileMenu() {
         >
           Sign out
         </button>
+      </div>
+    </div>
+  )
+}
+
+function AnnouncementsSection() {
+  const trpc = useTRPC()
+  const announcementsQuery = useQuery({
+    ...trpc.announcements.getPublished.queryOptions(),
+    staleTime: 60_000,
+  })
+  const items = announcementsQuery.data ?? []
+
+  return (
+    <div className="fc-notif-section">
+      <div className="fc-notif-section-title">
+        <Megaphone size={15} strokeWidth={2} />
+        Announcements
+      </div>
+      <div className="fc-notif-section-content">
+        {items.length === 0 ? (
+          <div className="fc-notif-empty">No announcements</div>
+        ) : (
+          items.map((a) => (
+            <div key={a.id} className="fc-notif-announce-item">
+              <div className="fc-notif-announce-title">
+                {a.isPinned && <span className="fc-notif-pin">📌 </span>}
+                {a.title}
+              </div>
+              <div className="fc-notif-announce-body">{a.body}</div>
+              {a.publishedAt && (
+                <div className="fc-notif-announce-date">
+                  {new Date(a.publishedAt).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   )

@@ -64,6 +64,7 @@ function AdminSystemPage() {
           <Link to="/admin/analytics" className="fc-admin-nav-link">Analytics</Link>
           <Link to="/admin/users" className="fc-admin-nav-link">Users</Link>
           <Link to="/admin/system" className="fc-admin-nav-link active">System</Link>
+          <Link to="/admin/announcements" className="fc-admin-nav-link">Announcements</Link>
         </div>
 
         <h1 className="fc-admin-title">System</h1>

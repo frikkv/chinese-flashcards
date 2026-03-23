@@ -20,6 +20,7 @@ import { Route as UUsernameRouteImport } from './routes/u/$username'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSystemRouteImport } from './routes/admin/system'
 import { Route as AdminOverviewRouteImport } from './routes/admin/overview'
+import { Route as AdminAnnouncementsRouteImport } from './routes/admin/announcements'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -79,6 +80,11 @@ const AdminOverviewRoute = AdminOverviewRouteImport.update({
   path: '/admin/overview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAnnouncementsRoute = AdminAnnouncementsRouteImport.update({
+  id: '/admin/announcements',
+  path: '/admin/announcements',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   id: '/admin/analytics',
   path: '/admin/analytics',
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/users': typeof AdminUsersRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/users': typeof AdminUsersRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/settings': typeof SettingsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/announcements': typeof AdminAnnouncementsRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/users': typeof AdminUsersRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/admin/analytics'
+    | '/admin/announcements'
     | '/admin/overview'
     | '/admin/system'
     | '/admin/users'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/admin/analytics'
+    | '/admin/announcements'
     | '/admin/overview'
     | '/admin/system'
     | '/admin/users'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/settings'
     | '/admin/analytics'
+    | '/admin/announcements'
     | '/admin/overview'
     | '/admin/system'
     | '/admin/users'
@@ -203,6 +215,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   SettingsRoute: typeof SettingsRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminAnnouncementsRoute: typeof AdminAnnouncementsRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminSystemRoute: typeof AdminSystemRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -291,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOverviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/announcements': {
+      id: '/admin/announcements'
+      path: '/admin/announcements'
+      fullPath: '/admin/announcements'
+      preLoaderRoute: typeof AdminAnnouncementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/analytics': {
       id: '/admin/analytics'
       path: '/admin/analytics'
@@ -323,6 +343,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   SettingsRoute: SettingsRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminAnnouncementsRoute: AdminAnnouncementsRoute,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminSystemRoute: AdminSystemRoute,
   AdminUsersRoute: AdminUsersRoute,

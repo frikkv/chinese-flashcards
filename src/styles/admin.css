@@ -5,11 +5,14 @@
   margin: 0 auto;
   padding: 0 16px;
 }
+.fc-admin-container--wide {
+  max-width: 1060px;
+}
 
 .fc-admin-nav {
   display: flex;
   gap: 4px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
   border-radius: 10px;
@@ -46,6 +49,149 @@
   font-weight: 400;
   color: var(--fc-muted);
   font-size: 1rem;
+}
+
+/* ── Range picker ── */
+.fc-admin-range-picker {
+  display: flex;
+  gap: 2px;
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  padding: 2px;
+}
+.fc-admin-range-btn {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fc-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s, background 0.15s;
+}
+.fc-admin-range-btn:hover {
+  color: var(--fc-text);
+}
+.fc-admin-range-btn.active {
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* ── KPI bar ── */
+.fc-admin-kpi-bar {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.fc-admin-kpi-card {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.fc-admin-kpi-val {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--fc-text);
+  line-height: 1.1;
+}
+.fc-admin-kpi-label {
+  font-size: 0.68rem;
+  color: var(--fc-muted);
+  margin-top: 2px;
+}
+.fc-admin-kpi-delta {
+  font-size: 0.65rem;
+  margin-top: 3px;
+  color: var(--fc-muted);
+}
+.fc-admin-kpi-delta--up {
+  color: var(--fc-success);
+}
+.fc-admin-kpi-delta--down {
+  color: var(--fc-wrong);
+}
+
+/* ── Insights ── */
+.fc-admin-insights {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.fc-admin-insight {
+  font-size: 0.8rem;
+  color: var(--fc-muted);
+  padding: 6px 12px;
+  background: var(--fc-blue-tint);
+  border-radius: 6px;
+  border-left: 3px solid var(--fc-blue);
+}
+
+/* ── Activity feed ── */
+.fc-admin-activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.fc-admin-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 0.78rem;
+}
+.fc-admin-activity-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--fc-muted);
+}
+.fc-admin-activity-dot--signup { background: var(--fc-success); }
+.fc-admin-activity-dot--session { background: var(--fc-blue); }
+.fc-admin-activity-dot--chat { background: var(--fc-red); }
+.fc-admin-activity-dot--admin { background: #e67e22; }
+.fc-admin-activity-label {
+  flex: 1;
+  color: var(--fc-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fc-admin-activity-time {
+  color: var(--fc-light);
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+/* ── Compact variants ── */
+.fc-admin-section--compact {
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.fc-admin-section--compact .fc-admin-section-title {
+  margin-bottom: 8px;
+  font-size: 0.82rem;
+}
+.fc-admin-stats-grid--compact {
+  gap: 6px;
+  margin-bottom: 12px;
+  grid-template-columns: repeat(6, 1fr);
+}
+.fc-admin-stats-grid--compact .fc-admin-stat-card {
+  padding: 10px 12px;
+}
+.fc-admin-stats-grid--compact .fc-admin-stat-num {
+  font-size: 1.1rem;
+}
+.fc-admin-stats-grid--compact .fc-admin-stat-label {
+  font-size: 0.68rem;
 }
 
 /* ── Stats grid ── */
@@ -326,6 +472,78 @@
   border-color: transparent;
 }
 
+/* ── Announcements ── */
+.fc-admin-announce-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--fc-border);
+}
+.fc-admin-announce-row:last-child {
+  border-bottom: none;
+}
+.fc-admin-announce-info {
+  flex: 1;
+  min-width: 0;
+}
+.fc-admin-announce-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--fc-text);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.fc-admin-announce-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.fc-admin-action-btn {
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--fc-border);
+  background: var(--fc-surface);
+  color: var(--fc-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+.fc-admin-action-btn:hover {
+  border-color: var(--fc-muted);
+  color: var(--fc-text);
+}
+.fc-admin-action-btn--primary {
+  border-color: var(--fc-success);
+  color: var(--fc-success);
+}
+.fc-admin-action-btn--primary:hover {
+  background: var(--fc-success-light);
+}
+.fc-admin-action-btn--danger {
+  color: var(--fc-wrong);
+}
+.fc-admin-action-btn--danger:hover {
+  border-color: var(--fc-wrong);
+  background: var(--fc-wrong-light);
+}
+.fc-admin-form-group {
+  margin-bottom: 12px;
+}
+.fc-admin-form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 /* ── Pagination ── */
 .fc-admin-pagination {
   display: flex;
@@ -429,8 +647,12 @@
 }
 
 @media (max-width: 768px) {
-  .fc-admin-stats-grid {
+  .fc-admin-stats-grid,
+  .fc-admin-stats-grid--compact {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .fc-admin-kpi-bar {
+    grid-template-columns: repeat(3, 1fr);
   }
   .fc-admin-two-col {
     grid-template-columns: 1fr;
