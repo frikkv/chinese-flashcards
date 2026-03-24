@@ -120,6 +120,26 @@ body {
   background: #4a8bc2;
   color: #fff;
 }
+/* Next button */
+[data-theme='dark'] .fc-next-btn {
+  background: #4a8bc2;
+  color: #fff;
+}
+[data-theme='dark'] .fc-next-btn:hover {
+  background: #3a7ab0;
+}
+/* Leaderboard page */
+[data-theme='dark'] .fc-lb-row--me {
+  background: #1e2a35;
+}
+[data-theme='dark'] .fc-lb-row--top1 {
+  background: #2a2518;
+}
+[data-theme='dark'] .fc-lb-row--me.fc-lb-row--top1,
+[data-theme='dark'] .fc-lb-row--me.fc-lb-row--top2,
+[data-theme='dark'] .fc-lb-row--me.fc-lb-row--top3 {
+  background: #1e2a35;
+}
 
 /* ── TYPOGRAPHY ── */
 .fc-hero-title {

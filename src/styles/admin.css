@@ -544,6 +544,128 @@
   letter-spacing: 0.06em;
 }
 
+/* ── Feedback ── */
+.fc-admin-feedback-row {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--fc-border);
+}
+.fc-admin-feedback-row:last-child {
+  border-bottom: none;
+}
+.fc-admin-feedback-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fc-admin-feedback-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.fc-admin-feedback-type {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--fc-border);
+  color: var(--fc-muted);
+}
+.fc-admin-feedback-type--feature {
+  background: var(--fc-blue-tint);
+  color: var(--fc-blue);
+}
+.fc-admin-feedback-type--bug {
+  background: var(--fc-wrong-light);
+  color: var(--fc-wrong);
+}
+.fc-admin-feedback-type--feedback {
+  background: var(--fc-success-light);
+  color: var(--fc-success);
+}
+.fc-admin-feedback-user {
+  font-size: 0.78rem;
+  color: var(--fc-muted);
+}
+.fc-admin-feedback-date {
+  font-size: 0.72rem;
+  color: var(--fc-light);
+  margin-left: auto;
+}
+.fc-admin-feedback-status {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--fc-border);
+  color: var(--fc-muted);
+}
+.fc-admin-feedback-status--new {
+  background: var(--fc-blue-tint);
+  color: var(--fc-blue);
+}
+.fc-admin-feedback-status--todo {
+  background: #fef3e0;
+  color: #e67e22;
+}
+.fc-admin-feedback-status--read {
+  background: var(--fc-border);
+  color: var(--fc-light);
+}
+.fc-admin-feedback-status--done {
+  background: var(--fc-success-light);
+  color: var(--fc-success);
+}
+.fc-admin-feedback-message {
+  font-size: 0.88rem;
+  color: var(--fc-text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.fc-admin-feedback-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.fc-admin-status-btn {
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--fc-border);
+  background: var(--fc-surface);
+  color: var(--fc-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+.fc-admin-status-btn:hover:not(:disabled) {
+  border-color: var(--fc-muted);
+  color: var(--fc-text);
+}
+.fc-admin-status-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.fc-admin-status-btn.active {
+  opacity: 0.4;
+}
+.fc-admin-status-btn--todo:hover:not(:disabled) {
+  border-color: #e67e22;
+  color: #e67e22;
+}
+.fc-admin-status-btn--done:hover:not(:disabled) {
+  border-color: var(--fc-success);
+  color: var(--fc-success);
+}
+[data-theme='dark'] .fc-admin-feedback-status--todo {
+  background: #2a2518;
+  color: #e67e22;
+}
+
 /* ── Pagination ── */
 .fc-admin-pagination {
   display: flex;

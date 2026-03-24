@@ -469,6 +469,33 @@
   align-items: center;
   gap: 20px;
 }
+.fc-ws-streak {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transform: translateY(6px);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.fc-ws-streak-fire {
+  font-size: 1rem;
+  filter: grayscale(1);
+  opacity: 0.4;
+  line-height: 1;
+}
+.fc-ws-streak--active .fc-ws-streak-fire {
+  filter: none;
+  opacity: 1;
+}
+.fc-ws-streak-num {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--fc-light);
+}
+.fc-ws-streak--active .fc-ws-streak-num {
+  color: var(--fc-text);
+}
+
 .fc-ws-bell-btn {
   position: relative;
   display: inline-flex;

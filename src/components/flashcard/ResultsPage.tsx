@@ -1,3 +1,6 @@
+import { useQuery } from '@tanstack/react-query'
+import { authClient } from '#/lib/auth-client'
+import { useTRPC } from '#/integrations/trpc/react'
 import type { Word } from '#/data/vocabulary'
 import { type ProgressCard, computeWordSetMastery } from './WordSetDashboard'
 
@@ -8,7 +11,6 @@ export function ResultsPage({
   words,
   vocab,
   cardProgress,
-  streak,
   onStudyAgain,
   onHome,
 }: {
@@ -18,10 +20,19 @@ export function ResultsPage({
   words: number
   vocab?: Word[]
   cardProgress?: ProgressCard[]
-  streak?: number
   onStudyAgain: () => void
   onHome: () => void
 }) {
+  const trpc = useTRPC()
+  const { data: session } = authClient.useSession()
+  const isSignedIn = !!session?.user
+
+  const retentionQuery = useQuery({
+    ...trpc.progress.getRetention.queryOptions(),
+    enabled: isSignedIn,
+    staleTime: 10_000,
+  })
+
   const mastery =
     vocab && vocab.length > 0 && cardProgress
       ? computeWordSetMastery(vocab, cardProgress)
@@ -30,6 +41,8 @@ export function ResultsPage({
     mastery && mastery.total > 0
       ? Math.round((mastery.known / mastery.total) * 100)
       : 0
+
+  const r = retentionQuery.data
 
   return (
     <div className="fc-app">
@@ -59,6 +72,29 @@ export function ResultsPage({
             <div className="fc-result-label">Accuracy</div>
           </div>
         </div>
+
+        {/* Retention: streak + daily goal */}
+        {r && (
+          <div className="fc-results-retention">
+            <div className="fc-results-retention-row">
+              <span className="fc-results-retention-icon">🔥</span>
+              <span className="fc-results-retention-val">{r.currentStreak} day{r.currentStreak !== 1 ? 's' : ''}</span>
+              {r.longestStreak > r.currentStreak && (
+                <span className="fc-results-retention-sub">Best: {r.longestStreak}</span>
+              )}
+            </div>
+            <div className="fc-results-retention-row">
+              <span className="fc-results-retention-icon">{r.goalCompleted ? '✅' : '⚡'}</span>
+              <span className="fc-results-retention-val">
+                {r.currentDayXp} / {r.dailyGoalXp} XP
+              </span>
+              {r.goalCompleted
+                ? <span className="fc-results-retention-done">Goal reached!</span>
+                : <span className="fc-results-retention-sub">{Math.max(r.dailyGoalXp - r.currentDayXp, 0)} to go</span>
+              }
+            </div>
+          </div>
+        )}
 
         {mastery && (
           <div className="fc-results-mastery">
@@ -105,15 +141,6 @@ export function ResultsPage({
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {streak !== undefined && streak > 0 && (
-          <div className="fc-results-streak">
-            <span className="fc-streak-num">{streak}</span>
-            <span className="fc-streak-label">
-              {streak === 1 ? 'day streak' : 'day streak — keep it up!'}
-            </span>
           </div>
         )}
 

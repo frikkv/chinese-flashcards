@@ -266,6 +266,7 @@ export const feedback = pgTable('feedback', {
     .references(() => users.id, { onDelete: 'cascade' }),
   type: text('type').notNull().$type<'feedback' | 'feature' | 'bug'>(),
   message: text('message').notNull(),
+  status: text('status').notNull().default('new').$type<'new' | 'todo' | 'read' | 'done'>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -291,6 +292,20 @@ export const announcements = pgTable(
     index('announcements_published_idx').on(table.isPublished, table.isPinned),
   ],
 )
+
+// ── USER RETENTION ───────────────────────────────────────────────
+// Streak and daily goal tracking for retention loops.
+export const userRetention = pgTable('user_retention', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  currentStreak: integer('current_streak').default(0).notNull(),
+  longestStreak: integer('longest_streak').default(0).notNull(),
+  lastActiveDate: timestamp('last_active_date'),
+  dailyGoalXp: integer('daily_goal_xp').default(50).notNull(),
+  currentDayXp: integer('current_day_xp').default(0).notNull(),
+  lastXpUpdateDate: timestamp('last_xp_update_date'),
+})
 
 // ── ANNOUNCEMENT READS ───────────────────────────────────────────
 // Tracks which announcements each user has read. Used for unread badges.

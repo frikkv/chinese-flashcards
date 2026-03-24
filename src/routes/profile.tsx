@@ -45,6 +45,11 @@ function ProfilePage() {
     enabled: !!session?.user,
   })
 
+  const retentionQuery = useQuery({
+    ...trpc.progress.getRetention.queryOptions(),
+    enabled: !!session?.user,
+  })
+
   const [editingUsername, setEditingUsername] = useState(false)
   const [usernameInput, setUsernameInput] = useState('')
   const [usernameError, setUsernameError] = useState('')
@@ -475,13 +480,13 @@ function ProfilePage() {
                   wide
                 />
 
-                {/* Day Streak — bestStreak shown as sub, absorbing the old "Best Streak" card */}
+                {/* Day Streak — uses retention system */}
                 <StatCard
-                  num={stats?.streak ?? 0}
+                  num={retentionQuery.data?.currentStreak ?? stats?.streak ?? 0}
                   label="Day Streak"
-                  sub={`Best: ${stats?.bestStreak ?? 0} days`}
-                  color={(stats?.streak ?? 0) > 0 ? '#e67e22' : undefined}
-                  tone={(stats?.streak ?? 0) > 0 ? 'streak' : undefined}
+                  sub={`Best: ${retentionQuery.data?.longestStreak ?? stats?.bestStreak ?? 0} days`}
+                  color={(retentionQuery.data?.currentStreak ?? stats?.streak ?? 0) > 0 ? '#e67e22' : undefined}
+                  tone={(retentionQuery.data?.currentStreak ?? stats?.streak ?? 0) > 0 ? 'streak' : undefined}
                 />
 
                 {/* Needs Review — words attempted but not yet mastered (learning state) */}

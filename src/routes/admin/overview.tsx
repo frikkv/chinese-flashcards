@@ -87,6 +87,7 @@ function AdminOverviewPage() {
           <Link to="/admin/users" className="fc-admin-nav-link">Users</Link>
           <Link to="/admin/system" className="fc-admin-nav-link">System</Link>
           <Link to="/admin/announcements" className="fc-admin-nav-link">Announcements</Link>
+          <Link to="/admin/feedback" className="fc-admin-nav-link">Feedback</Link>
         </div>
 
         {/* Title + date range picker */}

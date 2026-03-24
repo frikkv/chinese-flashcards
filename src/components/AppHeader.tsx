@@ -13,6 +13,14 @@ export function AppHeader({ onSignIn }: { onSignIn?: () => void }) {
   const trpc = useTRPC()
   const qc = useQueryClient()
 
+  // Streak
+  const retentionQuery = useQuery({
+    ...trpc.progress.getRetention.queryOptions(),
+    enabled: isSignedIn,
+    staleTime: 30_000,
+  })
+  const streak = retentionQuery.data?.currentStreak ?? 0
+
   // Unread count for badge
   const unreadQuery = useQuery({
     ...trpc.announcements.getUnreadCount.queryOptions(),
@@ -69,6 +77,10 @@ export function AppHeader({ onSignIn }: { onSignIn?: () => void }) {
         </button>
       ) : isSignedIn ? (
         <div className="fc-ws-topbar-right">
+          <div className={`fc-ws-streak${streak > 0 ? ' fc-ws-streak--active' : ''}`}>
+            <span className="fc-ws-streak-fire">{streak > 0 ? '🔥' : '🔥'}</span>
+            <span className="fc-ws-streak-num">{streak}</span>
+          </div>
           <button
             className="fc-ws-bell-btn"
             aria-label="Notifications"

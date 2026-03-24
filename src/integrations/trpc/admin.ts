@@ -724,6 +724,67 @@ export const adminRouter = createTRPCRouter({
     return rows
   }),
 
+  /** All user feedback with user info, paginated. */
+  listFeedback: adminProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
+      typeFilter: z.enum(['all', 'feedback', 'feature', 'bug']).default('all'),
+      statusFilter: z.enum(['all', 'new', 'todo', 'read', 'done']).default('all'),
+    }))
+    .query(async ({ input }) => {
+      const conditions = []
+      if (input.typeFilter !== 'all') {
+        conditions.push(eq(feedback.type, input.typeFilter))
+      }
+      if (input.statusFilter !== 'all') {
+        conditions.push(eq(feedback.status, input.statusFilter))
+      }
+      const where = conditions.length > 0 ? and(...conditions) : undefined
+
+      const [rows, totalRows] = await Promise.all([
+        db
+          .select({
+            id: feedback.id,
+            userId: feedback.userId,
+            type: feedback.type,
+            message: feedback.message,
+            status: feedback.status,
+            createdAt: feedback.createdAt,
+            username: userProfiles.username,
+            displayName: userProfiles.displayName,
+          })
+          .from(feedback)
+          .leftJoin(userProfiles, eq(feedback.userId, userProfiles.userId))
+          .where(where)
+          .orderBy(desc(feedback.createdAt))
+          .limit(input.limit)
+          .offset(input.offset),
+        db
+          .select({ c: count() })
+          .from(feedback)
+          .where(where),
+      ])
+
+      return {
+        items: rows,
+        total: totalRows[0]?.c ?? 0,
+      }
+    }),
+
+  /** Update feedback status (admin only). */
+  updateFeedbackStatus: adminProcedure
+    .input(z.object({
+      id: z.string(),
+      status: z.enum(['new', 'todo', 'read', 'done']),
+    }))
+    .mutation(async ({ input }) => {
+      await db
+        .update(feedback)
+        .set({ status: input.status })
+        .where(eq(feedback.id, input.id))
+    }),
+
   /**
    * Retention analytics.
    *

@@ -824,7 +824,6 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
           words={words}
           vocab={vocab}
           cardProgress={progressQuery.data?.cards}
-          streak={progressQuery.data?.streak}
           onStudyAgain={() => handleStartStudy(vocab, sessionMode, settings)}
           onHome={() => setPage('wordset')}
         />

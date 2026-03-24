@@ -3,6 +3,7 @@ import { eq, desc, sql } from 'drizzle-orm'
 import { createTRPCRouter, protectedProcedure } from './init'
 import { getWeekStartTs } from '#/lib/time'
 import { logEvent } from '#/server/analytics'
+import { updateRetention, getRetentionState } from '#/server/retention'
 import { db } from '#/db'
 import {
   flashcardProgress,
@@ -237,7 +238,14 @@ export const progressRouter = createTRPCRouter({
         eventName: 'study_session_completed',
         properties: { mode: input.mode, wordSetKey: input.wordSetKey, sessionSize: input.sessionSize, correctCount: input.correctCount, totalCount: input.totalCount },
       })
+      // Update retention: XP = correctCount + 5 (session bonus)
+      void updateRetention(userId, input.correctCount + 5)
     }),
+
+  /** Get retention state (streak + daily goal) for the current user. */
+  getRetention: protectedProcedure.query(async ({ ctx }) => {
+    return getRetentionState(ctx.session.user.id)
+  }),
 
   getProfileStats: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id

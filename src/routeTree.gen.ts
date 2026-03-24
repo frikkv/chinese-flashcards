@@ -20,6 +20,7 @@ import { Route as UUsernameRouteImport } from './routes/u/$username'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSystemRouteImport } from './routes/admin/system'
 import { Route as AdminOverviewRouteImport } from './routes/admin/overview'
+import { Route as AdminFeedbackRouteImport } from './routes/admin/feedback'
 import { Route as AdminAnnouncementsRouteImport } from './routes/admin/announcements'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
@@ -80,6 +81,11 @@ const AdminOverviewRoute = AdminOverviewRouteImport.update({
   path: '/admin/overview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
+  id: '/admin/feedback',
+  path: '/admin/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminAnnouncementsRoute = AdminAnnouncementsRouteImport.update({
   id: '/admin/announcements',
   path: '/admin/announcements',
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/users': typeof AdminUsersRoute
@@ -127,6 +134,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/users': typeof AdminUsersRoute
@@ -145,6 +153,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/announcements': typeof AdminAnnouncementsRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/users': typeof AdminUsersRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/analytics'
     | '/admin/announcements'
+    | '/admin/feedback'
     | '/admin/overview'
     | '/admin/system'
     | '/admin/users'
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/analytics'
     | '/admin/announcements'
+    | '/admin/feedback'
     | '/admin/overview'
     | '/admin/system'
     | '/admin/users'
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/admin/analytics'
     | '/admin/announcements'
+    | '/admin/feedback'
     | '/admin/overview'
     | '/admin/system'
     | '/admin/users'
@@ -216,6 +228,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminAnnouncementsRoute: typeof AdminAnnouncementsRoute
+  AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminSystemRoute: typeof AdminSystemRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOverviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/feedback': {
+      id: '/admin/feedback'
+      path: '/admin/feedback'
+      fullPath: '/admin/feedback'
+      preLoaderRoute: typeof AdminFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/announcements': {
       id: '/admin/announcements'
       path: '/admin/announcements'
@@ -344,6 +364,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminAnnouncementsRoute: AdminAnnouncementsRoute,
+  AdminFeedbackRoute: AdminFeedbackRoute,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminSystemRoute: AdminSystemRoute,
   AdminUsersRoute: AdminUsersRoute,

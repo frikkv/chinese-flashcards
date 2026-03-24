@@ -413,6 +413,78 @@
   color: var(--fc-red);
 }
 
+/* ── DAILY PROGRESS CARD ── */
+.fc-daily-card {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+}
+.fc-daily-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.fc-daily-streak {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.fc-daily-streak-fire {
+  font-size: 1rem;
+}
+.fc-daily-streak-num {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--fc-text);
+}
+.fc-daily-streak-label {
+  font-size: 0.78rem;
+  color: var(--fc-muted);
+}
+.fc-daily-goal-done {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fc-success);
+  background: var(--fc-success-light);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.fc-daily-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fc-daily-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--fc-border);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.fc-daily-bar-fill {
+  height: 100%;
+  background: var(--fc-red);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.fc-daily-bar-fill--done {
+  background: var(--fc-success);
+}
+.fc-daily-bar-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  white-space: nowrap;
+}
+.fc-daily-hint {
+  font-size: 0.72rem;
+  color: var(--fc-light);
+  margin-top: 4px;
+}
+
 /* ── SETTINGS ── */
 .fc-settings-wrap {
   width: 100%;
@@ -832,49 +904,88 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 32px;
+  gap: 16px;
   text-align: center;
   margin: auto 0;
+  max-height: calc(100dvh - var(--fc-header-h) - 80px);
+  overflow: hidden;
 }
 .fc-results-char {
   font-family: 'Noto Serif SC', serif;
-  font-size: 6rem;
+  font-size: 3.5rem;
   color: var(--fc-red);
   line-height: 1;
 }
 .fc-results-title {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 .fc-results-sub {
-  font-size: 1.05rem;
+  font-size: 0.92rem;
   color: var(--fc-muted);
   font-style: italic;
 }
 .fc-results-grid {
   display: flex;
-  gap: 24px;
+  gap: 14px;
   flex-wrap: wrap;
   justify-content: center;
 }
 .fc-result-stat {
   background: var(--fc-surface);
   border: 1px solid var(--fc-border);
-  border-radius: 16px;
-  padding: 28px 40px;
-  min-width: 130px;
+  border-radius: 12px;
+  padding: 16px 28px;
+  min-width: 100px;
 }
 .fc-result-num {
-  font-size: 3rem;
+  font-size: 2rem;
   font-family: 'Noto Serif SC', serif;
   font-weight: 700;
 }
 .fc-result-label {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: var(--fc-muted);
-  margin-top: 4px;
+  margin-top: 2px;
 }
+.fc-results-retention {
+  background: var(--fc-surface);
+  border: 1px solid var(--fc-border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.fc-results-retention-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fc-results-retention-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+}
+.fc-results-retention-val {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+.fc-results-retention-sub {
+  font-size: 0.78rem;
+  color: var(--fc-muted);
+}
+.fc-results-retention-done {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--fc-success);
+  background: var(--fc-success-light);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
 .fc-results-actions {
   display: flex;
   gap: 12px;
