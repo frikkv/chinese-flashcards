@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { Volume2 } from 'lucide-react'
 import type { Word } from '#/data/vocabulary'
 import { speakHanzi } from '#/lib/tts'
+import { playCorrect, playWrong } from '#/lib/sound'
 import { shuffle, buildToneChoices, stripTones } from '#/lib/flashcard-logic'
 import { StudyHeader } from '#/components/flashcard/StudyHeader'
 import { NextButton } from '#/components/flashcard/NextButton'
@@ -83,9 +84,10 @@ export function ToneQuizPage({
   function handleChoice(choice: string) {
     if (answered) return
     const currentWord = queue[idx]
+    const isCorrect = choice === currentWord.pinyin
+    if (isCorrect) playCorrect(); else playWrong()
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
-    const isCorrect = choice === currentWord.pinyin
     const states: Record<string, 'correct' | 'wrong'> = {
       [currentWord.pinyin]: 'correct',
     }

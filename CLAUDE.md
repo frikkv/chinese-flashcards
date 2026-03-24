@@ -16,7 +16,8 @@ pnpm drizzle-kit generate   # Generate migration from schema changes (REQUIRED)
 pnpm drizzle-kit migrate    # Apply migrations to DB (REQUIRED)
 pnpm db:push                # Push schema directly — LOCAL PROTOTYPING ONLY
 pnpm db:studio              # Open Drizzle Studio
-pnpm db:gen-distractors     # Pre-generate AI distractors for all vocab words
+pnpm db:gen-distractors              # Pre-generate AI distractors for all vocab words
+pnpm db:gen-distractors -- --force   # Regenerate ALL distractors (deletes cached first)
 
 # Audio
 pnpm audio:generate  # Generate OpenAI TTS MP3s for all vocab words → public/audio/
@@ -43,17 +44,19 @@ pnpm dlx shadcn@latest add <component>
 - `friends.tsx` — Friends management (search, suggested friends, incoming/outgoing requests, friends list)
 - `leaderboard.tsx` — Weekly XP leaderboard for the user + their friends
 - `feedback.tsx` — Feedback submission page (feedback/feature/bug types, past feedback list)
-- `settings.tsx` — User settings (dark mode toggle)
+- `settings.tsx` — User settings (sound effects toggle + volume slider, dark mode toggle)
 - `admin/overview.tsx` — Admin dashboard (KPI cards, retention, funnel, time-to-value, 14-day charts, event stats, feature usage, audit log)
 - `admin/analytics.tsx` — Dedicated analytics (retention cohorts, funnels, growth trends, top events, feature usage)
 - `admin/users.tsx` — Admin user management (search, role filter, sort, per-user stats, role toggle, CSV export)
 - `admin/system.tsx` — Operational monitoring (AI usage by feature/model, real token/cost tracking, heavy users, rate limits, audit log)
+- `admin/announcements.tsx` — Announcement management (create, edit, publish/unpublish, pin/unpin, delete)
+- `admin/feedback.tsx` — User feedback viewer (type + status filters, todo/read/done actions)
 - `admin/index.tsx` — Redirects to `/admin/overview`
 - `api.trpc.$.tsx` — tRPC handler
 
 **Shared components**:
 
-- `src/components/AppHeader.tsx` — Shared topbar used on all non-study pages. Contains logo, leaderboard/feedback/settings icons, notification sidebar (bell), profile dropdown menu with admin link. Extracted from WordSetPage; single source of truth for navigation
+- `src/components/AppHeader.tsx` — Shared topbar used on all non-study pages. Contains logo, leaderboard/feedback/settings icons, streak display (fire emoji + count), notification sidebar (bell with unread badge), profile dropdown menu with admin link. Extracted from WordSetPage; single source of truth for navigation
 - `src/components/AuthPage.tsx` — Sign-in/sign-up form (email+password + Google OAuth)
 - `src/components/FriendsModal.tsx` — Modal showing a user's accepted friends list
 - `src/components/Skeleton.tsx` — Skeleton loading placeholder
@@ -72,7 +75,8 @@ pnpm dlx shadcn@latest add <component>
 - `CardFace.tsx`, `StudyHeader.tsx`, `NextButton.tsx`, `StageDots.tsx`, `AnswerChoices.tsx` — Small study page UI primitives
 - `ChatPanel.tsx` — Inline AI chat for study pages; suggestions use generic text ("this word") to avoid revealing the current card's character
 - `PronunciationBox.tsx` — Pronunciation input box below chat
-- `ResultsPage.tsx` — Session results summary (lazy-loaded)
+- `ResultsPage.tsx` — Session results summary with streak + daily goal progress (lazy-loaded)
+- `DailyProgressCard.tsx` — Streak + XP progress bar component (available but not currently rendered on word selection)
 - `SessionCompleteScreen.tsx` — Completion screen for sound/tone modes (lazy-loaded)
 - `WordSetDashboard.tsx` — Mastery progress card (progress bar, chips, accuracy, struggling words)
 
@@ -85,13 +89,15 @@ pnpm dlx shadcn@latest add <component>
 **tRPC / API layer** (`src/integrations/trpc/`):
 
 - `init.ts` — tRPC setup with `publicProcedure`, `protectedProcedure`, and `adminProcedure` (checks `userProfiles.role === 'admin'`, throws FORBIDDEN otherwise)
-- `router.ts` — Root router; imports chat, distractors, progress, wordsets, social, feedback, admin sub-routers
+- `router.ts` — Root router; imports chat, distractors, progress, wordsets, social, feedback, admin, announcements sub-routers
+- `announcements.ts` — Announcement CRUD (admin), published read (public), unread state + mark-as-read (protected)
 - `chat.ts` — AI chat (`sendMessage`) and translation (`translateToZh`); rate-limited 20 req/min
 - `distractors.ts` — Fetches/generates wrong-answer choices (DB-cached, AI-generated via GPT-4o-mini); rate-limited 60 req/min
 - `progress.ts` — Saves session results and per-card history; `getProgress` returns `thisWeekXP` and `lastWeekXP` using Monday 00:00 UTC week boundary
 - `social.ts` — Profiles, friend requests, leaderboard, user search, suggested friends (friends-of-friends; falls back to @me for users with no friends)
 - `wordsets.ts` — Custom word sets: AI extraction from uploaded files/text, save/list/update/delete/favorite; rate-limited 5 per 10 min
-- `feedback.ts` — Submit and list feedback (feedback/feature/bug types)
+- `feedback.ts` — Submit and list feedback (feedback/feature/bug types, status: new/todo/read/done)
+- `progress.ts` also includes `getRetention` query for streak + daily goal state
 - `admin.ts` — Admin dashboard: `checkAccess`, `getOverviewStats`, `getEventStats`, `getGrowthStats`, `getFeatureUsage`, `getRetention` (D1/D7/D30 + cohorts), `getFunnel` (cumulative 5-step), `getTimeToValue` (median hours), `getAiUsage` (real metered from `ai_usage_events`), `getSystemHealth` (heavy users, rate limits), `listUsers` (search + role filter + sort + per-user stats), `updateUserRole`, `getAuditLog`, `exportUsers` (CSV)
 - `src/integrations/tanstack-query/root-provider.tsx` — QueryClient + tRPC provider wiring
 
@@ -103,6 +109,7 @@ pnpm dlx shadcn@latest add <component>
 - `rate-limit.ts` — `createRateLimiter({ windowMs, max })` factory; used by chat, wordsets, and distractors
 - `time.ts` — `getWeekStartTs()`: Monday 00:00 UTC timestamp; used by progress, social
 - `theme.tsx` — `ThemeProvider` + `useTheme()` hook; persists dark/light mode to localStorage, sets `data-theme` on `<html>`
+- `sound.ts` — `playCorrect()` + `playWrong()` — synthesized via Web Audio API (no audio files), respects `localStorage('soundEnabled')` and `localStorage('soundVolume')`
 - `auth.ts` — Better Auth server config
 - `auth-client.ts` — Better Auth client config (relative paths)
 
@@ -110,13 +117,15 @@ pnpm dlx shadcn@latest add <component>
 
 - `analytics.ts` — `logEvent({ userId, eventName, properties })` fire-and-forget insert into `analytics_events` table
 - `ai-usage.ts` — `logAiUsage({ userId, featureName, model, inputTokens, outputTokens })` fire-and-forget insert into `ai_usage_events` with real cost computation from token counts
-- `ai/generateDistractors.ts` — GPT-4o-mini logic for generating wrong answer choices; instrumented with `logAiUsage`
+- `retention.ts` — `updateRetention(userId, sessionXp)` + `getRetentionState(userId)` — streak/daily goal logic, called after every session completion
+- `ai/generateDistractors.ts` — GPT-4o-mini distractor generation with category detection, learner-confusion-class prompting, and similarity filtering (rejects synonyms, paraphrases, substring matches, known gloss pairs); instrumented with `logAiUsage`
 - `ai/generateWordSet.ts` — GPT-4o-mini logic for extracting/generating/editing Chinese vocab; all 3 functions instrumented with `logAiUsage`
 - `extractors/index.ts` — File-to-text extraction (PDF, DOCX, plain text) for custom word set uploads
 
 **Data / Config**:
 
-- `src/db/schema.ts` — Drizzle schema: auth tables, `distractorSets`, `flashcardProgress`, `studySessions`, `chatMessages`, `userLastSession`, `customWordSets`, `userProfiles` (with `role: user|admin`), `friendships`, `feedback`, `aiUsageEvents`, `analyticsEvents`, `adminAuditLog`
+- `src/db/schema.ts` — Drizzle schema: auth tables, `distractorSets`, `flashcardProgress`, `studySessions`, `chatMessages`, `userLastSession`, `customWordSets`, `userProfiles` (with `role: user|admin`), `friendships`, `feedback` (with `status: new|todo|read|done`), `userRetention`, `announcements`, `announcementReads`, `aiUsageEvents`, `analyticsEvents`, `adminAuditLog`
+- `src/db/index.ts` — Drizzle + pg Pool. Uses `DATABASE_URL` (pooler), strips `?pgbouncer=true` for node-postgres compatibility, SSL enabled. Falls back to `DIRECT_URL` if `DATABASE_URL` not set
 - `src/data/vocabulary.ts` — All flashcard data: HSK 1 (149), HSK 2 (148), HSK 3 (299), HSK 4 (537), LANG 1511 units
 - `public/audio/` — Pre-generated MP3s for every vocab word
 - `vite.config.ts` — Vite + TanStack Start + Nitro config
@@ -150,6 +159,10 @@ Two instrumentation systems, both fire-and-forget (never block the main request)
 - `friend_request_sent` — in social.ts after friendship insert
 - `friend_request_accepted` — in social.ts after status update
 - `feedback_submitted` — in feedback.ts after feedback insert
+- `streak_incremented` — in retention.ts when consecutive day detected
+- `streak_lost` — in retention.ts when gap > 1 day
+- `streak_milestone` — at 3, 7, 14, 30, 60, 100 day streaks
+- `daily_goal_completed` — when currentDayXp crosses dailyGoalXp threshold
 
 **AI usage metering** — `logAiUsage()` from `src/server/ai-usage.ts` → `ai_usage_events` table:
 - Real token counts from Vercel AI SDK's `usage.promptTokens` / `usage.completionTokens`
@@ -164,7 +177,32 @@ Two instrumentation systems, both fire-and-forget (never block the main request)
 - **Analytics** (`/admin/analytics`): Retention cohorts (8 weeks), funnels, time-to-value, growth trends, top events, feature usage. "Active user" = completed study session (consistent across all metrics)
 - **Users** (`/admin/users`): Search, role filter, sort (newest/oldest/most active), per-user stats (sessions/chats/word sets/last active), role toggle (prevents self-demotion), CSV export (up to 5000 users)
 - **System** (`/admin/system`): Real AI usage from `ai_usage_events` (volume by time window, tokens/cost by feature, model breakdown, top AI-consuming users), heavy user monitoring, rate limit hits, audit log
-- **Audit log**: `adminAuditLog` table tracks admin actions (role changes)
+- **Announcements** (`/admin/announcements`): Create, edit, publish/unpublish, pin/unpin, delete. All actions audit-logged
+- **Feedback** (`/admin/feedback`): View all user feedback with type + status filters, mark as todo/read/done
+- **Audit log**: `adminAuditLog` table tracks admin actions (role changes, announcement actions)
+
+### Retention system
+
+- **`user_retention` table**: `currentStreak`, `longestStreak`, `lastActiveDate`, `dailyGoalXp` (default 50), `currentDayXp`, `lastXpUpdateDate`
+- **Streak logic**: consecutive UTC calendar days with ≥1 study session. Increments if active yesterday, resets to 1 on gap > 1 day
+- **Daily goal**: resets `currentDayXp` each new calendar day. XP = `correctCount + 5` per session (same as leaderboard formula)
+- **UI**: streak fire emoji + count in header (grey when 0, colored when active). Results page shows streak + daily goal progress
+- **Server**: `updateRetention()` in `src/server/retention.ts` called fire-and-forget after every `saveSession`
+
+### Announcements
+
+- **`announcements` table**: title, body, isPublished, isPinned, authorUserId, publishedAt
+- **`announcement_reads` table**: tracks per-user read state (unique per user+announcement)
+- **Admin**: full CRUD + publish/unpublish/pin/unpin via `/admin/announcements`
+- **App UI**: notification sidebar (bell icon) shows published announcements; unread items highlighted with blue tint + dot; badge shows unread count; opening panel auto-marks all as read
+- **RLS**: public can SELECT published announcements; users can INSERT/SELECT own read rows; admin writes via service_role
+
+### Sound effects
+
+- Synthesized via Web Audio API in `src/lib/sound.ts` — no audio files, zero network requests
+- Correct answer: rising tone C5→E5, 150ms. Wrong answer: descending E4→C4, 180ms (quieter)
+- Toggle + volume slider on `/settings` page, persisted to `localStorage('soundEnabled')` and `localStorage('soundVolume')`
+- Triggered in all study modes (standard, sound-only, tone quiz) exactly once per answer, after guard check, before state update
 
 ### Dark mode
 
@@ -253,7 +291,14 @@ Better Auth with Drizzle adapter. Sign-in/sign-out is integrated in the UI. Auth
 | Admin system / AI usage / operational | `src/routes/admin/system.tsx` |
 | Product event tracking | `src/server/analytics.ts` (helper) + individual tRPC routers |
 | AI usage metering | `src/server/ai-usage.ts` (helper) + `src/server/ai/*.ts` + `chat.ts` |
-| Notification sidebar | `src/components/AppHeader.tsx` |
+| Notification sidebar + announcements | `src/components/AppHeader.tsx` |
+| Announcement management (admin) | `src/integrations/trpc/announcements.ts` + `src/routes/admin/announcements.tsx` |
+| Feedback management (admin) | `src/routes/admin/feedback.tsx` |
+| Sound effects | `src/lib/sound.ts` + answer handlers in `index.tsx`, `SoundOnlyPage.tsx`, `ToneQuizPage.tsx` |
+| Streak / daily goal / retention | `src/server/retention.ts` + `src/integrations/trpc/progress.ts` (`getRetention`) |
+| Distractor generation quality | `src/server/ai/generateDistractors.ts` (prompt, category detection, validation) |
+| Distractor regeneration script | `scripts/generate-distractors.ts` (`--force` to clear and regenerate) |
+| DB connection / pooler config | `src/db/index.ts` |
 
 ---
 
@@ -283,6 +328,13 @@ pnpm drizzle-kit migrate     # Step 3: apply migration to database
   - `ALTER TABLE <table> ENABLE ROW LEVEL SECURITY;`
   - Appropriate `CREATE POLICY` statements
 
+### Manual SQL (alternative to migrations)
+
+When Drizzle migrations are unreliable, provide explicit SQL files in `drizzle/manual-*.sql` ready to paste into Supabase SQL Editor. Existing examples:
+- `drizzle/manual-user-retention.sql`
+- `drizzle/manual-announcement-reads.sql`
+- `drizzle/manual-feedback-status.sql`
+
 ### `db:push` restrictions
 
 - **Allowed for**: quick local prototyping only
@@ -308,8 +360,9 @@ Using `db:push` without updating migrations can result in:
 
 - All tables in the `public` schema MUST have RLS enabled
 - Sensitive tables (`accounts`, `sessions`, `verifications`) MUST use deny-all policies for public access
-- User data tables (`flashcard_progress`, `study_sessions`, `chat_messages`, `custom_word_sets`, `user_last_session`, `feedback`) MUST use per-user policies: `auth.uid() = user_id`
+- User data tables (`flashcard_progress`, `study_sessions`, `chat_messages`, `custom_word_sets`, `user_last_session`, `feedback`, `user_retention`, `announcement_reads`) MUST use per-user policies: `auth.uid() = user_id`
 - Admin-only tables (`analytics_events`, `ai_usage_events`, `admin_audit_log`) MUST NOT be publicly accessible — access only through `adminProcedure` on the server
+- `announcements` allows public SELECT where `is_published = true`; admin writes via service_role
 - `user_profiles` and `friendships` may allow limited public read access but MUST restrict writes to the owning user
 
 ### General

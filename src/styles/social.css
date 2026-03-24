@@ -1473,56 +1473,180 @@
 }
 
 /* ── SETTINGS PAGE ─────────────────────────────────────────────── */
-.fc-settings-row {
+.fc-settings-page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+.fc-settings-page-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--fc-text);
+  margin-bottom: 24px;
+}
+
+/* Card */
+.fc-settings-card {
+  background: var(--fc-surface);
+  border: 1px solid color-mix(in srgb, var(--fc-border) 70%, transparent);
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin-bottom: 16px;
+}
+
+/* Section header */
+.fc-settings-section-header {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fc-light);
+  margin-bottom: 20px;
+}
+
+/* Row item */
+.fc-settings-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 0;
+  gap: 24px;
+  padding: 14px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--fc-border) 50%, transparent);
+  transition: background 0.1s;
 }
-.fc-settings-row-info {
+.fc-settings-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.fc-settings-item:first-of-type {
+  padding-top: 0;
+}
+
+/* Sub-item (volume slider when sound is on) */
+.fc-settings-item--sub {
+  padding-left: 0;
+  padding-top: 8px;
+  border-bottom: none;
+}
+
+.fc-settings-item-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
-.fc-settings-row-label {
+.fc-settings-item-label {
   font-size: 0.92rem;
   font-weight: 500;
   color: var(--fc-text);
+  letter-spacing: 0.01em;
 }
-.fc-settings-row-desc {
-  font-size: 0.78rem;
-  color: var(--fc-muted);
+.fc-settings-item-desc {
+  font-size: 0.76rem;
+  color: var(--fc-light);
+  line-height: 1.45;
 }
 
 /* Toggle switch */
 .fc-toggle {
   position: relative;
-  width: 44px;
-  height: 24px;
+  width: 46px;
+  height: 26px;
   border-radius: 99px;
-  background: var(--fc-border);
+  background: color-mix(in srgb, var(--fc-border) 80%, var(--fc-muted) 20%);
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: background 0.2s;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
   flex-shrink: 0;
 }
+.fc-toggle:hover {
+  background: color-mix(in srgb, var(--fc-border) 60%, var(--fc-muted) 40%);
+}
 .fc-toggle--on {
+  background: color-mix(in srgb, var(--fc-red) 85%, var(--fc-red-dark) 15%);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--fc-red) 25%, transparent);
+}
+.fc-toggle--on:hover {
   background: var(--fc-red);
 }
 .fc-toggle-knob {
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 3px;
+  left: 3px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
   background: white;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.25s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 .fc-toggle--on .fc-toggle-knob {
   transform: translateX(20px);
+}
+
+/* Volume control */
+.fc-settings-volume-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.fc-settings-volume-val {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Volume slider */
+.fc-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 140px;
+  height: 3px;
+  background: var(--fc-border);
+  border-radius: 99px;
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.fc-volume-slider:hover {
+  background: color-mix(in srgb, var(--fc-border) 60%, var(--fc-muted) 40%);
+}
+.fc-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--fc-red);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.fc-volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.fc-volume-slider::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+}
+.fc-volume-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--fc-red);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.fc-volume-slider::-moz-range-track {
+  height: 3px;
+  background: var(--fc-border);
+  border-radius: 99px;
+  border: none;
 }
 
 /* ── FEEDBACK PAGE ─────────────────────────────────────────────── */

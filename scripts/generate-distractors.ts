@@ -1,14 +1,15 @@
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import { dirname, resolve } from 'path'
-import { eq } from 'drizzle-orm'
-import { hsk1Words, hsk2Words, lang1511Units } from '../src/data/vocabulary.ts'
-import { generateDistractors } from '../src/server/ai/generateDistractors.ts'
 
+// Load env FIRST — before any module that reads process.env
 const __dirname = dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: resolve(__dirname, '../.env.local') })
 
-// Dynamic imports AFTER dotenv so DATABASE_URL is set at db module load time
+// Dynamic imports AFTER dotenv so DATABASE_URL is available when db/index.ts loads
+const { eq } = await import('drizzle-orm')
+const { hsk1Words, hsk2Words, lang1511Units } = await import('../src/data/vocabulary.ts')
+const { generateDistractors } = await import('../src/server/ai/generateDistractors.ts')
 const { db } = await import('../src/db/index.ts')
 const { distractorSets } = await import('../src/db/schema.ts')
 
@@ -19,6 +20,13 @@ const allVocab = [
 ]
 
 async function main() {
+  const force = process.argv.includes('--force')
+
+  if (force) {
+    const deleted = await db.delete(distractorSets)
+    console.log('Cleared all cached distractors (--force)')
+  }
+
   console.log(`Total vocab: ${allVocab.length} words`)
   let generated = 0
   let skipped = 0

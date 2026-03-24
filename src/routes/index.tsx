@@ -9,6 +9,7 @@ import { cantoneseBasicsWords } from '../data/cantonese-vocabulary'
 import { authClient } from '#/lib/auth-client'
 import { useTRPC } from '#/integrations/trpc/react'
 import { speakHanzi } from '#/lib/tts'
+import { playCorrect, playWrong } from '#/lib/sound'
 import type { QueueItem } from '#/lib/flashcard-logic'
 import {
   shuffle,
@@ -504,6 +505,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
   function handleAnkiRate(correct: boolean) {
     if (answeredRef.current) return
+    if (correct) playCorrect(); else playWrong()
     setTotalAttempts((p) => p + 1)
     if (correct) {
       setScore((p) => p + 1)
@@ -523,11 +525,12 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
   function handleChoiceAnswer(chosen: string) {
     if (answered) return
-    setAnswered(true)
-    setTotalAttempts((p) => p + 1)
     const correct = answerCorrect
     const isCorrect =
       chosen.trim().toLowerCase() === correct.trim().toLowerCase()
+    if (isCorrect) playCorrect(); else playWrong()
+    setAnswered(true)
+    setTotalAttempts((p) => p + 1)
     const states: Record<string, 'correct' | 'wrong'> = {}
     answerChoices.forEach((c) => {
       if (c.trim().toLowerCase() === correct.trim().toLowerCase())
@@ -552,10 +555,11 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
   function handleTypeSubmit() {
     if (answered || !typeValue.trim()) return
-    setAnswered(true)
-    setTotalAttempts((p) => p + 1)
     const isCorrect =
       normalizeAnswer(typeValue) === normalizeAnswer(answerCorrect)
+    if (isCorrect) playCorrect(); else playWrong()
+    setAnswered(true)
+    setTotalAttempts((p) => p + 1)
     setTypeResult(isCorrect ? 'correct' : 'wrong')
     if (isCorrect) {
       setScore((p) => p + 1)

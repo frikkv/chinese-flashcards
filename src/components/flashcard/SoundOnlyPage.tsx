@@ -3,6 +3,7 @@ import { Volume2 } from 'lucide-react'
 import type { Word } from '#/data/vocabulary'
 import type { Dialect } from '#/lib/dialect'
 import { getRomanization } from '#/lib/dialect'
+import { playCorrect, playWrong } from '#/lib/sound'
 import { speakHanzi } from '#/lib/tts'
 import { shuffle, normalizeAnswer } from '#/lib/flashcard-logic'
 import { charFontStyle } from '#/components/flashcard/CardFace'
@@ -120,9 +121,10 @@ export function SoundOnlyPage({
   function handleChoice(word: Word) {
     if (answered) return
     const currentWord = queue[idx]
+    const isCorrect = word.char === currentWord.char
+    if (isCorrect) playCorrect(); else playWrong()
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
-    const isCorrect = word.char === currentWord.char
     const states: Record<string, 'correct' | 'wrong'> = {
       [currentWord.char]: 'correct',
     }
@@ -135,9 +137,10 @@ export function SoundOnlyPage({
   function handleEnglishChoice(word: Word) {
     if (answered) return
     const currentWord = queue[idx]
+    const isCorrect = word.char === currentWord.char
+    if (isCorrect) playCorrect(); else playWrong()
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
-    const isCorrect = word.char === currentWord.char
     const states: Record<string, 'correct' | 'wrong'> = {
       [currentWord.char]: 'correct',
     }
@@ -150,13 +153,14 @@ export function SoundOnlyPage({
   function handleTypeSubmit() {
     const currentWord = queue[idx]
     if (answered || !typeValue.trim() || !currentWord) return
-    setAnswered(true)
-    setTotalAttempts((p) => p + 1)
     const correctVal =
       answerFormat === 'english'
         ? currentWord.english
         : getRomanization(currentWord, dialect)
     const isCorrect = normalizeAnswer(typeValue) === normalizeAnswer(correctVal)
+    if (isCorrect) playCorrect(); else playWrong()
+    setAnswered(true)
+    setTotalAttempts((p) => p + 1)
     setTypeResult(isCorrect ? 'correct' : 'wrong')
     if (isCorrect) setScore((p) => p + 1)
     setNextBtnVisible(true)
