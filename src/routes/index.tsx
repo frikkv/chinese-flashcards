@@ -28,6 +28,10 @@ import { StageDots } from '#/components/flashcard/StageDots'
 import { AnswerChoices } from '#/components/flashcard/AnswerChoices'
 import type { ChatCardContext } from '#/components/flashcard/ChatPanel'
 import { ChatPanel } from '#/components/flashcard/ChatPanel'
+import { HintPanel } from '#/components/flashcard/HintPanel'
+import { XpPopup } from '#/components/flashcard/XpPopup'
+import { ComboIndicator } from '#/components/flashcard/ComboIndicator'
+import { comboXp } from '#/lib/combo'
 import { PronunciationBox } from '#/components/flashcard/PronunciationBox'
 import { Skeleton } from '#/components/Skeleton'
 import type {
@@ -290,6 +294,11 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   const [typeValue, setTypeValue] = useState('')
   const [typeResult, setTypeResult] = useState<'correct' | 'wrong' | null>(null)
   const [showSelfRate, setShowSelfRate] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [xpTrigger, setXpTrigger] = useState(0)
+  const [xpAmount, setXpAmount] = useState(1)
+  const [correctCombo, setCorrectCombo] = useState(0)
+  const [sessionXp, setSessionXp] = useState(0)
 
   // Refs to avoid stale closures
   const queueRef = useRef<QueueItem[]>([])
@@ -472,6 +481,8 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     setScore(0)
     setWrongCount(0)
     setTotalAttempts(0)
+    setCorrectCombo(0)
+    setSessionXp(0)
     setIsFlipped(false)
     isFlippedRef.current = false
     setAllTimeStats((prev) => ({ ...prev, sessions: prev.sessions + 1 }))
@@ -505,12 +516,19 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
   function handleAnkiRate(correct: boolean) {
     if (answeredRef.current) return
-    if (correct) playCorrect(); else playWrong()
-    setTotalAttempts((p) => p + 1)
     if (correct) {
+      const nextCombo = correctCombo + 1
+      const xp = comboXp(nextCombo)
+      playCorrect()
+      setXpAmount(xp)
+      setXpTrigger(Date.now())
+      setCorrectCombo(nextCombo)
+      setSessionXp((p) => p + xp)
       setScore((p) => p + 1)
       setAllTimeStats((p) => ({ ...p, correct: p.correct + 1 }))
     } else {
+      playWrong()
+      setCorrectCombo(0)
       setWrongCount((p) => p + 1)
     }
     setAllTimeStats((p) => ({ ...p, studied: p.studied + 1 }))
@@ -528,7 +546,6 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     const correct = answerCorrect
     const isCorrect =
       chosen.trim().toLowerCase() === correct.trim().toLowerCase()
-    if (isCorrect) playCorrect(); else playWrong()
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
     const states: Record<string, 'correct' | 'wrong'> = {}
@@ -539,9 +556,18 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     if (!isCorrect) states[chosen] = 'wrong'
     setChoiceStates(states)
     if (isCorrect) {
+      const nextCombo = correctCombo + 1
+      const xp = comboXp(nextCombo)
+      playCorrect()
+      setXpAmount(xp)
+      setXpTrigger(Date.now())
+      setCorrectCombo(nextCombo)
+      setSessionXp((p) => p + xp)
       setScore((p) => p + 1)
       setAllTimeStats((p) => ({ ...p, correct: p.correct + 1 }))
     } else {
+      playWrong()
+      setCorrectCombo(0)
       setWrongCount((p) => p + 1)
     }
     setAllTimeStats((p) => ({ ...p, studied: p.studied + 1 }))
@@ -557,14 +583,22 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
     if (answered || !typeValue.trim()) return
     const isCorrect =
       normalizeAnswer(typeValue) === normalizeAnswer(answerCorrect)
-    if (isCorrect) playCorrect(); else playWrong()
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
     setTypeResult(isCorrect ? 'correct' : 'wrong')
     if (isCorrect) {
+      const nextCombo = correctCombo + 1
+      const xp = comboXp(nextCombo)
+      playCorrect()
+      setXpAmount(xp)
+      setXpTrigger(Date.now())
+      setCorrectCombo(nextCombo)
+      setSessionXp((p) => p + xp)
       setScore((p) => p + 1)
       setAllTimeStats((p) => ({ ...p, correct: p.correct + 1 }))
     } else {
+      playWrong()
+      setCorrectCombo(0)
       setWrongCount((p) => p + 1)
     }
     setAllTimeStats((p) => ({ ...p, studied: p.studied + 1 }))
@@ -859,23 +893,21 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       {/* Study workspace: header spans full width, body is two-column grid */}
       <div className="fc-study-workspace">
         {/* Progress header — spans both columns */}
-        <StudyHeader
-          current={qIdx + 1}
-          total={queue.length}
-          pct={pct}
-          score={score}
-        />
+        <div className="fc-study-header-row">
+          <StudyHeader
+            current={qIdx + 1}
+            total={queue.length}
+            pct={pct}
+            score={score}
+          />
+          <ComboIndicator combo={correctCombo} />
+        </div>
 
         {/* Two-column grid body */}
         <div className="fc-study-body">
-          {/* Stage dots (grid row 1, col 1) */}
-          <StageDots
-            stageCount={sessionMode}
-            currentStage={currentItem?.stage ?? 0}
-          />
-
           {/* Card + answers (grid row 2, col 1) */}
-          <div className="fc-card-answers">
+          <div className="fc-card-answers" style={{ position: 'relative' }}>
+            <XpPopup triggerKey={xpTrigger} amount={xpAmount} />
             {/* Card */}
             <div className="fc-card-scene">
               <div className={`fc-card-inner${isFlipped ? ' flipped' : ''}`}>
@@ -883,12 +915,16 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
                   content={faceA}
                   hanzi={currentItem?.word.char ?? ''}
                   dialect={activeDialect}
+                  stage={currentItem?.stage}
+                  stageCount={sessionMode}
                 />
                 <CardFace
                   content={faceB}
                   isBack
                   hanzi={currentItem?.word.char ?? ''}
                   dialect={activeDialect}
+                  stage={currentItem?.stage}
+                  stageCount={sessionMode}
                 />
               </div>
             </div>
@@ -1000,13 +1036,30 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
           {/* Next button (grid row 3, col 1) */}
           <NextButton visible={nextBtnVisible} onClick={handleNext} />
 
-          {/* RIGHT: inline AI chat (grid row 2, col 2) */}
+          {/* RIGHT: hint panel + pronunciation (grid row 2, col 2) */}
           <div className="fc-study-right">
-            <ChatPanel cardContext={chatCtx} inline />
+            {currentItem?.word && (
+              <HintPanel
+                char={currentItem.word.char}
+                pinyin={currentItem.word.pinyin}
+                english={currentItem.word.english}
+                answerTarget={answerTarget}
+                studyMode={sessionMode}
+                onOpenChat={() => setChatOpen(true)}
+              />
+            )}
             <PronunciationBox />
           </div>
         </div>
       </div>
+
+      {/* AI Chat modal */}
+      {chatOpen && (
+        <ChatPanel
+          cardContext={chatCtx}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </div>
   )
 }

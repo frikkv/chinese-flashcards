@@ -2,6 +2,12 @@ import type { Dialect } from './dialect'
 
 let _currentAudio: HTMLAudioElement | null = null
 
+function getSpeechVolume(): number {
+  if (typeof window === 'undefined') return 0.35
+  const val = parseInt(localStorage.getItem('speechVolume') ?? '50')
+  return (Math.max(0, Math.min(100, val)) / 100) * 0.7 // cap at 70% of system max
+}
+
 // Fallback: Web Speech API for any word without a cached MP3
 let _zhVoice: SpeechSynthesisVoice | null = null
 let _zhHKVoice: SpeechSynthesisVoice | null = null
@@ -35,6 +41,7 @@ function speakFallback(hanzi: string, locale: 'zh-CN' | 'zh-HK' = 'zh-CN') {
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = locale
     utterance.rate = 0.65
+    utterance.volume = getSpeechVolume()
     const voice = locale === 'zh-HK' ? _zhHKVoice : _zhVoice
     if (voice) utterance.voice = voice
     window.speechSynthesis.speak(utterance)
@@ -60,6 +67,7 @@ export function speakHanzi(hanzi: string, dialect: Dialect = 'mandarin') {
 
   const src = '/audio/' + encodeURIComponent(hanzi) + '.mp3'
   const audio = new Audio(src)
+  audio.volume = getSpeechVolume()
   _currentAudio = audio
 
   function play() {

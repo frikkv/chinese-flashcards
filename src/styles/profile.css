@@ -548,6 +548,29 @@
   }
 }
 
+@media (max-width: 480px) {
+  .fc-profile-container {
+    padding: 0 8px;
+  }
+  .fc-profile-header {
+    padding: 16px;
+    gap: 12px;
+  }
+  .fc-profile-section {
+    padding: 16px;
+    border-radius: 12px;
+  }
+  .fc-profile-stat-grid {
+    gap: 6px;
+  }
+  .fc-profile-stat {
+    padding: 12px;
+  }
+  .fc-profile-stat-num {
+    font-size: 1.3rem;
+  }
+}
+
 /* ── USERNAME SETUP GATE ─────────────────────────────────────────── */
 .fc-username-gate-overlay {
   background: rgba(0, 0, 0, 0.55);

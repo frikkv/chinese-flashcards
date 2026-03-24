@@ -15,6 +15,9 @@ function SettingsPage() {
   const [soundVolume, setSoundVolume] = useState(() =>
     typeof window !== 'undefined' ? parseInt(localStorage.getItem('soundVolume') ?? '50') : 50,
   )
+  const [speechVolume, setSpeechVolume] = useState(() =>
+    typeof window !== 'undefined' ? parseInt(localStorage.getItem('speechVolume') ?? '50') : 50,
+  )
 
   if (isPending) {
     return (
@@ -75,7 +78,7 @@ function SettingsPage() {
           {soundEnabled && (
             <div className="fc-settings-item fc-settings-item--sub">
               <div className="fc-settings-item-info">
-                <span className="fc-settings-item-label">Volume</span>
+                <span className="fc-settings-item-label">Effects volume</span>
               </div>
               <div className="fc-settings-volume-control">
                 <input
@@ -94,6 +97,34 @@ function SettingsPage() {
               </div>
             </div>
           )}
+          <div className="fc-settings-item">
+            <div className="fc-settings-item-info">
+              <span className="fc-settings-item-label">Speech volume</span>
+              <span className="fc-settings-item-desc">
+                Pronunciation playback volume
+              </span>
+            </div>
+          </div>
+          <div className="fc-settings-item fc-settings-item--sub">
+            <div className="fc-settings-item-info">
+              <span className="fc-settings-item-label">Volume</span>
+            </div>
+            <div className="fc-settings-volume-control">
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={speechVolume}
+                className="fc-volume-slider"
+                onChange={(e) => {
+                  const val = parseInt(e.target.value)
+                  setSpeechVolume(val)
+                  localStorage.setItem('speechVolume', String(val))
+                }}
+              />
+              <span className="fc-settings-volume-val">{speechVolume}%</span>
+            </div>
+          </div>
         </div>
 
         {/* Appearance section */}

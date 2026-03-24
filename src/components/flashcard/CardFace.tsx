@@ -26,19 +26,29 @@ export function charFontStyle(
   return { fontSize: `${Math.max(1.5, fitMax).toFixed(2)}rem` }
 }
 
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V']
+
 export const CardFace = memo(function CardFace({
   content,
   isBack,
   hanzi,
   dialect = 'mandarin',
+  stage,
+  stageCount,
 }: {
   content: CardContent | null
   isBack?: boolean
   hanzi: string
   dialect?: Dialect
+  stage?: number
+  stageCount?: number
 }) {
   return (
     <div className={`fc-card-face${isBack ? ' back' : ''}`}>
+      {/* Stage numeral — top left, same size as speaker button */}
+      {stageCount && stageCount > 1 && stage && (
+        <span className="fc-card-stage">{ROMAN[stage] ?? stage}</span>
+      )}
       {hanzi && (
         <button
           className="fc-speaker-btn"

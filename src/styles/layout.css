@@ -402,19 +402,262 @@
 
 @media (max-width: 560px) {
   .fc-app {
-    padding: calc(var(--fc-header-h) + 8px) 16px 32px;
-    gap: 20px;
+    padding: calc(var(--fc-header-h) + 8px) 12px 32px;
+    gap: 16px;
   }
   .fc-choices {
     grid-template-columns: 1fr;
   }
   .fc-stats-bar {
-    gap: 20px;
-    padding: 16px 20px;
+    gap: 16px;
+    padding: 12px 16px;
   }
   .fc-study-body > .fc-study-right {
-    min-height: 380px;
+    min-height: 300px;
   }
+}
+
+/* ── MOBILE ── */
+@media (max-width: 480px) {
+  /* Header: compact, sticky */
+  .fc-ws-topbar {
+    padding: 8px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--fc-bg);
+  }
+  .fc-ws-brand-title {
+    font-size: 1.6rem;
+  }
+  .fc-ws-brand-left {
+    gap: 12px;
+  }
+  .fc-ws-topbar-right {
+    gap: 14px;
+  }
+  .fc-ws-streak-num {
+    font-size: 0.78rem;
+  }
+
+  /* Wordset page: full-width, no fixed heights */
+  .fc-app--wordset {
+    padding-bottom: 80px; /* room for fixed start btn */
+  }
+  .fc-wordset-container {
+    padding: 0 4px;
+  }
+  .fc-ws-outer-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .fc-ws-left {
+    max-height: none;
+    position: static;
+    overflow: visible;
+  }
+  .fc-ws-list .fc-ws-btn {
+    height: auto;
+    min-height: 80px;
+    padding: 12px 14px;
+  }
+  .fc-ws-list .fc-ws-char {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+  .fc-ws-right {
+    height: auto !important;
+    overflow: visible;
+  }
+  .fc-ws-right-scroll {
+    overflow: visible;
+  }
+
+  /* Settings panel: full-width, relaxed */
+  .fc-settings-wrap {
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+
+  /* Start button: fixed bottom, full width */
+  .fc-wordset-container .fc-start-btn {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0;
+    padding: 16px;
+    z-index: 90;
+    font-size: 1rem;
+  }
+
+  /* Study mode: full-width, thumb-friendly */
+  .fc-app {
+    padding: calc(var(--fc-header-h) + 4px) 8px 16px;
+    gap: 12px;
+  }
+  .fc-study-workspace {
+    max-width: 100%;
+    gap: 10px;
+  }
+  .fc-study-body {
+    grid-template-columns: 1fr;
+    row-gap: 10px;
+    column-gap: 0;
+  }
+  .fc-study-body > .fc-card-answers {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .fc-study-body > .fc-study-next-area {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  /* Hide hint/chat panel on mobile — accessible via chat icon */
+  .fc-study-body > .fc-study-right {
+    display: none;
+  }
+
+  /* Card: full width, taller touch targets */
+  .fc-card-scene {
+    width: 100%;
+  }
+  .fc-card-face {
+    min-height: 200px;
+    padding: 40px 20px;
+  }
+  .fc-card-char {
+    font-size: clamp(2rem, 12vw, 5rem);
+  }
+
+  /* Answer buttons: stacked, large tap targets */
+  .fc-choices {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .fc-choice-btn {
+    min-height: 48px;
+    padding: 14px 16px;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+  .fc-choices--tall .fc-choice-btn {
+    min-height: 56px;
+  }
+
+  /* Type input: larger */
+  .fc-type-input {
+    font-size: 1rem;
+    padding: 14px 16px;
+    border-radius: 12px;
+  }
+  .fc-submit-btn {
+    padding: 14px 20px;
+    font-size: 0.95rem;
+  }
+
+  /* Next button: full-width, bottom */
+  .fc-next-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    font-size: 1rem;
+  }
+
+  /* Back button: smaller on mobile */
+  .fc-back-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    top: 10px;
+    left: 10px;
+  }
+
+  /* Anki rating: larger buttons */
+  .fc-anki-rating {
+    gap: 6px;
+  }
+  .fc-anki-btn {
+    min-height: 48px;
+    font-size: 0.9rem;
+    padding: 10px 8px;
+  }
+
+  /* Flip/reveal button */
+  .fc-flip-btn {
+    min-height: 48px;
+    padding: 12px 28px;
+    font-size: 1rem;
+  }
+
+  /* Study header row */
+  .fc-study-header-row {
+    gap: 6px;
+  }
+  .fc-score-badge {
+    padding: 5px 12px;
+    font-size: 0.8rem;
+  }
+
+  /* Results page: tighter for mobile */
+  .fc-results-container {
+    gap: 12px;
+    padding: 0 8px;
+    max-height: none;
+    overflow: visible;
+  }
+  .fc-results-char {
+    font-size: 2.5rem;
+  }
+  .fc-results-title {
+    font-size: 1.2rem;
+  }
+  .fc-results-grid {
+    gap: 8px;
+    width: 100%;
+  }
+  .fc-result-stat {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 8px;
+  }
+  .fc-result-num {
+    font-size: 1.5rem;
+  }
+  .fc-results-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+  .fc-results-actions .fc-start-btn,
+  .fc-results-actions .fc-results-btn {
+    width: 100%;
+  }
+
+  /* Notification sidebar: full width on mobile */
+  .fc-notif-sidebar {
+    width: 85vw;
+    max-width: none;
+  }
+
+  /* Profile dropdown: wider */
+  .fc-profile-menu {
+    min-width: 200px;
+  }
+
+  /* Social pages: tighter padding */
+  .fc-social-container {
+    padding: 16px 12px 32px;
+  }
+
+  /* Combo indicator: smaller */
+  .fc-combo-indicator {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+  }
+}
+
+/* Prevent horizontal scroll globally */
+html, body {
+  overflow-x: hidden;
 }
 
 /* ── NAV HEADER (sign in/out + profile) ─────────────────────────── */

@@ -4,6 +4,9 @@ import type { Word } from '#/data/vocabulary'
 import type { Dialect } from '#/lib/dialect'
 import { getRomanization } from '#/lib/dialect'
 import { playCorrect, playWrong } from '#/lib/sound'
+import { XpPopup } from '#/components/flashcard/XpPopup'
+import { ComboIndicator } from '#/components/flashcard/ComboIndicator'
+import { comboXp } from '#/lib/combo'
 import { speakHanzi } from '#/lib/tts'
 import { shuffle, normalizeAnswer } from '#/lib/flashcard-logic'
 import { charFontStyle } from '#/components/flashcard/CardFace'
@@ -66,6 +69,9 @@ export function SoundOnlyPage({
   >({})
   const [typeValue, setTypeValue] = useState('')
   const [typeResult, setTypeResult] = useState<'correct' | 'wrong' | null>(null)
+  const [xpTrigger, setXpTrigger] = useState(0)
+  const [xpAmount, setXpAmount] = useState(1)
+  const [correctCombo, setCorrectCombo] = useState(0)
 
   const nextBtnVisibleRef = useRef(false)
   const handleNextRef = useRef<() => void>(() => {})
@@ -122,7 +128,7 @@ export function SoundOnlyPage({
     if (answered) return
     const currentWord = queue[idx]
     const isCorrect = word.char === currentWord.char
-    if (isCorrect) playCorrect(); else playWrong()
+    if (isCorrect) { const nc = correctCombo + 1; const xp = comboXp(nc); playCorrect(); setXpAmount(xp); setXpTrigger(Date.now()); setCorrectCombo(nc) } else { playWrong(); setCorrectCombo(0) }
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
     const states: Record<string, 'correct' | 'wrong'> = {
@@ -138,7 +144,7 @@ export function SoundOnlyPage({
     if (answered) return
     const currentWord = queue[idx]
     const isCorrect = word.char === currentWord.char
-    if (isCorrect) playCorrect(); else playWrong()
+    if (isCorrect) { const nc = correctCombo + 1; const xp = comboXp(nc); playCorrect(); setXpAmount(xp); setXpTrigger(Date.now()); setCorrectCombo(nc) } else { playWrong(); setCorrectCombo(0) }
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
     const states: Record<string, 'correct' | 'wrong'> = {
@@ -158,7 +164,7 @@ export function SoundOnlyPage({
         ? currentWord.english
         : getRomanization(currentWord, dialect)
     const isCorrect = normalizeAnswer(typeValue) === normalizeAnswer(correctVal)
-    if (isCorrect) playCorrect(); else playWrong()
+    if (isCorrect) { const nc = correctCombo + 1; const xp = comboXp(nc); playCorrect(); setXpAmount(xp); setXpTrigger(Date.now()); setCorrectCombo(nc) } else { playWrong(); setCorrectCombo(0) }
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
     setTypeResult(isCorrect ? 'correct' : 'wrong')
@@ -225,17 +231,21 @@ export function SoundOnlyPage({
       </button>
 
       <div className="fc-study-workspace">
-        <StudyHeader
-          current={idx + 1}
-          total={queue.length}
-          pct={pct}
-          score={score}
-        />
+        <div className="fc-study-header-row">
+          <StudyHeader
+            current={idx + 1}
+            total={queue.length}
+            pct={pct}
+            score={score}
+          />
+          <ComboIndicator combo={correctCombo} />
+        </div>
 
         <div className="fc-study-body">
           <StageDots stageCount={stageCount} currentStage={stage} />
 
-          <div className="fc-card-answers">
+          <div className="fc-card-answers" style={{ position: 'relative' }}>
+            <XpPopup triggerKey={xpTrigger} amount={xpAmount} />
             {/* Stage 1: audio card */}
             {stage === 1 && (
               <div className="fc-card-scene">

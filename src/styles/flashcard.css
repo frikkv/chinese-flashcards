@@ -320,12 +320,19 @@
   }
   .fc-ws-left {
     overflow-y: visible;
+    max-height: none;
+    position: static;
   }
   .fc-ws-right {
     overflow: visible;
+    height: auto !important;
   }
   .fc-ws-right-scroll {
     overflow-y: visible;
+  }
+  .fc-ws-list .fc-ws-btn {
+    height: auto;
+    min-height: 90px;
   }
 }
 
@@ -602,6 +609,18 @@
   gap: 16px;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+.fc-card-stage {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fc-muted);
+  font-family: 'Lora', Georgia, serif;
+  letter-spacing: 0.02em;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .fc-speaker-btn {
   position: absolute;
@@ -1088,6 +1107,212 @@
   margin-top: 2px;
 }
 
+
+/* ── XP POPUP ── */
+@keyframes fc-xp-float {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-24px); }
+}
+.fc-xp-popup {
+  position: absolute;
+  top: -4px;
+  right: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--fc-success);
+  pointer-events: none;
+  animation: fc-xp-float 0.75s ease-out forwards;
+  z-index: 10;
+}
+.fc-xp-popup--combo {
+  font-size: 0.88rem;
+  color: #e67e22;
+}
+
+/* ── STUDY HEADER ROW (header + combo) ── */
+.fc-study-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.fc-study-header-row > .fc-study-header {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── COMBO INDICATOR ── */
+@keyframes fc-combo-enter {
+  from { opacity: 0; transform: translateY(4px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.fc-combo-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: color-mix(in srgb, #e67e22 12%, transparent);
+  border: 1px solid color-mix(in srgb, #e67e22 25%, transparent);
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #e67e22;
+  animation: fc-combo-enter 0.25s ease both;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.fc-combo-icon {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+/* ── HINT PANEL ── */
+.fc-hint-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 0;
+}
+.fc-hint-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--fc-border);
+  flex-shrink: 0;
+}
+.fc-hint-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+.fc-hint-chat-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--fc-border);
+  background: var(--fc-surface);
+  color: var(--fc-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.fc-hint-chat-btn:hover {
+  border-color: var(--fc-blue);
+  color: var(--fc-blue);
+}
+.fc-hint-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fc-hint-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--fc-light);
+}
+.fc-hint-empty-icon {
+  font-size: 1.5rem;
+  opacity: 0.5;
+}
+.fc-hint-empty-text {
+  font-size: 0.85rem;
+}
+.fc-hint-item {
+  padding: 8px 10px;
+  background: var(--fc-bg);
+  border-radius: 8px;
+  border-left: 3px solid var(--fc-blue);
+  position: relative;
+  overflow: hidden;
+}
+.fc-hint-level {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fc-blue);
+  margin-bottom: 3px;
+}
+.fc-hint-text {
+  font-size: 0.85rem;
+  color: var(--fc-text);
+  line-height: 1.45;
+}
+/* Blurred state — text is there but hidden behind blur */
+.fc-hint-item--blurred .fc-hint-text {
+  filter: blur(6px);
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+.fc-hint-item--blurred .fc-hint-level {
+  opacity: 0.4;
+}
+/* Revealed state — smooth unblur */
+.fc-hint-item--revealed .fc-hint-text {
+  filter: blur(0);
+  transition: filter 0.35s ease;
+}
+.fc-hint-item--revealed .fc-hint-level {
+  opacity: 1;
+  transition: opacity 0.35s ease;
+}
+/* Skeleton while loading */
+.fc-hint-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fc-hint-item--skeleton {
+  border-left-color: var(--fc-border);
+}
+.fc-hint-item--skeleton .fc-hint-level {
+  color: var(--fc-border);
+}
+.fc-hint-skeleton-bar {
+  display: block;
+  height: 12px;
+  width: 75%;
+  background: var(--fc-border);
+  border-radius: 4px;
+  animation: fc-skeleton-pulse 1.5s ease-in-out infinite;
+}
+.fc-hint-reveal-btn {
+  margin: 0 14px 12px;
+  padding: 8px 16px;
+  background: var(--fc-blue-tint);
+  color: var(--fc-blue);
+  border: 1px solid color-mix(in srgb, var(--fc-blue) 25%, transparent);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.fc-hint-reveal-btn:hover {
+  background: color-mix(in srgb, var(--fc-blue) 15%, transparent);
+  border-color: var(--fc-blue);
+}
 
 /* ── CHAT PANEL ── */
 
