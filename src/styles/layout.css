@@ -440,11 +440,12 @@
     font-size: 0.78rem;
   }
 
-  /* Wordset page: full-width, no fixed heights, no scroll */
+  /* Wordset page: full-width, no scroll, tight fit */
   .fc-app--wordset {
-    padding-bottom: 80px; /* room for fixed start btn */
+    padding-bottom: 72px; /* room for fixed start btn */
     height: 100dvh;
     overflow: hidden;
+    gap: 8px;
   }
   .fc-ws-right-empty {
     display: none;
@@ -461,14 +462,30 @@
     position: static;
     overflow: visible;
   }
+  .fc-ws-list {
+    gap: 6px;
+  }
   .fc-ws-list .fc-ws-btn {
     height: auto;
-    min-height: 80px;
-    padding: 12px 14px;
+    min-height: 64px;
+    padding: 10px 12px;
   }
   .fc-ws-list .fc-ws-char {
-    font-size: 1.5rem;
-    margin-bottom: 4px;
+    font-size: 1.3rem;
+    margin-bottom: 2px;
+  }
+  .fc-ws-label {
+    font-size: 0.95rem;
+  }
+  .fc-ws-count, .fc-ws-desc {
+    font-size: 0.75rem;
+  }
+  .fc-dialect-tabs {
+    padding: 2px;
+  }
+  .fc-dialect-tab {
+    padding: 5px 10px;
+    font-size: 0.78rem;
   }
   .fc-ws-right {
     height: auto !important;
