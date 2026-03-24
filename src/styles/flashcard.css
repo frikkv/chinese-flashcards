@@ -1314,6 +1314,206 @@
   border-color: var(--fc-blue);
 }
 
+/* ── STUDY UTILITY PANEL (2x2 menu) ── */
+.fc-util-menu {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  min-height: 0;
+}
+.fc-util-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  font-family: inherit;
+  padding: 16px 8px;
+}
+.fc-util-cell:hover {
+  border-color: var(--fc-blue);
+  background: var(--fc-blue-tint);
+  transform: translateY(-1px);
+}
+.fc-util-cell:active {
+  transform: translateY(0);
+}
+.fc-util-cell-icon {
+  color: var(--fc-muted);
+  transition: color 0.15s;
+}
+.fc-util-cell:hover .fc-util-cell-icon {
+  color: var(--fc-blue);
+}
+.fc-util-cell-icon--streak {
+  color: #e67e22;
+}
+.fc-util-cell:hover .fc-util-cell-icon--streak {
+  color: #d35400;
+}
+.fc-util-cell-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+.fc-util-cell--static {
+  cursor: default;
+}
+.fc-util-cell--static:hover {
+  border-color: var(--fc-border);
+  background: var(--fc-surface);
+  transform: none;
+}
+.fc-util-cell-streak-num {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #e67e22;
+  line-height: 1;
+}
+/* XP popup repositioned inside streak cell */
+.fc-util-cell--static {
+  position: relative;
+}
+.fc-util-cell--static .fc-xp-popup {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.92rem;
+  animation: fc-xp-fade 1.8s ease-out forwards;
+}
+@keyframes fc-xp-fade {
+  0% { opacity: 0; transform: translateY(4px); }
+  10% { opacity: 1; transform: translateY(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Expanded panel view */
+.fc-util-expanded {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--fc-surface);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 14px;
+  overflow: hidden;
+  min-height: 0;
+}
+.fc-util-expanded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--fc-border);
+  flex-shrink: 0;
+}
+.fc-util-expanded-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fc-text);
+}
+.fc-util-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--fc-border);
+  background: var(--fc-surface);
+  color: var(--fc-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  font-family: inherit;
+}
+.fc-util-close-btn:hover {
+  border-color: var(--fc-muted);
+  color: var(--fc-text);
+}
+.fc-util-expanded-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+/* Report form */
+.fc-util-report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+.fc-util-report-card-info {
+  font-size: 0.78rem;
+  color: var(--fc-muted);
+  padding: 6px 10px;
+  background: var(--fc-bg);
+  border-radius: 6px;
+}
+.fc-util-report-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 12px;
+  border: 1px solid var(--fc-border);
+  border-radius: 8px;
+  background: var(--fc-bg);
+  color: var(--fc-text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.fc-util-report-textarea:focus {
+  outline: none;
+  border-color: var(--fc-blue);
+}
+.fc-util-report-submit {
+  align-self: flex-end;
+  padding: 7px 18px;
+  background: var(--fc-blue);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.fc-util-report-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.fc-util-report-submit:not(:disabled):hover {
+  opacity: 0.88;
+}
+.fc-util-report-done {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--fc-success);
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+.fc-util-report-done-icon {
+  font-size: 1.5rem;
+}
+
 /* ── CHAT PANEL ── */
 
 /* Inline panel — lives inside .fc-study-right, fills the column height */

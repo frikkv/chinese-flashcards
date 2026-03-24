@@ -37,14 +37,14 @@ pnpm dlx shadcn@latest add <component>
 
 **Routes** (`src/routes/`):
 
-- `__root.tsx` — Root layout (brand font LCP optimisation, ThemeProvider, username setup modal)
+- `__root.tsx` — Root layout (brand font LCP optimisation, ThemeProvider, username setup modal, `viewport-fit=cover` for iOS safe areas)
 - `index.tsx` — Study session orchestrator: auth gate, page routing between wordset/study/sound/tone/results. Study page JSX lives here; other pages are imported components
 - `profile.tsx` — Logged-in user's own profile (stats, level, username editing)
 - `u/$username.tsx` — Public profile page for any user (stats, friend button, friends modal)
 - `friends.tsx` — Friends management (search, suggested friends, incoming/outgoing requests, friends list)
 - `leaderboard.tsx` — Weekly XP leaderboard for the user + their friends
 - `feedback.tsx` — Feedback submission page (feedback/feature/bug types, past feedback list)
-- `settings.tsx` — User settings (sound effects toggle + volume slider, dark mode toggle)
+- `settings.tsx` — User settings (sound effects toggle + effects volume slider, speech volume slider, dark mode toggle)
 - `admin/overview.tsx` — Admin dashboard (KPI cards, retention, funnel, time-to-value, 14-day charts, event stats, feature usage, audit log)
 - `admin/analytics.tsx` — Dedicated analytics (retention cohorts, funnels, growth trends, top events, feature usage)
 - `admin/users.tsx` — Admin user management (search, role filter, sort, per-user stats, role toggle, CSV export)
@@ -72,8 +72,12 @@ pnpm dlx shadcn@latest add <component>
 - `wordset/RightSidebar.tsx` — Currently hidden from UI but backend logic preserved (leaderboard, weekly stats, mastery progress)
 - `wordset/CustomWordSetModal.tsx` — Custom word set CRUD modal (list/create/edit views, upload/paste/AI-generate, AI edit). Owns its own tRPC mutations
 - `InlineLeaderboard.tsx` — Self-contained leaderboard sidebar snippet; always renders exactly 5 rows (real entries + empty dash rows + "Add more friends" CTA)
-- `CardFace.tsx`, `StudyHeader.tsx`, `NextButton.tsx`, `StageDots.tsx`, `AnswerChoices.tsx` — Small study page UI primitives
-- `ChatPanel.tsx` — Inline AI chat for study pages; suggestions use generic text ("this word") to avoid revealing the current card's character
+- `CardFace.tsx` — Flashcard face with speaker button (top-right) and Roman numeral stage indicator (top-left, shows I/II/III when stageCount > 1)
+- `StudyHeader.tsx`, `NextButton.tsx`, `StageDots.tsx`, `AnswerChoices.tsx` — Small study page UI primitives
+- `HintPanel.tsx` — Progressive hint panel (replaces inline chat in study right column). Click-to-reveal: 3 levels (vague → moderate → strong). Chat icon opens ChatPanel as modal
+- `XpPopup.tsx` — Floating "+N XP" popup on correct answer, shows variable amount for combo
+- `ComboIndicator.tsx` — Persistent combo badge next to study header (appears at 3+ correct in a row, shows multiplier at 4+)
+- `ChatPanel.tsx` — AI chat; opens as modal overlay from hint panel's chat icon (no longer inline on study page)
 - `PronunciationBox.tsx` — Pronunciation input box below chat
 - `ResultsPage.tsx` — Session results summary with streak + daily goal progress (lazy-loaded)
 - `DailyProgressCard.tsx` — Streak + XP progress bar component (available but not currently rendered on word selection)
@@ -91,7 +95,7 @@ pnpm dlx shadcn@latest add <component>
 - `init.ts` — tRPC setup with `publicProcedure`, `protectedProcedure`, and `adminProcedure` (checks `userProfiles.role === 'admin'`, throws FORBIDDEN otherwise)
 - `router.ts` — Root router; imports chat, distractors, progress, wordsets, social, feedback, admin, announcements sub-routers
 - `announcements.ts` — Announcement CRUD (admin), published read (public), unread state + mark-as-read (protected)
-- `chat.ts` — AI chat (`sendMessage`) and translation (`translateToZh`); rate-limited 20 req/min
+- `chat.ts` — AI chat (`sendMessage`), translation (`translateToZh`), and hint generation (`generateHint` — progressive 3-level hints); rate-limited 20 req/min (chat), 30 req/min (hints)
 - `distractors.ts` — Fetches/generates wrong-answer choices (DB-cached, AI-generated via GPT-4o-mini); rate-limited 60 req/min
 - `progress.ts` — Saves session results and per-card history; `getProgress` returns `thisWeekXP` and `lastWeekXP` using Monday 00:00 UTC week boundary
 - `social.ts` — Profiles, friend requests, leaderboard, user search, suggested friends (friends-of-friends; falls back to @me for users with no friends)
@@ -109,7 +113,8 @@ pnpm dlx shadcn@latest add <component>
 - `rate-limit.ts` — `createRateLimiter({ windowMs, max })` factory; used by chat, wordsets, and distractors
 - `time.ts` — `getWeekStartTs()`: Monday 00:00 UTC timestamp; used by progress, social
 - `theme.tsx` — `ThemeProvider` + `useTheme()` hook; persists dark/light mode to localStorage, sets `data-theme` on `<html>`
-- `sound.ts` — `playCorrect()` + `playWrong()` — synthesized via Web Audio API (no audio files), respects `localStorage('soundEnabled')` and `localStorage('soundVolume')`
+- `sound.ts` — `playCorrect()` (two-note rising ding, triangle wave G5→C6) + `playWrong()` (descending sine E4→C4) — synthesized via Web Audio API (no audio files), respects `localStorage('soundEnabled')` and `localStorage('soundVolume')`
+- `combo.ts` — `comboXp(combo)` — in-session XP combo formula: combo < 4 → 1 XP, combo >= 4 → (combo - 2) XP
 - `auth.ts` — Better Auth server config
 - `auth-client.ts` — Better Auth client config (relative paths)
 
@@ -167,7 +172,7 @@ Two instrumentation systems, both fire-and-forget (never block the main request)
 **AI usage metering** — `logAiUsage()` from `src/server/ai-usage.ts` → `ai_usage_events` table:
 - Real token counts from Vercel AI SDK's `usage.promptTokens` / `usage.completionTokens`
 - Cost computed per-request from GPT-4o-mini pricing ($0.15/1M input, $0.60/1M output)
-- Features: `chat`, `translate`, `distractor_generation`, `wordset_extraction`, `wordset_prompt_generation`, `wordset_ai_edit`
+- Features: `chat`, `translate`, `hint_generation`, `distractor_generation`, `wordset_extraction`, `wordset_prompt_generation`, `wordset_ai_edit`
 
 ### Admin system
 
@@ -197,12 +202,30 @@ Two instrumentation systems, both fire-and-forget (never block the main request)
 - **App UI**: notification sidebar (bell icon) shows published announcements; unread items highlighted with blue tint + dot; badge shows unread count; opening panel auto-marks all as read
 - **RLS**: public can SELECT published announcements; users can INSERT/SELECT own read rows; admin writes via service_role
 
-### Sound effects
+### Study UX features
 
-- Synthesized via Web Audio API in `src/lib/sound.ts` — no audio files, zero network requests
-- Correct answer: rising tone C5→E5, 150ms. Wrong answer: descending E4→C4, 180ms (quieter)
-- Toggle + volume slider on `/settings` page, persisted to `localStorage('soundEnabled')` and `localStorage('soundVolume')`
-- Triggered in all study modes (standard, sound-only, tone quiz) exactly once per answer, after guard check, before state update
+**Hint panel** — replaces inline chat in study right column:
+- Default: lightbulb + "Need a hint?" + "Reveal hint" button (no AI call until clicked)
+- Level 1: very vague (broad category only). Level 2: moderate (first letter, fill-in-blank). Level 3: strong (blanked letters, rhyme)
+- Each click = one `generateHint` API call. Resets on card change
+- Chat icon in hint header opens ChatPanel as modal overlay
+- On mobile (≤480px): hint panel hidden, chat accessible via modal only
+
+**XP combo system** — in-session consecutive correct bonus:
+- First 3 correct: +1 XP each. 4th+: +2, +3, +4... XP (formula: `combo >= 4 ? combo - 2 : 1`)
+- ComboIndicator badge appears at 3+ ("⚡ Combo active"), shows multiplier at 4+ ("⚡ Combo x2")
+- XpPopup shows actual earned XP (+1 green, +2/+3 orange for combo)
+- Wrong answer resets combo to 0. Combo is session-only, not persisted
+- `sessionXp` tracks combo-inflated XP; `score` (raw correct count) stays unchanged for DB
+
+**Sound effects** — synthesized via Web Audio API in `src/lib/sound.ts`:
+- Correct: two-note rising ding (triangle wave G5→C6, ~120ms)
+- Wrong: descending sine (E4→C4, 180ms, quieter)
+- Two separate volume controls on settings: effects volume + speech volume
+- Speech volume (`localStorage('speechVolume')`) applied to TTS Audio.volume and utterance.volume, capped at 70% of system max
+- Triggered in all study modes exactly once per answer
+
+**Card stage indicator** — Roman numerals (I, II, III) in top-left of card face, mirroring speaker button position. Only shown when stageCount > 1
 
 ### Dark mode
 
@@ -241,7 +264,7 @@ Two instrumentation systems, both fire-and-forget (never block the main request)
 
 Styles are split into `src/styles/` with a single entry point `src/styles.css` that imports all files:
 - `base.css` — tailwind, fonts, reset, CSS variables (light + dark mode), skeleton, shared patterns (modal overlay base, text input base)
-- `layout.css` — page grids, nav, topbar, buttons, notification sidebar, profile dropdown, responsive breakpoints
+- `layout.css` — page grids, nav, topbar (with iOS safe area via `env(safe-area-inset-top)`), buttons, notification sidebar, profile dropdown, responsive breakpoints (480px mobile, 560px small, 680px tablet, 900px desktop)
 - `flashcard.css` — study modes, cards, answers, chat, sidebar cards, mastery dashboard
 - `profile.css` — profile pages, stats, insights, level badge
 - `social.css` — auth, modals, friends, leaderboard, settings page (toggle switch), feedback page
@@ -252,6 +275,15 @@ All classes use the `fc-` prefix. Key CSS variables are defined on `.fc-app`:
 - `--fc-accent: var(--fc-blue)` — used for XP bar, rank badge, and other accent UI
 - `--fc-blue: #2c5f8a`, `--fc-red: #c0392b`, `--fc-success: #27ae60`, `--fc-wrong: #e74c3c`
 - Dynamic classes applied via template literals (`fc-lb-row--top${rank}`, `fc-level-badge--tier${n}`) — do not remove these from CSS even if a simple grep finds no static usage
+
+### Mobile responsive (≤480px)
+
+- Header: sticky, compact, flush to top with `env(safe-area-inset-top)` padding
+- Wordset page: single column, auto-height buttons, no scroll (`height: 100dvh; overflow: hidden`), "select a word set" placeholder hidden, fixed bottom start button with `env(safe-area-inset-bottom)`
+- Study mode: full-width cards, stacked answer buttons (48px min tap target), hint panel hidden, chat as modal
+- Results page: stacked full-width action buttons, scrollable
+- `viewport-fit=cover` in viewport meta for iOS notch support
+- `html, body { overflow-x: hidden }` prevents horizontal scroll globally
 
 ### Auth
 
@@ -294,7 +326,12 @@ Better Auth with Drizzle adapter. Sign-in/sign-out is integrated in the UI. Auth
 | Notification sidebar + announcements | `src/components/AppHeader.tsx` |
 | Announcement management (admin) | `src/integrations/trpc/announcements.ts` + `src/routes/admin/announcements.tsx` |
 | Feedback management (admin) | `src/routes/admin/feedback.tsx` |
+| Hint panel (study page) | `src/components/flashcard/HintPanel.tsx` + `src/integrations/trpc/chat.ts` (`generateHint`) |
+| XP combo system | `src/lib/combo.ts` + `src/components/flashcard/ComboIndicator.tsx` + `XpPopup.tsx` |
 | Sound effects | `src/lib/sound.ts` + answer handlers in `index.tsx`, `SoundOnlyPage.tsx`, `ToneQuizPage.tsx` |
+| Speech volume / TTS | `src/lib/tts.ts` + `src/routes/settings.tsx` |
+| Mobile responsive layout | `src/styles/layout.css` (480px breakpoint) + `src/styles/flashcard.css` (680px) + `src/styles/profile.css` (480px) |
+| iOS safe area handling | `src/styles/layout.css` (topbar, start button) + `src/routes/__root.tsx` (viewport-fit=cover) |
 | Streak / daily goal / retention | `src/server/retention.ts` + `src/integrations/trpc/progress.ts` (`getRetention`) |
 | Distractor generation quality | `src/server/ai/generateDistractors.ts` (prompt, category detection, validation) |
 | Distractor regeneration script | `scripts/generate-distractors.ts` (`--force` to clear and regenerate) |

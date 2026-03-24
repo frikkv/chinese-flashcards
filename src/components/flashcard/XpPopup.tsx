@@ -16,7 +16,7 @@ export function XpPopup({ triggerKey, amount = 1 }: { triggerKey: number; amount
     setKey(triggerKey)
     setDisplay(amount)
     setVisible(true)
-    const timer = setTimeout(() => setVisible(false), 800)
+    const timer = setTimeout(() => setVisible(false), 1800)
     return () => clearTimeout(timer)
   }, [triggerKey, amount])
 

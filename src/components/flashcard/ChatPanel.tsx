@@ -113,7 +113,7 @@ export const ChatPanel = memo(function ChatPanel({
         <div className="fc-chat-header-left">
           <span className="fc-chat-title">Ask AI</span>
         </div>
-        {!inline && onClose && (
+        {onClose && (
           <button
             className="fc-chat-close"
             onClick={onClose}

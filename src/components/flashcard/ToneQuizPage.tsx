@@ -3,8 +3,6 @@ import { Volume2 } from 'lucide-react'
 import type { Word } from '#/data/vocabulary'
 import { speakHanzi } from '#/lib/tts'
 import { playCorrect, playWrong } from '#/lib/sound'
-import { XpPopup } from '#/components/flashcard/XpPopup'
-import { ComboIndicator } from '#/components/flashcard/ComboIndicator'
 import { comboXp } from '#/lib/combo'
 import { shuffle, buildToneChoices, stripTones } from '#/lib/flashcard-logic'
 import { StudyHeader } from '#/components/flashcard/StudyHeader'
@@ -12,8 +10,7 @@ import { NextButton } from '#/components/flashcard/NextButton'
 import { StageDots } from '#/components/flashcard/StageDots'
 import { AnswerChoices } from '#/components/flashcard/AnswerChoices'
 import type { ChatCardContext } from '#/components/flashcard/ChatPanel'
-import { ChatPanel } from '#/components/flashcard/ChatPanel'
-import { PronunciationBox } from '#/components/flashcard/PronunciationBox'
+import { StudyUtilityPanel } from '#/components/flashcard/StudyUtilityPanel'
 
 const SessionCompleteScreen = lazy(() =>
   import('#/components/flashcard/SessionCompleteScreen').then((m) => ({
@@ -154,21 +151,17 @@ export function ToneQuizPage({
       </button>
 
       <div className="fc-study-workspace">
-        <div className="fc-study-header-row">
-          <StudyHeader
-            current={idx + 1}
-            total={queue.length}
-            pct={pct}
-            score={score}
-          />
-          <ComboIndicator combo={correctCombo} />
-        </div>
+        <StudyHeader
+          current={idx + 1}
+          total={queue.length}
+          pct={pct}
+          score={score}
+        />
 
         <div className="fc-study-body">
           <StageDots stageCount={1} currentStage={1} />
 
-          <div className="fc-card-answers" style={{ position: 'relative' }}>
-            <XpPopup triggerKey={xpTrigger} amount={xpAmount} />
+          <div className="fc-card-answers">
             <div className="fc-card-scene">
               <div className="fc-card-inner">
                 <div className="fc-card-face">
@@ -217,8 +210,18 @@ export function ToneQuizPage({
           <NextButton visible={nextBtnVisible} onClick={handleNext} />
 
           <div className="fc-study-right">
-            <ChatPanel cardContext={toneChatCtx} inline />
-            <PronunciationBox />
+            {currentWord && (
+              <StudyUtilityPanel
+                char={currentWord.char}
+                pinyin={currentWord.pinyin}
+                english={currentWord.english}
+                answerTarget="pinyin"
+                correctCombo={correctCombo}
+                xpTrigger={xpTrigger}
+                xpAmount={xpAmount}
+                chatContext={toneChatCtx}
+              />
+            )}
           </div>
         </div>
       </div>

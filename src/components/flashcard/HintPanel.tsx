@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Lightbulb, MessageCircle } from 'lucide-react'
+import { Lightbulb, X } from 'lucide-react'
 import { useTRPC } from '#/integrations/trpc/react'
 
 interface HintPanelProps {
@@ -8,7 +8,7 @@ interface HintPanelProps {
   pinyin: string
   english: string
   answerTarget: 'english' | 'pinyin'
-  onOpenChat?: () => void
+  onClose?: () => void
 }
 
 export function HintPanel({
@@ -16,7 +16,7 @@ export function HintPanel({
   pinyin,
   english,
   answerTarget,
-  onOpenChat,
+  onClose,
 }: HintPanelProps) {
   const trpc = useTRPC()
   const [hints, setHints] = useState<string[]>([])
@@ -61,9 +61,9 @@ export function HintPanel({
           <Lightbulb size={15} strokeWidth={2} />
           <span>Hints</span>
         </div>
-        {onOpenChat && (
-          <button className="fc-hint-chat-btn" onClick={onOpenChat} title="Ask AI">
-            <MessageCircle size={14} strokeWidth={2} />
+        {onClose && (
+          <button className="fc-util-close-btn" onClick={onClose} aria-label="Close">
+            <X size={14} />
           </button>
         )}
       </div>

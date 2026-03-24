@@ -27,12 +27,8 @@ import { NextButton } from '#/components/flashcard/NextButton'
 import { StageDots } from '#/components/flashcard/StageDots'
 import { AnswerChoices } from '#/components/flashcard/AnswerChoices'
 import type { ChatCardContext } from '#/components/flashcard/ChatPanel'
-import { ChatPanel } from '#/components/flashcard/ChatPanel'
-import { HintPanel } from '#/components/flashcard/HintPanel'
-import { XpPopup } from '#/components/flashcard/XpPopup'
-import { ComboIndicator } from '#/components/flashcard/ComboIndicator'
+import { StudyUtilityPanel } from '#/components/flashcard/StudyUtilityPanel'
 import { comboXp } from '#/lib/combo'
-import { PronunciationBox } from '#/components/flashcard/PronunciationBox'
 import { Skeleton } from '#/components/Skeleton'
 import type {
   Page,
@@ -294,7 +290,6 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
   const [typeValue, setTypeValue] = useState('')
   const [typeResult, setTypeResult] = useState<'correct' | 'wrong' | null>(null)
   const [showSelfRate, setShowSelfRate] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
   const [xpTrigger, setXpTrigger] = useState(0)
   const [xpAmount, setXpAmount] = useState(1)
   const [correctCombo, setCorrectCombo] = useState(0)
@@ -893,21 +888,17 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       {/* Study workspace: header spans full width, body is two-column grid */}
       <div className="fc-study-workspace">
         {/* Progress header — spans both columns */}
-        <div className="fc-study-header-row">
-          <StudyHeader
-            current={qIdx + 1}
-            total={queue.length}
-            pct={pct}
-            score={score}
-          />
-          <ComboIndicator combo={correctCombo} />
-        </div>
+        <StudyHeader
+          current={qIdx + 1}
+          total={queue.length}
+          pct={pct}
+          score={score}
+        />
 
         {/* Two-column grid body */}
         <div className="fc-study-body">
           {/* Card + answers (grid row 2, col 1) */}
-          <div className="fc-card-answers" style={{ position: 'relative' }}>
-            <XpPopup triggerKey={xpTrigger} amount={xpAmount} />
+          <div className="fc-card-answers">
             {/* Card */}
             <div className="fc-card-scene">
               <div className={`fc-card-inner${isFlipped ? ' flipped' : ''}`}>
@@ -1036,30 +1027,23 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
           {/* Next button (grid row 3, col 1) */}
           <NextButton visible={nextBtnVisible} onClick={handleNext} />
 
-          {/* RIGHT: hint panel + pronunciation (grid row 2, col 2) */}
+          {/* RIGHT: utility panel (grid row 2, col 2) */}
           <div className="fc-study-right">
             {currentItem?.word && (
-              <HintPanel
+              <StudyUtilityPanel
                 char={currentItem.word.char}
                 pinyin={currentItem.word.pinyin}
                 english={currentItem.word.english}
                 answerTarget={answerTarget}
-                studyMode={sessionMode}
-                onOpenChat={() => setChatOpen(true)}
+                correctCombo={correctCombo}
+                xpTrigger={xpTrigger}
+                xpAmount={xpAmount}
+                chatContext={chatCtx}
               />
             )}
-            <PronunciationBox />
           </div>
         </div>
       </div>
-
-      {/* AI Chat modal */}
-      {chatOpen && (
-        <ChatPanel
-          cardContext={chatCtx}
-          onClose={() => setChatOpen(false)}
-        />
-      )}
     </div>
   )
 }

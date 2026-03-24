@@ -4,8 +4,6 @@ import type { Word } from '#/data/vocabulary'
 import type { Dialect } from '#/lib/dialect'
 import { getRomanization } from '#/lib/dialect'
 import { playCorrect, playWrong } from '#/lib/sound'
-import { XpPopup } from '#/components/flashcard/XpPopup'
-import { ComboIndicator } from '#/components/flashcard/ComboIndicator'
 import { comboXp } from '#/lib/combo'
 import { speakHanzi } from '#/lib/tts'
 import { shuffle, normalizeAnswer } from '#/lib/flashcard-logic'
@@ -15,8 +13,7 @@ import { NextButton } from '#/components/flashcard/NextButton'
 import { StageDots } from '#/components/flashcard/StageDots'
 import { AnswerChoices } from '#/components/flashcard/AnswerChoices'
 import type { ChatCardContext } from '#/components/flashcard/ChatPanel'
-import { ChatPanel } from '#/components/flashcard/ChatPanel'
-import { PronunciationBox } from '#/components/flashcard/PronunciationBox'
+import { StudyUtilityPanel } from '#/components/flashcard/StudyUtilityPanel'
 import type { SoundSettings } from '#/components/flashcard/types'
 
 const SessionCompleteScreen = lazy(() =>
@@ -231,21 +228,17 @@ export function SoundOnlyPage({
       </button>
 
       <div className="fc-study-workspace">
-        <div className="fc-study-header-row">
-          <StudyHeader
-            current={idx + 1}
-            total={queue.length}
-            pct={pct}
-            score={score}
-          />
-          <ComboIndicator combo={correctCombo} />
-        </div>
+        <StudyHeader
+          current={idx + 1}
+          total={queue.length}
+          pct={pct}
+          score={score}
+        />
 
         <div className="fc-study-body">
           <StageDots stageCount={stageCount} currentStage={stage} />
 
-          <div className="fc-card-answers" style={{ position: 'relative' }}>
-            <XpPopup triggerKey={xpTrigger} amount={xpAmount} />
+          <div className="fc-card-answers">
             {/* Stage 1: audio card */}
             {stage === 1 && (
               <div className="fc-card-scene">
@@ -435,8 +428,18 @@ export function SoundOnlyPage({
           <NextButton visible={nextBtnVisible} onClick={handleNext} />
 
           <div className="fc-study-right">
-            <ChatPanel cardContext={soundChatCtx} inline />
-            <PronunciationBox />
+            {currentWord && (
+              <StudyUtilityPanel
+                char={currentWord.char}
+                pinyin={currentWord.pinyin}
+                english={currentWord.english}
+                answerTarget={answerFormat === 'english' ? 'english' : 'pinyin'}
+                correctCombo={correctCombo}
+                xpTrigger={xpTrigger}
+                xpAmount={xpAmount}
+                chatContext={soundChatCtx}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -315,9 +315,8 @@
 .fc-study-header {
   width: 100%;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  gap: 6px;
 }
 .fc-progress-label {
   font-size: 0.85rem;
