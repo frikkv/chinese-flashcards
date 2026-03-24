@@ -13,7 +13,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 20px 10px 32px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 20px 10px 32px;
   border-bottom: 1px solid var(--fc-border);
   box-sizing: border-box;
 }
@@ -419,9 +419,9 @@
 
 /* ── MOBILE ── */
 @media (max-width: 480px) {
-  /* Header: compact, sticky */
+  /* Header: compact, sticky, flush to top with safe area */
   .fc-ws-topbar {
-    padding: 8px 12px;
+    padding: calc(6px + env(safe-area-inset-top, 0px)) 12px 6px;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -445,7 +445,7 @@
     padding-bottom: 72px; /* room for fixed start btn */
     height: 100dvh;
     overflow: hidden;
-    gap: 8px;
+    gap: 4px;
   }
   .fc-ws-right-empty {
     display: none;
@@ -501,14 +501,14 @@
     padding: 12px 14px;
   }
 
-  /* Start button: fixed bottom, full width */
+  /* Start button: fixed bottom, full width, safe area aware */
   .fc-wordset-container .fc-start-btn {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     border-radius: 0;
-    padding: 16px;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
     z-index: 90;
     font-size: 1rem;
   }

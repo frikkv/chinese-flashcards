@@ -33,7 +33,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
       { title: '汉字 · Hànzì — Chinese Flashcards' },
     ],
     links: [
