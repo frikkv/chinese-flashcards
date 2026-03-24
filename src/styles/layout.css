@@ -440,9 +440,14 @@
     font-size: 0.78rem;
   }
 
-  /* Wordset page: full-width, no fixed heights */
+  /* Wordset page: full-width, no fixed heights, no scroll */
   .fc-app--wordset {
     padding-bottom: 80px; /* room for fixed start btn */
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .fc-ws-right-empty {
+    display: none;
   }
   .fc-wordset-container {
     padding: 0 4px;
