@@ -191,8 +191,12 @@ export const chatRouter = createTRPCRouter({
         })
       }
 
+      const level1Rule = input.answerTarget === 'pinyin'
+        ? `Write ONE short example sentence in PINYIN that naturally uses the word "${input.char}". Replace the target word's pinyin with "___". Example: for 妈妈 (māmā), write "wǒ de ___ zuò le wǎnfàn." Keep it simple, use only common words.`
+        : `Write ONE short example sentence in CHINESE CHARACTERS that naturally uses the word "${input.char}". Replace the target word with "___". Example: for 妈妈, write "我的___做了晚饭。" Keep it simple, use only common words.`
+
       const levelRules: Record<number, string> = {
-        1: `Give a VERY VAGUE hint. Only mention the broad category or topic area. Examples: "A family role." "A type of food." "An action you do daily." Nothing more specific. One short sentence.`,
+        1: level1Rule,
         2: `Give a MODERATE hint. Use: first letter of the answer, number of letters/syllables, or a fill-in-the-blank sentence. Example: "Starts with 'M', 3 letters" or "___ and Dad." Do NOT reveal the full answer.`,
         3: `Give a STRONG hint. Use: blanked-out letters, a rhyme, or an extremely obvious clue. Example: "M_m — rhymes with Tom." Still do NOT write the full answer.`,
       }

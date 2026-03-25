@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 /**
  * Small floating "+N XP" popup that animates upward and fades out.
@@ -10,9 +10,11 @@ export function XpPopup({ triggerKey, amount = 1 }: { triggerKey: number; amount
   const [visible, setVisible] = useState(false)
   const [display, setDisplay] = useState(1)
   const [key, setKey] = useState(0)
+  const lastFiredRef = useRef(0)
 
   useEffect(() => {
-    if (triggerKey === 0) return
+    if (triggerKey === 0 || triggerKey === lastFiredRef.current) return
+    lastFiredRef.current = triggerKey
     setKey(triggerKey)
     setDisplay(amount)
     setVisible(true)

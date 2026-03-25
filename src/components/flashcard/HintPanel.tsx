@@ -30,6 +30,21 @@ export function HintPanel({
     setCurrentLevel(0)
   }, [char])
 
+  // Auto-fetch first hint on mount
+  useEffect(() => {
+    if (currentLevel === 0 && hints.length === 0 && !hintMutation.isPending) {
+      hintMutation.mutate(
+        { char, pinyin, english, level: 1, answerTarget },
+        {
+          onSuccess: (data) => {
+            setHints([data.hint])
+            setCurrentLevel(1)
+          },
+        },
+      )
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleReveal() {
     const nextLevel = currentLevel + 1
     if (nextLevel > 3 || hintMutation.isPending) return

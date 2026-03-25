@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Lightbulb, MessageCircle, Flame, Flag, X } from 'lucide-react'
 import { HintPanel } from '#/components/flashcard/HintPanel'
 import type { ChatCardContext } from '#/components/flashcard/ChatPanel'
@@ -29,6 +29,15 @@ export function StudyUtilityPanel({
   chatContext,
 }: StudyUtilityPanelProps) {
   const [activePanel, setActivePanel] = useState<PanelId | null>(null)
+  const seenXpRef = useRef(0)
+
+  // Track xpTrigger so returning to menu doesn't replay it
+  useEffect(() => {
+    if (xpTrigger !== 0) seenXpRef.current = xpTrigger
+  }, [xpTrigger])
+
+  // Only pass trigger through if the menu is visible and it's fresh
+  const effectiveXpTrigger = activePanel === null ? xpTrigger : 0
 
   // Reset to menu when the card changes
   useEffect(() => {
@@ -102,7 +111,7 @@ export function StudyUtilityPanel({
         <span className="fc-util-cell-streak-num">
           {correctCombo}
         </span>
-        <XpPopup triggerKey={xpTrigger} amount={xpAmount} />
+        <XpPopup triggerKey={effectiveXpTrigger} amount={xpAmount} />
       </div>
       <button
         className="fc-util-cell"
