@@ -6,7 +6,7 @@ import { getRomanization } from '#/lib/dialect'
 import { playCorrect, playWrong } from '#/lib/sound'
 import { comboXp } from '#/lib/combo'
 import { speakHanzi } from '#/lib/tts'
-import { shuffle, normalizeAnswer } from '#/lib/flashcard-logic'
+import { shuffle, answersMatch } from '#/lib/flashcard-logic'
 import { charFontStyle } from '#/components/flashcard/CardFace'
 import { StudyHeader } from '#/components/flashcard/StudyHeader'
 import { NextButton } from '#/components/flashcard/NextButton'
@@ -160,7 +160,7 @@ export function SoundOnlyPage({
       answerFormat === 'english'
         ? currentWord.english
         : getRomanization(currentWord, dialect)
-    const isCorrect = normalizeAnswer(typeValue) === normalizeAnswer(correctVal)
+    const isCorrect = answersMatch(typeValue, correctVal)
     if (isCorrect) { const nc = correctCombo + 1; const xp = comboXp(nc); playCorrect(); setXpAmount(xp); setXpTrigger(Date.now()); setCorrectCombo(nc) } else { playWrong(); setCorrectCombo(0) }
     setAnswered(true)
     setTotalAttempts((p) => p + 1)

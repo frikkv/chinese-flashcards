@@ -13,7 +13,7 @@ import { playCorrect, playWrong } from '#/lib/sound'
 import type { QueueItem } from '#/lib/flashcard-logic'
 import {
   shuffle,
-  normalizeAnswer,
+  answersMatch,
   buildQueue,
   getQuestionContent,
   getAnswerContent,
@@ -576,8 +576,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
 
   function handleTypeSubmit() {
     if (answered || !typeValue.trim()) return
-    const isCorrect =
-      normalizeAnswer(typeValue) === normalizeAnswer(answerCorrect)
+    const isCorrect = answersMatch(typeValue, answerCorrect)
     setAnswered(true)
     setTotalAttempts((p) => p + 1)
     setTypeResult(isCorrect ? 'correct' : 'wrong')
@@ -595,6 +594,7 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       playWrong()
       setCorrectCombo(0)
       setWrongCount((p) => p + 1)
+      setTypeValue(answerCorrect)
     }
     setAllTimeStats((p) => ({ ...p, studied: p.studied + 1 }))
     setNextBtnVisible(true)
@@ -602,6 +602,24 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
       const word = queueRef.current[qIdx]?.word
       if (word)
         cardResultsRef.current.push({ cardId: word.char, correct: isCorrect })
+    }
+  }
+
+  function handleTypeSkip() {
+    if (answered) return
+    setAnswered(true)
+    setTotalAttempts((p) => p + 1)
+    setTypeValue(answerCorrect)
+    setTypeResult('wrong')
+    playWrong()
+    setCorrectCombo(0)
+    setWrongCount((p) => p + 1)
+    setAllTimeStats((p) => ({ ...p, studied: p.studied + 1 }))
+    setNextBtnVisible(true)
+    if (isSignedIn) {
+      const word = queueRef.current[qIdx]?.word
+      if (word)
+        cardResultsRef.current.push({ cardId: word.char, correct: false })
     }
   }
 
@@ -1018,6 +1036,14 @@ function FlashcardsApp({ onSignIn }: { onSignIn?: () => void }) {
                     onClick={handleTypeSubmit}
                   >
                     Check
+                  </button>
+                  <button
+                    className="fc-skip-btn"
+                    disabled={answered}
+                    onClick={handleTypeSkip}
+                    title="Don't know — skip and reveal"
+                  >
+                    Skip
                   </button>
                 </div>
               )}

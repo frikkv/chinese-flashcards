@@ -807,6 +807,29 @@
   opacity: 0.5;
   cursor: default;
 }
+.fc-skip-btn {
+  background: var(--fc-surface);
+  color: var(--fc-muted);
+  border: 1.5px solid var(--fc-border);
+  border-radius: 14px;
+  padding: 16px 22px;
+  font-family: 'Lora', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+.fc-skip-btn:hover {
+  border-color: var(--fc-red);
+  color: var(--fc-red);
+}
+.fc-skip-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .fc-flip-btn {
   background: var(--fc-surface);
   border: 1.5px solid var(--fc-border);

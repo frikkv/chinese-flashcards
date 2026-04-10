@@ -32,6 +32,53 @@ export function normalizeAnswer(s: string): string {
     .trim()
 }
 
+/** Levenshtein edit distance between two strings. */
+export function levenshtein(a: string, b: string): number {
+  if (a === b) return 0
+  if (a.length === 0) return b.length
+  if (b.length === 0) return a.length
+  let prev = new Array<number>(b.length + 1)
+  let curr = new Array<number>(b.length + 1)
+  for (let j = 0; j <= b.length; j++) prev[j] = j
+  for (let i = 1; i <= a.length; i++) {
+    curr[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      curr[j] = Math.min(
+        curr[j - 1] + 1, // insertion
+        prev[j] + 1, // deletion
+        prev[j - 1] + cost, // substitution
+      )
+    }
+    ;[prev, curr] = [curr, prev]
+  }
+  return prev[b.length]
+}
+
+/**
+ * Typo-tolerant comparison used for typed answers. Supports alternate
+ * meanings separated by "/" or "," — input is correct if it matches any.
+ * Allows roughly one typo per five characters.
+ */
+export function answersMatch(input: string, correct: string): boolean {
+  const normInput = normalizeAnswer(input).replace(/[^a-z0-9\u4e00-\u9fff ]/g, '')
+  if (!normInput) return false
+  const alts = correct
+    .split(/[/,]/)
+    .map((s) => normalizeAnswer(s).replace(/[^a-z0-9\u4e00-\u9fff ]/g, ''))
+    .filter(Boolean)
+  if (alts.length === 0) return false
+  for (const alt of alts) {
+    if (alt === normInput) return true
+    const len = Math.max(alt.length, normInput.length)
+    // Short answers (≤3 chars) require exact match — a single typo is too much
+    if (len <= 3) continue
+    const threshold = len <= 6 ? 1 : len <= 10 ? 2 : 3
+    if (levenshtein(alt, normInput) <= threshold) return true
+  }
+  return false
+}
+
 // ── TONE HELPERS ─────────────────────────────────────────────────────────────
 
 const TONE_VOWELS: Record<string, string[]> = {
